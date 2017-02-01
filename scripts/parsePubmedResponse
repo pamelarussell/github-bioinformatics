@@ -1,0 +1,24 @@
+#!/bin/bash
+
+###################################################
+# Parse a text file containing a list of abstractss 
+# and other metadata exported from a PubMed query
+###################################################
+
+if [ "$#" -ne 1 ]; then
+	echo -e "\nUsage: parsePubmedResponse <text file of authorInfos exported from PubMed query>\n"
+	exit
+fi
+
+
+cat $1 | awk '
+	$1 ~ /^[0-9]+\.$/ && $2 ~ /^[a-zA-Z]/ {
+		info = $0; while(NF > 0) {getline; info = info " " $0}; print info; getline;
+		title = $0; while(NF > 0) {getline; title = title " " $0}; print title; getline;
+		authors = $0; while(NF > 0) {getline; authors = authors " " $0}; print authors; getline;
+		authorInfo = $0; while(NF > 0) {getline; authorInfo = authorInfo " " $0}; print authorInfo; getline;
+		abstract = $0; while(NF > 0) {getline; abstract = abstract " " $0}; print abstract; getline;		
+		print "";
+	}
+
+'
