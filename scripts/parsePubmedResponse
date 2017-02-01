@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###################################################
-# Parse a text file containing a list of abstractss 
+# Parse a text file containing a list of abstracts 
 # and other metadata exported from a PubMed query
 ###################################################
 
