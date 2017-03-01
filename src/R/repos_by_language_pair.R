@@ -62,6 +62,7 @@ names(topPairs) <- rownames(pairCount)[1:numTopPairs]
 topPairs <- topPairs[order(topPairs)]
 
 # Make barplot
+pdf('/Users/prussell/Documents/Github_mining/plots/test_repos/repos_by_language_pair.pdf', height=8.5, width=11)
 par(mar=c(5,12,4,2))
 bp <- barplot(
   t(as.matrix(topPairs)),
@@ -73,6 +74,7 @@ bp <- barplot(
   xlim=c(0, max(topPairs) + 20)
 )
 text(x=topPairs, y=bp, label=topPairs, pos = 4, cex=0.9)
+dev.off()
 
 
 

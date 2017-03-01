@@ -27,6 +27,7 @@ names(topLangs) <- rownames(repoCount)[1:numTopLangs]
 topLangs <- topLangs[order(topLangs)]
 
 # Make barplot
+pdf('/Users/prussell/Documents/Github_mining/plots/test_repos/repos_by_language.pdf', height=8.5, width=11)
 par(mar=c(5,12,4,2))
 bp <- barplot(
   t(as.matrix(topLangs)),
@@ -38,7 +39,7 @@ bp <- barplot(
   xlim=c(0, max(topLangs) + 50)
 )
 text(x=topLangs, y=bp, label=topLangs, pos = 4, cex=0.9)
-
+dev.off()
 
 
 

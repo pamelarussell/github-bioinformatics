@@ -24,6 +24,7 @@ topLanguages <- c(others, topLanguages)
 names(topLanguages) <- newNames
 
 # Make barplot
+pdf('/Users/prussell/Documents/Github_mining/plots/test_repos/bytes_by_language.pdf', height=8.5, width=11)
 par(mar=c(5,12,4,2))
 barplot(
   t(as.matrix(topLanguages)),
@@ -34,6 +35,9 @@ barplot(
   axes=F
 )
 axis(1, at=c(0, 100000000, 200000000, 300000000), labels=c("0", "100Mb", "200Mb", "300Mb"))
+dev.off()
+
+
 
 
 
