@@ -16,10 +16,12 @@ def parse_cloc_response(response):
         return(None)
     if re.search('[2-9] text file', lines[0]) is not None:
         # Too many files
-        raise ValueError('Run CLOC on exactly one file at a time:%s' % response)
+        raise ValueError('Run CLOC on exactly one file at a time:\n%s' % response)
     if '1 file ignored.' in lines[2]: 
         # The file was ignored by CLOC
         return(None)
+    if len(list(filter(lambda x: x.split() != [], lines))) > 9:
+        raise ValueError('Too many lines in CLOC output:\n%s' % response)
     else:
         if '0 files ignored.' in lines[2]:
             # CLOC was able to detect the language

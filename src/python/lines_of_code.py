@@ -64,11 +64,24 @@ w.write('Running query: %s\n' %query)
 # Run query to get file metadata
 result = run_query(client, query, 60)
 
+# Push the records
+def push(recs_to_add):
+    w.write('\nPushing %s results to table %s:%s.%s\n' % (length(recs_to_add), project, dataset, table))
+    succ = client.push_rows(dataset, table, recs_to_add)
+    if not succ:
+        raise RuntimeError('Push to BigQuery table was unsuccessful')
+
 # Run CLOC on each file and add results to database table
 w.write('Running CLOC on each file...\n\n')
 recs_to_add = []
 num_done = 0
 for rec in result:
+    
+    # Push each batch of 1000 records
+    if num_done % 1000 == 0 and len(recs_to_add) > 0:
+        push(recs_to_add)
+        recs_to_add.clear()
+        
     num_done = num_done + 1
     user_repo = rec['repo_name']
     user_repo_tokens = user_repo.split('/')
@@ -107,12 +120,9 @@ for rec in result:
             w.write('%s. %s - skipping: %s\n' % (num_done, path, e.message))
         else:
             w.write('%s. %s - skipping: %s\n' % (num_done, path, e))
-
-# Push the records
-w.write('\nPushing results to table %s:%s.%s\n' % (project, dataset, table))
-succ = client.push_rows(dataset, table, recs_to_add)
-if not succ:
-    raise RuntimeError('Push to BigQuery table was unsuccessful')
+    
+# Push final batch of records
+push(recs_to_add)
     
 w.write('\nAll done.\n\n')
 w.close()
