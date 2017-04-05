@@ -2,11 +2,23 @@ rm(list=ls())
 options(stringsAsFactors=F)
 
 library(bigrquery)
+library(optparse)
 
-project <- "github-bioinformatics-157418"
+option_list = list(
+  make_option(c("-p", "--project"), action="store", type='character', help="BigQuery project"),
+  make_option(c("-d", "--dataset"), action="store", type='character', help="BigQuery dataset"),
+  make_option(c("-t", "--table"), action="store", type='character', help="BigQuery table"),
+  make_option(c("-o", "--output"), action="store", type='character', help="Output pdf")
+)
+opt = parse_args(OptionParser(option_list=option_list))
+
+proj <- opt$p # Project
+ds <- opt$d # Dataset
+tab <- opt$t # Table
+pdf <- opt$o # Output pdf
 
 # Construct a vector of number of bytes per language
-table <- list_tabledata(project = project, dataset = "test_repos_query_results", table = "language_bytes")
+table <- list_tabledata(project = proj, dataset = ds, table = tab)
 language <- table$language_name
 bytes <- table$total_bytes
 names(bytes) <- language
@@ -24,7 +36,7 @@ topLanguages <- c(others, topLanguages)
 names(topLanguages) <- newNames
 
 # Make barplot
-pdf('/Users/prussell/Documents/Github_mining/plots/test_repos/bytes_by_language.pdf', height=8.5, width=11)
+pdf(pdf, height=8.5, width=11)
 par(mar=c(5,12,4,2))
 barplot(
   t(as.matrix(topLanguages)),
