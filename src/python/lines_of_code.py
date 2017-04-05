@@ -66,7 +66,7 @@ result = run_query(client, query, 60)
 
 # Push the records
 def push(recs_to_add):
-    w.write('\nPushing %s results to table %s:%s.%s\n' % (length(recs_to_add), project, dataset, table))
+    w.write('\nPushing %s results to table %s:%s.%s\n' % (len(recs_to_add), project, dataset, table))
     succ = client.push_rows(dataset, table, recs_to_add)
     if not succ:
         raise RuntimeError('Push to BigQuery table was unsuccessful')
@@ -77,8 +77,8 @@ recs_to_add = []
 num_done = 0
 for rec in result:
     
-    # Push each batch of 1000 records
-    if num_done % 1000 == 0 and len(recs_to_add) > 0:
+    # Push each batch of records
+    if num_done % 100 == 0 and len(recs_to_add) > 0:
         push(recs_to_add)
         recs_to_add.clear()
         
