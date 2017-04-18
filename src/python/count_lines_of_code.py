@@ -4,6 +4,7 @@ from bigquery import get_client
 from util import parse_cloc_response, run_bq_query, gh_file_contents, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 from local_params import json_key
 from github3.exceptions import ForbiddenError
+from github3.models import GitHubError # github3 0.9
 import argparse
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -100,7 +101,7 @@ for rec in result:
                 w.write('%s. %s - no CLOC result\n' % (num_done, user_repo_path))
         else:
             w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
-    except (ForbiddenError, UnicodeDecodeError, RuntimeError) as e:
+    except (ForbiddenError, UnicodeDecodeError, RuntimeError, GitHubError) as e:
         if hasattr(e, 'message'):
             w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
         else:
