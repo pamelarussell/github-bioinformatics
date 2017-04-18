@@ -4,21 +4,35 @@ from bigquery import get_client
 from util import parse_cloc_response, run_bq_query, gh_file_contents, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 from local_params import json_key
 from github3.exceptions import ForbiddenError
+import argparse
 
 # Count lines of code in source files and store this information in a new table in BigQuery
 # Use the GitHub API to grab repo content
 # Use the program CLOC to count lines of code
 
-outfile = '/Users/prussell/Documents/Github_mining/results/lines_of_code/run.out'
+# Command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--project', action = 'store', dest = 'proj', required = True, help = 'BigQuery project')
+parser.add_argument('--dataset', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset')
+parser.add_argument('--table', action = 'store', dest = 'tab', required = True, help = 'BigQuery table')
+parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, help = 'Full path to CLOC executable')
+parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, help = 'Output log file')
+args = parser.parse_args()
+
+# Log file
+outfile = args.out
 w = open(outfile, mode = 'x', buffering = 1)
 
 # Create GitHub object (https://github3py.readthedocs.io/en/master/github.html#github3.github.GitHub)
 gh = gh_login()
 
 # BigQuery parameters
-project = 'github-bioinformatics-157418'
-dataset = 'test_repos'
-table = 'lines_of_code'
+project = args.proj
+dataset = args.ds
+table = args.tab
+
+# CLOC executable
+cloc_exec = args.cloc
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 w.write('\nGetting BigQuery client\n')
@@ -63,6 +77,7 @@ for rec in result:
     repo = user_repo_tokens[1]
     ref = rec['ref']
     path = rec['path']
+    user_repo_path = '%s/%s' % (user_repo, path)
     id = rec['id']
     # Grab file content with GitHub API
     # Value returned is None if not a regular file
@@ -74,22 +89,22 @@ for rec in result:
         # Count lines of code
         if content is not None:
             # Run CLOC
-            cloc_result = subprocess.check_output(['cloc-1.72.pl', content]).decode('utf-8')
+            cloc_result = subprocess.check_output([cloc_exec, content]).decode('utf-8')
             os.remove(content)
             cloc_data = parse_cloc_response(cloc_result)
             if cloc_data is not None:
                 cloc_data['id'] = id
                 recs_to_add.append(cloc_data)
-                w.write('%s. %s - success\n' % (num_done, path))
+                w.write('%s. %s - success\n' % (num_done, user_repo_path))
             else:
-                w.write('%s. %s - no CLOC result\n' % (num_done, path))
+                w.write('%s. %s - no CLOC result\n' % (num_done, user_repo_path))
         else:
-            w.write('%s. %s - content is empty\n' % (num_done, path))
+            w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
     except (ForbiddenError, UnicodeDecodeError, RuntimeError) as e:
         if hasattr(e, 'message'):
-            w.write('%s. %s - skipping: %s\n' % (num_done, path, e.message))
+            w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
         else:
-            w.write('%s. %s - skipping: %s\n' % (num_done, path, e))
+            w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e))
     
 # Push final batch of records
 push_bq_records(client, dataset, table, recs_to_add)
