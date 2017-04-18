@@ -2,26 +2,45 @@ rm(list=ls())
 options(stringsAsFactors=F)
 
 library(bigrquery)
+library(optparse)
 
-project <- "github-bioinformatics-157418"
+message('Calculating number of occurrences of "TODO: fix" by repo...')
 
-table <- list_tabledata(project = project, dataset = "test_repos_query_results", table = "num_occurrences_todo_fix_by_repo")
+option_list = list(
+  make_option(c("-p", "--project"), action="store", type='character', help="BigQuery project"),
+  make_option(c("-d", "--dataset"), action="store", type='character', help="BigQuery dataset"),
+  make_option(c("-t", "--table"), action="store", type='character', help="BigQuery table"),
+  make_option(c("-o", "--output"), action="store", type='character', help="Output pdf")
+)
+opt = parse_args(OptionParser(option_list=option_list))
+
+proj <- opt$p # Project
+ds <- opt$d # Dataset
+tab <- opt$t # Table
+pdf <- opt$o # Output pdf
+
+message(paste('BigQuery project:', proj))
+message(paste('BigQuery dataset:', ds))
+message(paste('BigQuery table:', tab))
+message(paste('Output figure:', pdf))
+
+table <- list_tabledata(project = proj, dataset = ds, table = tab)
 table <- table[order(-table$numOccurrences),]
-numTopRepos <- nrow(table)
-topRepos <- table$numOccurrences[1:numTopRepos]
-names(topRepos) <- table$repo[1:numTopRepos]
-topRepos <- topRepos[order(topRepos)]
+num_top_repos <- nrow(table)
+top_repos <- table$numOccurrences[1:num_top_repos]
+names(top_repos) <- table$repo[1:num_top_repos]
+top_repos <- top_repos[order(top_repos)]
 
 # Make barplot
-pdf('/Users/prussell/Documents/Github_mining/plots/test_repos/todo_fix_by_repo.pdf', height=8.5, width=11)
+pdf(pdf, height=8.5, width=11)
 par(mar=c(5,16,4,2))
 bp <- barplot(
-  t(as.matrix(topRepos)),
+  t(as.matrix(top_repos)),
   horiz = T,
   col = "darkorchid4",
   las=1,
   main="Number of occurrences of 'TODO: fix' in source code"
 )
-dev.off()
+invisible(dev.off())
 
 
