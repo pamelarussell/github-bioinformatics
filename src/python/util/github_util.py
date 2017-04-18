@@ -48,7 +48,7 @@ def gh_file_contents(gh, user, repo, ref, path):
     r = gh.repository(user, repo)
     #c = r.file_contents(path, ref) # github.py 1.0.0
     c = r.contents(path, ref) # github3.py 0.9
-    if c.type == 'file':
+    if c is not None and c.type == 'file':
         dec = c.decoded
         if isinstance(dec, str):
             return(dec)
