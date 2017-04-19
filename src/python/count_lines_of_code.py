@@ -6,7 +6,7 @@ from local_params import json_key
 from github3.exceptions import ForbiddenError
 from github3.models import GitHubError # github3 0.9
 import argparse
-from structure.bq_proj_structure import project
+from structure.bq_proj_structure import *
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -53,7 +53,7 @@ schema = [
 create_bq_table(client, dataset, table, schema)
 
 # Construct query to get file metadata
-query = 'SELECT repo_name, ref, path, id FROM [%s:%s.files]' % (project, dataset)
+query = 'SELECT repo_name, ref, path, id FROM [%s:%s.%s]' % (project_bioinf, dataset, table_files)
 w.write('Getting file metadata\n')
 w.write('Running query: %s\n' %query)
 

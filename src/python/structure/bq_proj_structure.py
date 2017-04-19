@@ -1,21 +1,28 @@
 
 ##### BigQuery project structure
 
-# Project name
-project = 'github-bioinformatics-157418'
+# Project names
+project_bioinf = 'github-bioinformatics-157418'
+project_bq_public_data = 'bigquery-public-data'
+project_github_archive = 'githubarchive'
 
-# Data table names within GitHub bioinformatics dataset
-table_archive_2011 = 'archive_2011'
-table_archive_2012 = 'archive_2012'
-table_archive_2013 = 'archive_2013'
-table_archive_2014 = 'archive_2014'
-table_archive_2015 = 'archive_2015'
-table_archive_2016 = 'archive_2016'
-table_archive_2017 = 'archive_2017'
-table_archive_2011_2017 = 'archive_2011_2017'
+# Dataset names within public data
+dataset_github_repos = 'github_repos'
+dataset_gh_archive_year = 'year'
+
+# Table names within public data
+table_github_repos_commits = 'commits'
+table_github_repos_files = 'files'
+table_github_repos_contents = 'contents'
+table_github_repos_languages = 'languages'
+table_github_repos_licenses = 'licenses'
+
+# Table names within GitHub bioinformatics dataset
+def table_archive(year):
+    return 'github_archive_%s' % year
+table_archive_2011_2016 = 'github_archive_2011_2016'
 table_commits = 'commits'
 table_contents = 'contents'
-table_contents_no_file_info = 'contents_no_file_info'
 table_files = 'files'
 table_languages = 'languages'
 table_licenses = 'licenses'
@@ -31,6 +38,7 @@ table_num_recent_actors_by_repo = 'num_recent_actors_by_repo'
 table_num_todo_fix_by_repo = 'num_todo_fix_by_repo'
 table_num_watch_events_by_repo = 'num_watch_events_by_repo'
 table_num_repos_by_language = 'num_repos_by_language'
+
 
 
 

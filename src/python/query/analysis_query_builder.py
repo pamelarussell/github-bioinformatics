@@ -6,7 +6,7 @@ from structure.bq_proj_structure import *
 
 
 # Number of actors by repo
-def build_query_num_actors_by_repo(gh_dataset, gh_table):
+def build_query_num_actors_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
@@ -27,11 +27,11 @@ def build_query_num_actors_by_repo(gh_dataset, gh_table):
       repo_name
     ORDER BY
       num_actors DESC
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
 
 
 # Number of bytes of code by language
-def build_query_bytes_by_language(gh_dataset, gh_table):
+def build_query_bytes_by_language(dataset, table):
     return """
     SELECT
       language_name,
@@ -44,11 +44,11 @@ def build_query_bytes_by_language(gh_dataset, gh_table):
       language_name
     ORDER BY
       total_bytes DESC
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
 
 
 # Number of repos with code in each language
-def build_query_repo_count_by_language(gh_dataset, gh_table):
+def build_query_repo_count_by_language(dataset, table):
     return """
     SELECT
       language_name,
@@ -61,11 +61,11 @@ def build_query_repo_count_by_language(gh_dataset, gh_table):
       1
     ORDER BY
       2 DESC
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
     
     
 # List of languages by repo
-def build_query_language_list_by_repo(gh_dataset, gh_table):
+def build_query_language_list_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
@@ -74,11 +74,11 @@ def build_query_language_list_by_repo(gh_dataset, gh_table):
       [%s:%s.%s]
     GROUP BY
       repo_name
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
 
 
 # Number of forks by repo
-def build_query_num_forks_by_repo(gh_dataset, gh_table):
+def build_query_num_forks_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
@@ -96,11 +96,11 @@ def build_query_num_forks_by_repo(gh_dataset, gh_table):
       1
     ORDER BY
       2 DESC
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
 
 
 # Number of occurrences of "TODO: fix" by repo
-def build_query_num_todo_fix_by_repo(gh_dataset, gh_table):
+def build_query_num_todo_fix_by_repo(dataset, table):
     return """
     SELECT
       files_repo_name AS repo,
@@ -118,11 +118,11 @@ def build_query_num_todo_fix_by_repo(gh_dataset, gh_table):
       1
     ORDER BY
       2 DESC
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
 
 
 # Number of languages by repo
-def build_query_num_languages_by_repo(gh_dataset, gh_table):
+def build_query_num_languages_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
@@ -135,11 +135,11 @@ def build_query_num_languages_by_repo(gh_dataset, gh_table):
       1
     ORDER BY
       2 DESC    
-    """ % (project, gh_dataset, gh_table)
+    """ % (project_bioinf, dataset, table)
 
 
 # Number of watch events by repo
-def build_query_num_watch_events_by_repo(gh_dataset, gh_table):
+def build_query_num_watch_events_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
@@ -164,7 +164,7 @@ def build_query_num_watch_events_by_repo(gh_dataset, gh_table):
       repo_name
     ORDER BY
       num_watchers DESC    
-  """ % (project, gh_dataset, gh_table)
+  """ % (project_bioinf, dataset, table)
 
 
 

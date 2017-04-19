@@ -89,6 +89,28 @@ def push_bq_records(client, dataset, table, records):
         raise RuntimeError('Push to BigQuery table was unsuccessful')
 
     
+def run_query_and_save_results(client, query, res_dataset, res_table):
+    """ Run a query and save the results to a BigQuery table
+    
+    Args:
+        client: BigQuery-Python client object with readonly set to false
+                (https://github.com/tylertreat/BigQuery-Python)
+        query: The query to run
+        res_dataset: Dataset to write results to
+        res_table: Table to write results to 
+        
+    """
+    # Delete the results table if it exists
+    delete_bq_table(client, res_dataset, res_table)
+    # Run the query and write results to table
+    print('Running query and writing to table %s.%s\n' % (res_dataset, res_table))
+    client.write_to_table(query, res_dataset, res_table, allow_large_results = True)
+
+    
+    
+    
+    
+    
     
     
     

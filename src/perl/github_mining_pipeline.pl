@@ -11,8 +11,14 @@ use warnings;
 
 
 # -----------------------------------------------------------------
-#                    Choose analyses to run 
+#                    Choose steps to run 
 # -----------------------------------------------------------------
+
+# Regenerate GitHub bioinformatics dataset
+my $generate_gh_bioinf_dataset = 0;
+
+# Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
+my $run_bq_analysis_queries = 0;
 
 # Plot total size of source files by language
 my $run_bytes_by_lang = 0;
@@ -45,11 +51,11 @@ my $bq_ds = "test_repos";
 my $bq_ds_query_results = "test_repos_query_results";
 
 # Tables
-my $bq_tb_bytes_by_lang = "language_bytes"; # Number of bytes of code by language
+my $bq_tb_bytes_by_lang = "bytes_by_language"; # Number of bytes of code by language
 my $bq_tb_forks_by_repo = "num_forks_by_repo"; # Number of forks by repo
-my $bq_tb_repos_by_lang = "language_repo_count"; # Number of repos by language
+my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
 my $bq_tb_langs_by_repo = "language_list_by_repo"; # List of languages by repo
-my $bq_tb_todo_fix_by_repo = "num_occurrences_todo_fix_by_repo"; # Number of occurrences of "TODO: fix" by repo
+my $bq_tb_todo_fix_by_repo = "num_todo_fix_by_repo"; # Number of occurrences of "TODO: fix" by repo
 my $bq_tb_lines_of_code = "lines_of_code"; # Computed table with language and lines of code per source file
 
 
@@ -69,11 +75,16 @@ my $script_plot_repos_by_lang_pair = "$src_dir_R/repos_by_language_pair.R";
 my $script_plot_forks_by_repo = "$src_dir_R/forks_by_repo.R";
 my $script_plot_todo_fix_by_repo = "$src_dir_R/todo_fix_by_repo.R";
 my $script_count_lines_of_code = "$src_dir_python/count_lines_of_code.py";
+my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
+my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 
 # Output directories
 my $out_plots_dir = "/Users/prussell/Documents/Github_mining/plots/test_repos/";
 my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
 my $out_results_dir_lines_of_code = "$out_results_dir/lines_of_code/";
+
+# GitHub repo names
+my $repo_names_list = "/Users/prussell/Documents/Github_mining/repos/repos.txt";
 
 
 # -----------------------------------------------------------------
@@ -93,6 +104,16 @@ my $cloc_exec = "/Users/prussell/Software/cloc-1.72.pl";
 # -----------------------------------------------------------------
 #                       Run the analyses
 # -----------------------------------------------------------------
+
+# Regenerate GitHub bioinformatics dataset
+if($generate_gh_bioinf_dataset) {
+	run_cmmd("$python3 $script_run_bq_queries_dataset_creation --repos $repo_names_list --results_ds $bq_ds")
+} else {print("\nSkipping step: regenerate GitHub bioinformatics dataset\n")}
+
+# Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
+if($run_bq_analysis_queries) {
+	run_cmmd("$python3 $script_run_bq_queries_analysis --github_ds $bq_ds --results_ds $bq_ds_query_results")
+} else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables\n")}
 
 # Plot total size of source files by language
 if($run_bytes_by_lang) {
@@ -123,7 +144,7 @@ if($run_forks_by_repo) {
 if($run_todo_fix_by_repo) {
 	my $out_pdf_todo_fix_by_repo = "$out_plots_dir/todo_fix_by_repo.pdf";
 	run_cmmd("Rscript $script_plot_todo_fix_by_repo -p $bq_proj -d $bq_ds_query_results -t $bq_tb_todo_fix_by_repo -o $out_pdf_todo_fix_by_repo", $out_pdf_todo_fix_by_repo);
-} else {print("\nSkipping step: plot number of occurrences of \"TODO: fix\" by repo")}
+} else {print("\nSkipping step: plot number of occurrences of \"TODO: fix\" by repo\n")}
 
 # Count lines of code and push to BigQuery table
 if($run_count_lines_of_code) {
@@ -131,7 +152,7 @@ if($run_count_lines_of_code) {
 	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --dataset $bq_ds_query_results --table $bq_tb_lines_of_code " .
 	"--outfile $out_log_count_lines_of_code --cloc $cloc_exec";
 	run_cmmd($cmmd_count_lines_of_code, $out_log_count_lines_of_code)
-} else {print("\nSkipping step: count lines of code")}
+} else {print("\nSkipping step: count lines of code\n")}
 
 
 
@@ -145,13 +166,13 @@ print("\n\nAll done.\n\n");
 # Run a command and delete a previous version of the output if it exists
 # Args:
 #   1. The command
-#   2. The output file to delete before running the command
+#   2. (Optional parameter) The output file to delete before running the command 
 sub run_cmmd {
-	my $cmmd = $_[0];
-	my $output = $_[1];
+	my ($cmmd, $output) = @_;
+	$output //= 0;
 	print("\nRunning command: $cmmd\n");
 	# Delete the previous version of the output file if it exists
-	if(-e $output) {
+	if($output && -e $output) {
 		system("rm", $output);
 		if( $? != 0 ) {die "Could not remove previous output file $output\n";}
 		print("Deleted previous output file $output\n");
