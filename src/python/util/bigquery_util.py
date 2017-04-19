@@ -68,7 +68,7 @@ def delete_bq_table(client, dataset, table):
         print('WARNING: Deleting existing table %s.%s' % (dataset, table))
         deleted = client.delete_table(dataset, table)
         if not deleted:
-            raise RuntimeError('Table deletion failed')
+            raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
 
     
 def push_bq_records(client, dataset, table, records):

@@ -6,6 +6,8 @@ from local_params import json_key
 from github3.exceptions import ForbiddenError
 from github3.models import GitHubError # github3 0.9
 import argparse
+from structure.bq_proj_structure import project
+
 
 # Count lines of code in source files and store this information in a new table in BigQuery
 # Use the GitHub API to grab repo content
@@ -13,9 +15,8 @@ import argparse
 
 # Command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--project', action = 'store', dest = 'proj', required = True, help = 'BigQuery project')
-parser.add_argument('--dataset', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset')
-parser.add_argument('--table', action = 'store', dest = 'tab', required = True, help = 'BigQuery table')
+parser.add_argument('--dataset', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset to write to')
+parser.add_argument('--table', action = 'store', dest = 'tab', required = True, help = 'BigQuery table to write to')
 parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, help = 'Full path to CLOC executable')
 parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, help = 'Output log file')
 args = parser.parse_args()
@@ -28,7 +29,6 @@ w = open(outfile, mode = 'x', buffering = 1)
 gh = gh_login()
 
 # BigQuery parameters
-project = args.proj
 dataset = args.ds
 table = args.tab
 

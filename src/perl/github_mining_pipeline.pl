@@ -30,7 +30,7 @@ my $run_forks_by_repo = 0;
 my $run_todo_fix_by_repo = 0;
 
 # Count lines of code and push to BigQuery table
-my $run_count_lines_of_code = 1;
+my $run_count_lines_of_code = 0;
 
 
 # -----------------------------------------------------------------
@@ -41,7 +41,7 @@ my $run_count_lines_of_code = 1;
 my $bq_proj = "github-bioinformatics-157418";
 
 # Datasets
-my $bq_ds_test_repos = "test_repos";
+my $bq_ds = "test_repos";
 my $bq_ds_query_results = "test_repos_query_results";
 
 # Tables
@@ -128,7 +128,7 @@ if($run_todo_fix_by_repo) {
 # Count lines of code and push to BigQuery table
 if($run_count_lines_of_code) {
 	my $out_log_count_lines_of_code = "$out_results_dir_lines_of_code/run.out";
-	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --project $bq_proj --dataset $bq_ds_test_repos --table $bq_tb_lines_of_code " .
+	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --dataset $bq_ds_query_results --table $bq_tb_lines_of_code " .
 	"--outfile $out_log_count_lines_of_code --cloc $cloc_exec";
 	run_cmmd($cmmd_count_lines_of_code, $out_log_count_lines_of_code)
 } else {print("\nSkipping step: count lines of code")}
