@@ -79,7 +79,7 @@ for rec in result:
     ref = rec['ref']
     path = rec['path']
     user_repo_path = '%s/%s' % (user_repo, path)
-    id = rec['id']
+    file_id = rec['id']
     # Grab file content with GitHub API
     # Value returned is None if not a regular file
     try:
@@ -94,14 +94,14 @@ for rec in result:
             os.remove(content)
             cloc_data = parse_cloc_response(cloc_result)
             if cloc_data is not None:
-                cloc_data['id'] = id
+                cloc_data['id'] = file_id
                 recs_to_add.append(cloc_data)
                 w.write('%s. %s - success\n' % (num_done, user_repo_path))
             else:
                 w.write('%s. %s - no CLOC result\n' % (num_done, user_repo_path))
         else:
             w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
-    except (ForbiddenError, UnicodeDecodeError, RuntimeError, GitHubError) as e:
+    except (ForbiddenError, UnicodeDecodeError, RuntimeError, GitHubError, ValueError) as e:
         if hasattr(e, 'message'):
             w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
         else:
