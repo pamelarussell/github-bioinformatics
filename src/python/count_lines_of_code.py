@@ -1,12 +1,12 @@
 import subprocess
 import os
 from bigquery import get_client
-from util import parse_cloc_response, run_bq_query, gh_file_contents, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
+from util import parse_cloc_response, run_bq_query, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 from local_params import json_key
 from github3.exceptions import ForbiddenError
 from github3.models import GitHubError # github3 0.9
 import argparse
-from structure.bq_proj_structure import *
+from structure.bq_proj_structure import project_bioinf, table_files
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
