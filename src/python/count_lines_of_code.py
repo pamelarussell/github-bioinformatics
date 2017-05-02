@@ -16,8 +16,8 @@ import re
 
 # Command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--in_ds', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset to read from')
-parser.add_argument('--out_ds', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset to write to')
+parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, help = 'BigQuery dataset to read from')
+parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, help = 'BigQuery dataset to write to')
 parser.add_argument('--table', action = 'store', dest = 'tab', required = True, help = 'BigQuery table to write to')
 parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, help = 'Full path to CLOC executable')
 parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, help = 'Output log file')
@@ -64,7 +64,7 @@ w.write('Running query: %s\n' %query)
 result = run_bq_query(client, query, 60)
 
 # Regex identifying file paths that can be skipped
-skip_re = '^[^.]*$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$'
+skip_re = '/[^.]*$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.1$'
 
 # Run CLOC on each file and add results to database table
 w.write('Running CLOC on each file...\n\n')
@@ -90,7 +90,7 @@ for rec in result:
     # If path has a recognizable extension that indicates it is not source code, or does not contain
     # a period, skip this file
     if re.search(skip_re, path) is not None:
-        w.write('Automatically skipping path %s - not downloading contents or running CLOC' % user_repo_path)
+        w.write('%s. Automatically skipping path %s - not downloading contents or running CLOC\n' % (num_done, user_repo_path))
         continue
     
     # Grab file content with GitHub API
