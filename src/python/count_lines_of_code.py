@@ -120,9 +120,9 @@ for rec in result:
                 w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
             api_rate_limit_ok = True
         except (UnicodeDecodeError, RuntimeError, ValueError, GitHubError) as e:
-            if('API rate limit exceeded' in e.message):
+            if(hasattr(e, 'message') and 'API rate limit exceeded' in e.message):
                 now = datetime.datetime.now()
-                w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s:%s:%s.' % (now.hour, now.minute, now.second))
+                w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s:%s:%s.\n' % (now.hour, now.minute, now.second))
                 sleep(600)
                 continue
             else:
