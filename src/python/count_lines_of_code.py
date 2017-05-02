@@ -62,9 +62,7 @@ w.write('Running query: %s\n' %query)
 result = run_bq_query(client, query, 60)
 
 # Regex identifying file paths that can be skipped
-skip_re = """/[^.]*$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$
-|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$
-|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$"""
+skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$'
 
 # Run CLOC on each file and add results to database table
 w.write('Running CLOC on each file...\n\n')
