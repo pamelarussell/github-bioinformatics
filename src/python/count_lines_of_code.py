@@ -1,17 +1,19 @@
-import subprocess
-import os
-from bigquery import get_client
-from util import parse_cloc_response, run_bq_query, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
-from local_params import json_key
 import argparse
-from structure.bq_proj_structure import project_bioinf, table_files
+import os
 import re
+import subprocess
+
+from bigquery import get_client
+from github3.models import GitHubError
+
+from local_params import json_key
+from structure.bq_proj_structure import project_bioinf, table_files
+from util import parse_cloc_response, run_bq_query, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
 # Use the GitHub API to grab repo content
 # Use the program CLOC to count lines of code
-
 # Command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, help = 'BigQuery dataset to read from')
@@ -62,7 +64,7 @@ w.write('Running query: %s\n' %query)
 result = run_bq_query(client, query, 60)
 
 # Regex identifying file paths that can be skipped
-skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$'
+skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$|\.md$'
 
 # Run CLOC on each file and add results to database table
 w.write('Running CLOC on each file...\n\n')
@@ -112,7 +114,7 @@ for rec in result:
                 w.write('%s. %s - no CLOC result\n' % (num_done, user_repo_path))
         else:
             w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
-    except (UnicodeDecodeError, RuntimeError, ValueError) as e:
+    except (UnicodeDecodeError, RuntimeError, ValueError, GitHubError) as e:
         if hasattr(e, 'message'):
             w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
         else:
