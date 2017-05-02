@@ -1,0 +1,5 @@
+from .comment_extractor import CommentExtractor
+from .comment_extractor_java import CommentExtractorJava
+from .comment_extractor_by_lang import comment_extractor_by_lang
+
+

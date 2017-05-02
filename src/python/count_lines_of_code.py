@@ -10,7 +10,7 @@ from github3.models import GitHubError
 
 from local_params import json_key
 from structure.bq_proj_structure import project_bioinf, table_files
-from util import parse_cloc_response, run_bq_query, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
+from util import parse_cloc_response, run_bq_query, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -123,7 +123,7 @@ for rec in result:
             if(hasattr(e, 'message')):
                 if('API rate limit exceeded' in e.message):
                     now = datetime.datetime.now()
-                    w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s:%s:%s.\n' % (now.hour, now.minute, now.second))
+                    w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s.\n' % str(now))
                     sleep(600)
                     continue
                 else:
