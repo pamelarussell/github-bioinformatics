@@ -14,7 +14,7 @@ def sleep_gh_rate_limit():
     will ensure the API rate limit is not exceeded.
     """
     
-    sleep(sec_between_requests + 0.01) 
+    sleep(sec_between_requests + 0.05) 
     
     
 def gh_login():

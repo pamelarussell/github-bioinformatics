@@ -3,8 +3,6 @@ import os
 from bigquery import get_client
 from util import parse_cloc_response, run_bq_query, sleep_gh_rate_limit, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 from local_params import json_key
-from github3.exceptions import ForbiddenError
-from github3.models import GitHubError # github3 0.9
 import argparse
 from structure.bq_proj_structure import project_bioinf, table_files
 import re
@@ -64,7 +62,9 @@ w.write('Running query: %s\n' %query)
 result = run_bq_query(client, query, 60)
 
 # Regex identifying file paths that can be skipped
-skip_re = '/[^.]*$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.1$'
+skip_re = """/[^.]*$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$
+|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$
+|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$"""
 
 # Run CLOC on each file and add results to database table
 w.write('Running CLOC on each file...\n\n')
@@ -114,7 +114,7 @@ for rec in result:
                 w.write('%s. %s - no CLOC result\n' % (num_done, user_repo_path))
         else:
             w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
-    except (ForbiddenError, UnicodeDecodeError, RuntimeError, GitHubError, ValueError) as e:
+    except (UnicodeDecodeError, RuntimeError, ValueError) as e:
         if hasattr(e, 'message'):
             w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
         else:
