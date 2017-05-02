@@ -7,6 +7,7 @@ from github3.exceptions import ForbiddenError
 from github3.models import GitHubError # github3 0.9
 import argparse
 from structure.bq_proj_structure import project_bioinf, table_files
+import re
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -15,7 +16,8 @@ from structure.bq_proj_structure import project_bioinf, table_files
 
 # Command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset to write to')
+parser.add_argument('--in_ds', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset to read from')
+parser.add_argument('--out_ds', action = 'store', dest = 'ds', required = True, help = 'BigQuery dataset to write to')
 parser.add_argument('--table', action = 'store', dest = 'tab', required = True, help = 'BigQuery table to write to')
 parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, help = 'Full path to CLOC executable')
 parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, help = 'Output log file')
@@ -29,7 +31,8 @@ w = open(outfile, mode = 'x', buffering = 1)
 gh = gh_login()
 
 # BigQuery parameters
-dataset = args.ds
+in_ds = args.in_ds
+out_ds = args.out_ds
 table = args.tab
 
 # CLOC executable
@@ -40,7 +43,7 @@ w.write('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False)
 
 # Delete the lines of code table if it exists
-delete_bq_table(client, dataset, table)
+delete_bq_table(client, out_ds, table)
 
 # Create the lines of code table with schema corresponding to CLOC output
 schema = [
@@ -50,15 +53,18 @@ schema = [
     {'name': 'comment', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'code', 'type': 'INTEGER', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, dataset, table, schema)
+create_bq_table(client, out_ds, table, schema)
 
 # Construct query to get file metadata
-query = 'SELECT repo_name, ref, path, id FROM [%s:%s.%s]' % (project_bioinf, dataset, table_files)
+query = 'SELECT repo_name, ref, path, id FROM [%s:%s.%s]' % (project_bioinf, in_ds, table_files)
 w.write('Getting file metadata\n')
 w.write('Running query: %s\n' %query)
 
 # Run query to get file metadata
 result = run_bq_query(client, query, 60)
+
+# Regex identifying file paths that can be skipped
+skip_re = '^[^.]*$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$'
 
 # Run CLOC on each file and add results to database table
 w.write('Running CLOC on each file...\n\n')
@@ -68,7 +74,7 @@ for rec in result:
     
     # Push each batch of records
     if num_done % 100 == 0 and len(recs_to_add) > 0:
-        push_bq_records(client, dataset, table, recs_to_add)
+        push_bq_records(client, out_ds, table, recs_to_add)
         recs_to_add.clear()
         
     num_done = num_done + 1
@@ -80,6 +86,13 @@ for rec in result:
     path = rec['path']
     user_repo_path = '%s/%s' % (user_repo, path)
     file_id = rec['id']
+    
+    # If path has a recognizable extension that indicates it is not source code, or does not contain
+    # a period, skip this file
+    if re.search(skip_re, path) is not None:
+        w.write('Automatically skipping path %s - not downloading contents or running CLOC' % user_repo_path)
+        continue
+    
     # Grab file content with GitHub API
     # Value returned is None if not a regular file
     try:
@@ -108,7 +121,7 @@ for rec in result:
             w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e))
     
 # Push final batch of records
-push_bq_records(client, dataset, table, recs_to_add)
+push_bq_records(client, out_ds, table, recs_to_add)
     
 w.write('\nAll done.\n\n')
 w.close()
