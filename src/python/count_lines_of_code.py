@@ -120,14 +120,18 @@ for rec in result:
                 w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
             api_rate_limit_ok = True
         except (UnicodeDecodeError, RuntimeError, ValueError, GitHubError) as e:
-            if(hasattr(e, 'message') and 'API rate limit exceeded' in e.message):
-                now = datetime.datetime.now()
-                w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s:%s:%s.\n' % (now.hour, now.minute, now.second))
-                sleep(600)
-                continue
+            if(hasattr(e, 'message')):
+                if('API rate limit exceeded' in e.message):
+                    now = datetime.datetime.now()
+                    w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s:%s:%s.\n' % (now.hour, now.minute, now.second))
+                    sleep(600)
+                    continue
+                else:
+                    api_rate_limit_ok = True
+                    w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
             else:
                 api_rate_limit_ok = True
-                w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
+                w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e))
     
 # Push final batch of records
 push_bq_records(client, out_ds, table, recs_to_add)
