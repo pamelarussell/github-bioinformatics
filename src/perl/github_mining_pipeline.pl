@@ -39,6 +39,9 @@ my $run_todo_fix_by_repo = 0;
 # Count lines of code and push to BigQuery table
 my $run_count_lines_of_code = 0;
 
+# Extract comments from source files and push to BigQuery table
+my $run_extract_comments = 0;
+
 
 # -----------------------------------------------------------------
 #                   BigQuery project structure
@@ -58,6 +61,7 @@ my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
 my $bq_tb_langs_by_repo = "language_list_by_repo"; # List of languages by repo
 my $bq_tb_todo_fix_by_repo = "num_todo_fix_by_repo"; # Number of occurrences of "TODO: fix" by repo
 my $bq_tb_lines_of_code = "lines_of_code"; # Computed table with language and lines of code per source file
+my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
 
 
 # -----------------------------------------------------------------
@@ -78,6 +82,7 @@ my $script_plot_todo_fix_by_repo = "$src_dir_R/todo_fix_by_repo.R";
 my $script_count_lines_of_code = "$src_dir_python/count_lines_of_code.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
+my $script_extract_comments = "$src_dir_python/extract_comments.py";
 
 # Output directories
 my $out_plots_dir = "/Users/prussell/Documents/Github_mining/plots/test_repos/";
@@ -155,6 +160,12 @@ if($run_count_lines_of_code) {
 	run_cmmd($cmmd_count_lines_of_code, $out_log_count_lines_of_code)
 } else {print("\nSkipping step: count lines of code\n")}
 
+# Extract comments from source files and push to BigQuery table
+if($run_extract_comments) {
+	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds --ds_lang $bq_ds_analysis_results ".
+	"--out_ds $bq_ds_analysis_results --table $bq_tb_comments";
+	run_cmmd($cmmd_extract_comments)
+} else {print("\nSkipping step: extract comments\n")}
 
 
 print("\n\nAll done.\n\n");

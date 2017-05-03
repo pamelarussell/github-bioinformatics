@@ -1,5 +1,6 @@
 from .comment_extractor import CommentExtractor
 from .comment_extractor_java import CommentExtractorJava
-from .comment_extractor_by_lang import comment_extractor_by_lang
-
+from .comment_extractor_by_lang import extract_comments_string
+from .comment_extractor_by_lang import extract_comments_file
+from .comment_extractor_by_lang import comment_extractor
 

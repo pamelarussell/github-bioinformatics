@@ -134,7 +134,8 @@ for rec in result:
                 w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e))
     
 # Push final batch of records
-push_bq_records(client, out_ds, table, recs_to_add)
+if len(recs_to_add) > 0:
+    push_bq_records(client, out_ds, table, recs_to_add)
     
 w.write('\nAll done.\n\n')
 w.close()

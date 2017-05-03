@@ -34,7 +34,7 @@ class CommentExtractorJava(CommentExtractor):
                  for line in match.group(0).split('\n')]) \
                  .strip()
     
-    def extract_comments_string(self, file_contents):
+    def extract_comments(self, file_contents):
         """ Returns a list of comments in the source code
         Returned comments are *NOT IN THE ORDER OF THE SOURCE CODE*
         
@@ -42,7 +42,7 @@ class CommentExtractorJava(CommentExtractor):
             file_contents: Contents of a source code file as a single string including newline characters
                 
         Returns:
-            List of comments in the source code. Each comment is one element of the list,
+            List of comments in the source code. Each multiline comment is one element of the list,
             regardless of how many lines it spans in the source code. Comment characters
             are removed.
             Returned comments are *NOT IN THE ORDER OF THE SOURCE CODE*
