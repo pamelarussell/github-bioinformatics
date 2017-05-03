@@ -40,7 +40,7 @@ my $run_todo_fix_by_repo = 0;
 my $run_count_lines_of_code = 0;
 
 # Extract comments from source files and push to BigQuery table
-my $run_extract_comments = 0;
+my $run_extract_comments = 1;
 
 
 # -----------------------------------------------------------------

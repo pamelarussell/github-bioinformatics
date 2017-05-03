@@ -6,11 +6,11 @@ import datetime
 
 from bigquery import get_client
 from time import sleep
-from github3.models import GitHubError
 
 from local_params import json_key
 from structure.bq_proj_structure import project_bioinf, table_files
 from util import parse_cloc_response, run_bq_query, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
+from github3.exceptions import ForbiddenError
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -119,7 +119,7 @@ for rec in result:
             else:
                 w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
             api_rate_limit_ok = True
-        except (UnicodeDecodeError, RuntimeError, ValueError, GitHubError) as e:
+        except (ForbiddenError) as e:
             if(hasattr(e, 'message')):
                 if('API rate limit exceeded' in e.message):
                     now = datetime.datetime.now()

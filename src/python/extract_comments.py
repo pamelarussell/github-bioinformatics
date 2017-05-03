@@ -8,6 +8,7 @@ from local_params import json_key
 from structure.bq_proj_structure import project_bioinf, table_files, table_lines_of_code
 from util import run_bq_query, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
 from comments import extract_comments_file, comment_extractor
+from github3.exceptions import ForbiddenError
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -63,7 +64,7 @@ num_done = 0
 for rec in result:
     
     # Push each batch of records
-    if num_done % 1000 == 0 and len(recs_to_add) > 0:
+    if num_done % 100 == 0 and len(recs_to_add) > 0:
         push_bq_records(client, out_ds, table, recs_to_add)
         recs_to_add.clear()
 
@@ -97,7 +98,7 @@ for rec in result:
             rec_to_add = {'id': file_id, 'comments': comments}
             recs_to_add.append(rec_to_add)
             api_rate_limit_ok = True
-        except RuntimeError as e:
+        except ForbiddenError as e:
             if(hasattr(e, 'message')):
                 if('API rate limit exceeded' in e.message):
                     now = datetime.datetime.now()

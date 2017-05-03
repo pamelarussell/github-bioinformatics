@@ -1,7 +1,19 @@
-from comments import CommentExtractorJava
+from comments import CommentExtractorC, CommentExtractorPython, CommentExtractorMatlab, CommentExtractorR, CommentExtractorPerl
+
 
 """ Map of language name to comment extractor object """
-comment_extractor = {'Java': CommentExtractorJava()}
+comment_extractor = {'C': CommentExtractorC(),
+                     'C++': CommentExtractorC(),
+                     'C/C++ Header': CommentExtractorC(),
+                     'Java': CommentExtractorC(), 
+                     'JavaScript': CommentExtractorC(), 
+                     'MATLAB': CommentExtractorMatlab(),
+                     'Objective C': CommentExtractorC(),
+                     'Perl': CommentExtractorPerl(),
+                     'Python': CommentExtractorPython(),
+                     'R': CommentExtractorR()}
+
+
 
 
 def extract_comments_string(lang, file_contents):

@@ -1,5 +1,11 @@
 from .comment_extractor import CommentExtractor
-from .comment_extractor_java import CommentExtractorJava
+
+from .comment_extractor_c import CommentExtractorC
+from .comment_extractor_matlab import CommentExtractorMatlab
+from .comment_extractor_perl import CommentExtractorPerl
+from .comment_extractor_python import CommentExtractorPython
+from .comment_extractor_r import CommentExtractorR
+
 from .comment_extractor_by_lang import extract_comments_string
 from .comment_extractor_by_lang import extract_comments_file
 from .comment_extractor_by_lang import comment_extractor
