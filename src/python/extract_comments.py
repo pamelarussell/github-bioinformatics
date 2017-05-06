@@ -64,9 +64,18 @@ num_done = 0
 for rec in result:
     
     # Push each batch of records
-    if num_done % 100 == 0 and len(recs_to_add) > 0:
-        push_bq_records(client, out_ds, table, recs_to_add)
-        recs_to_add.clear()
+    if num_done % 1000 == 0 and len(recs_to_add) > 0:
+        added = False
+        while not added:
+            try:
+                # Refresh the client
+                client = get_client(json_key_file=json_key, readonly=False)
+                push_bq_records(client, out_ds, table, recs_to_add)
+                recs_to_add.clear()
+                added = True
+            except BrokenPipeError as e:
+                print('Caught %s. Waiting 60 seconds and retrying.' % type(e).__name__)
+                sleep(60)
 
     num_done = num_done + 1
 

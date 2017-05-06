@@ -37,10 +37,10 @@ my $run_forks_by_repo = 0;
 my $run_todo_fix_by_repo = 0;
 
 # Count lines of code and push to BigQuery table
-my $run_count_lines_of_code = 0;
+my $run_count_lines_of_code = 1;
 
 # Extract comments from source files and push to BigQuery table
-my $run_extract_comments = 1;
+my $run_extract_comments = 0;
 
 
 # -----------------------------------------------------------------

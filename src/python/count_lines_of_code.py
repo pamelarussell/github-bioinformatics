@@ -1,16 +1,15 @@
 import argparse
 import os
-import re
 import subprocess
-import datetime
 
 from bigquery import get_client
 from time import sleep
+from googleapiclient.errors import HttpError
 
 from local_params import json_key
-from structure.bq_proj_structure import project_bioinf, table_files
-from util import parse_cloc_response, run_bq_query, delete_bq_table, gh_login, create_bq_table, push_bq_records, write_gh_file_contents
-from github3.exceptions import ForbiddenError
+from structure.bq_proj_structure import project_bioinf, table_files,\
+    table_contents
+from util import parse_cloc_response, run_bq_query, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -27,10 +26,8 @@ args = parser.parse_args()
 
 # Log file
 outfile = args.out
+os.makedirs(os.path.split(outfile)[0], exist_ok = True)
 w = open(outfile, mode = 'x', buffering = 1)
-
-# Create GitHub object (https://github3py.readthedocs.io/en/master/github.html#github3.github.GitHub)
-gh = gh_login()
 
 # BigQuery parameters
 in_ds = args.in_ds
@@ -41,7 +38,7 @@ table = args.tab
 cloc_exec = args.cloc
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
-w.write('\nGetting BigQuery client\n')
+print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False)
 
 # Delete the lines of code table if it exists
@@ -57,87 +54,101 @@ schema = [
 ]
 create_bq_table(client, out_ds, table, schema)
 
-# Construct query to get file metadata
-query = 'SELECT repo_name, ref, path, id FROM [%s:%s.%s]' % (project_bioinf, in_ds, table_files)
-w.write('Getting file metadata\n')
-w.write('Running query: %s\n' %query)
+# Regex identifying file paths that can be skipped
+skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$|\.md$'
+
+# Construct query to get file metadata and contents
+query = """
+SELECT
+  id,
+  repo_name,
+  path,
+  contents.contents_content AS content
+FROM
+  [%s:%s.%s] AS files
+INNER JOIN
+  [%s:%s.%s] AS contents
+ON
+  files.id = contents.files_id
+WHERE
+  NOT (REGEXP_MATCH(path,r'%s'))
+GROUP BY
+  id,
+  repo_name,
+  path,
+  content
+LIMIT 100
+""" % (project_bioinf, in_ds, table_files, project_bioinf, in_ds, table_contents, skip_re)
+
+print('Getting file metadata and contents\n')
+print('Running query: %s\n' %query)
 
 # Run query to get file metadata
-result = run_bq_query(client, query, 60)
-
-# Regex identifying file paths that can be skipped
-skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$|\.md$'
+# Write results to a temporary table
+tmp_table = 'tmp_query_result'
+create_bq_table(client, out_ds, tmp_table, [
+    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'path', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'content', 'type': 'STRING', 'mode': 'NULLABLE'}
+])
+run_query_and_save_results(client, query, out_ds, tmp_table)
+# Wait until temporary table is ready
+found = False
+while not found:
+    try:
+        result = run_bq_query(client, "SELECT * FROM [%s:%s.%s]" % (project_bioinf, out_ds, tmp_table), 60)
+        found = True
+    except HttpError as e:
+        if 'Not found' in str(e):
+            print('Caught HttpError: table not found. Trying again in 10 seconds.')
+            sleep(10)
+        else:
+            raise e
 
 # Run CLOC on each file and add results to database table
-w.write('Running CLOC on each file...\n\n')
+print('Running CLOC on each file...\n\n')
 recs_to_add = []
 num_done = 0
 for rec in result:
     
     # Push each batch of records
     if num_done % 100 == 0 and len(recs_to_add) > 0:
+        print('Finished %s files.' % num_done)
         push_bq_records(client, out_ds, table, recs_to_add)
         recs_to_add.clear()
 
     num_done = num_done + 1
 
-    user_repo = rec['repo_name']
-    user_repo_tokens = user_repo.split('/')
-    user = user_repo_tokens[0]
-    repo = user_repo_tokens[1]
-    ref = rec['ref']
+    repo = rec['repo_name']
     path = rec['path']
-    user_repo_path = '%s/%s' % (user_repo, path)
     file_id = rec['id']
+    content_str = rec['content']
 
-    # If path has a recognizable extension that indicates it is not source code, or does not contain
-    # a period, skip this file
-    if re.search(skip_re, path) is not None:
-        w.write('%s. Automatically skipping path %s - not downloading contents or running CLOC\n' % (num_done, user_repo_path))
-        continue
+    # Write the file contents to disk
+    if content_str is not None:
+        content = write_file(content_str)
+        # Run CLOC
+        cloc_result = subprocess.check_output([cloc_exec, content]).decode('utf-8')
+        os.remove(content)
+        cloc_data = parse_cloc_response(cloc_result)
+        if cloc_data is not None:
+            cloc_data['id'] = file_id
+            recs_to_add.append(cloc_data)
+            w.write('%s. %s/%s - success\n' % (num_done, repo, path))
+        else:
+            w.write('%s. %s/%s - no CLOC result\n' % (num_done, repo, path))
+    else:
+        w.write('%s. %s/%s - content is empty\n' % (num_done, repo, path))
 
-    api_rate_limit_ok = False
-    while not api_rate_limit_ok:
-        
-        # Grab file content with GitHub API
-        # Value returned is None if not a regular file
-        try:
-            # Write the file contents to disk
-            content = write_gh_file_contents(gh, user, repo, ref, path)
-            # Count lines of code
-            if content is not None:
-                # Run CLOC
-                cloc_result = subprocess.check_output([cloc_exec, content]).decode('utf-8')
-                os.remove(content)
-                cloc_data = parse_cloc_response(cloc_result)
-                if cloc_data is not None:
-                    cloc_data['id'] = file_id
-                    recs_to_add.append(cloc_data)
-                    w.write('%s. %s - success\n' % (num_done, user_repo_path))
-                else:
-                    w.write('%s. %s - no CLOC result\n' % (num_done, user_repo_path))
-            else:
-                w.write('%s. %s - content is empty\n' % (num_done, user_repo_path))
-            api_rate_limit_ok = True
-        except (ForbiddenError) as e:
-            if(hasattr(e, 'message')):
-                if('API rate limit exceeded' in e.message):
-                    now = datetime.datetime.now()
-                    w.write('GitHub API rate limit exceeded. Sleeping for 10 minutes starting at %s.\n' % str(now))
-                    sleep(600)
-                    continue
-                else:
-                    api_rate_limit_ok = True
-                    w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e.message))
-            else:
-                api_rate_limit_ok = True
-                w.write('%s. %s - skipping: %s\n' % (num_done, user_repo_path, e))
-    
 # Push final batch of records
 if len(recs_to_add) > 0:
     push_bq_records(client, out_ds, table, recs_to_add)
     
-w.write('\nAll done.\n\n')
+# Delete the temporary table
+# delete_bq_table(client, out_ds, tmp_table)
+    
+print('\nAll done.\n\n')
 w.close()
 
 

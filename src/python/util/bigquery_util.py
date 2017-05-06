@@ -14,14 +14,11 @@ def run_bq_query(client, query, timeout):
     
     """
     
-    try:
-        job_id, _results = client.query(query, timeout=timeout)
-    except BigQueryTimeoutException:
-        print('Query timeout')
+    job_id, _results = client.query(query, timeout=timeout)
     complete, row_count = client.check_job(job_id)
     if complete:
         results = client.get_query_rows(job_id)
-        print('Got %s rows' %row_count)
+        print('Got %s records' %row_count)
     else:
         raise RuntimeError('Query not complete')
     return(results)
