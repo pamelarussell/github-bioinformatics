@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import os
 
 from bigquery import get_client
 from time import sleep
@@ -123,7 +124,7 @@ for rec in result:
 if len(recs_to_add) > 0:
     push_bq_records(client, out_ds, table, recs_to_add)
     
-print('\nAll done.\n')
+print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 
 
 

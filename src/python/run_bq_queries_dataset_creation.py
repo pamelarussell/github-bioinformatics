@@ -6,6 +6,7 @@ from query import *
 from structure import *
 from query.dataset_creation_query_builder import build_query_combine_years_gh_archive
 import time
+import os
 
 
 ##### Run queries against GitHub dataset tables to construct reduced dataset and store the results in new tables 
@@ -54,7 +55,7 @@ run_query_and_save_results(client, build_query_languages(repos), res_dataset, ta
 run_query_and_save_results(client, build_query_licenses(repos), res_dataset, table_licenses)
 
 
-print('\nAll done.')
+print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 
 
 

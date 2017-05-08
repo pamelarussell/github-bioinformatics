@@ -168,7 +168,7 @@ if($run_extract_comments) {
 } else {print("\nSkipping step: extract comments\n")}
 
 
-print("\n\nAll done.\n\n");
+print("\n\nAll done: $0.\n\n");
 
 
 # -----------------------------------------------------------------

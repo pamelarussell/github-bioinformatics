@@ -4,6 +4,7 @@ from util import run_query_and_save_results
 from bigquery import get_client
 from query import *
 from structure import *
+import os
 
 
 ##### Run analysis queries against GitHub dataset tables and store the results in new tables 
@@ -51,7 +52,7 @@ run_query_and_save_results(client, build_query_num_languages_by_repo(dataset, ta
 run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_watch_events_by_repo)
 
 
-print('\nAll done.')
+print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 
 
 

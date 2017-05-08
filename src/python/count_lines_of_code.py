@@ -3,13 +3,13 @@ import os
 import subprocess
 
 from bigquery import get_client
-from time import sleep
-from googleapiclient.errors import HttpError
 
+from google.cloud import bigquery
+from google.cloud.bigquery import SchemaField
 from local_params import json_key
-from structure.bq_proj_structure import project_bioinf, table_files,\
+from structure.bq_proj_structure import project_bioinf, table_files, \
     table_contents
-from util import parse_cloc_response, run_bq_query, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
+from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
@@ -55,7 +55,10 @@ schema = [
 create_bq_table(client, out_ds, table, schema)
 
 # Regex identifying file paths that can be skipped
-skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$|\.mat$|\.md$'
+skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
+'|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$' + \
+'|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$' + \
+'|\.mat$|\.md$'
 
 # Construct query to get file metadata and contents
 query = """
@@ -77,7 +80,6 @@ GROUP BY
   repo_name,
   path,
   content
-LIMIT 100
 """ % (project_bioinf, in_ds, table_files, project_bioinf, in_ds, table_contents, skip_re)
 
 print('Getting file metadata and contents\n')
@@ -93,24 +95,29 @@ create_bq_table(client, out_ds, tmp_table, [
     {'name': 'content', 'type': 'STRING', 'mode': 'NULLABLE'}
 ])
 run_query_and_save_results(client, query, out_ds, tmp_table)
-# Wait until temporary table is ready
-found = False
-while not found:
-    try:
-        result = run_bq_query(client, "SELECT * FROM [%s:%s.%s]" % (project_bioinf, out_ds, tmp_table), 60)
-        found = True
-    except HttpError as e:
-        if 'Not found' in str(e):
-            print('Caught HttpError: table not found. Trying again in 10 seconds.')
-            sleep(10)
-        else:
-            raise e
+
+# Set up connection using google cloud API because bigquery-python package does not support iterating through records
+# Must have environment variable GOOGLE_APPLICATION_CREDENTIALS set to json key
+# https://developers.google.com/identity/protocols/application-default-credentials
+gcclient = bigquery.Client()
+dataset = gcclient.dataset(out_ds)
+gcschema = [
+          SchemaField('id', 'STRING', mode = 'required'),
+          SchemaField('repo_name', 'STRING', mode = 'required'),
+          SchemaField('path', 'STRING', mode = 'required'),
+          SchemaField('content', 'STRING', mode = 'required')
+]
+gctable = dataset.table(tmp_table, gcschema)
+
+# Get iterator over table records
+it = gctable.fetch_data() # https://googlecloudplatform.github.io/google-cloud-python/stable/bigquery-table.html
 
 # Run CLOC on each file and add results to database table
 print('Running CLOC on each file...\n\n')
 recs_to_add = []
 num_done = 0
-for rec in result:
+
+for rec in it:
     
     # Push each batch of records
     if num_done % 100 == 0 and len(recs_to_add) > 0:
@@ -120,10 +127,10 @@ for rec in result:
 
     num_done = num_done + 1
 
-    repo = rec['repo_name']
-    path = rec['path']
-    file_id = rec['id']
-    content_str = rec['content']
+    repo = rec[1]
+    path = rec[2]
+    file_id = rec[0]
+    content_str = rec[3]
 
     # Write the file contents to disk
     if content_str is not None:
@@ -146,9 +153,9 @@ if len(recs_to_add) > 0:
     push_bq_records(client, out_ds, table, recs_to_add)
     
 # Delete the temporary table
-# delete_bq_table(client, out_ds, tmp_table)
+delete_bq_table(client, out_ds, tmp_table)
     
-print('\nAll done.\n\n')
+print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 w.close()
 
 
