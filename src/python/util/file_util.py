@@ -11,7 +11,7 @@ def write_file(content, output = None):
         
     Returns:
         The full path where the output was written. This is the 'output' variable if one was
-        provided, or a random file name otherwise.
+        provided, or a random file name with no extension otherwise.
     
     """
     

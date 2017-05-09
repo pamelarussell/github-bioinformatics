@@ -134,7 +134,7 @@ for rec in it:
 
     # Write the file contents to disk
     if content_str is not None:
-        content = write_file(content_str)
+        content = write_file(content_str, '/tmp/%s' % path.replace('/', '_'))
         # Run CLOC
         cloc_result = subprocess.check_output([cloc_exec, content]).decode('utf-8')
         os.remove(content)
