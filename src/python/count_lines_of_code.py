@@ -17,11 +17,16 @@ from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_
 # Use the program CLOC to count lines of code
 # Command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, help = 'BigQuery dataset to read from')
-parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, help = 'BigQuery dataset to write to')
-parser.add_argument('--table', action = 'store', dest = 'tab', required = True, help = 'BigQuery table to write to')
-parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, help = 'Full path to CLOC executable')
-parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, help = 'Output log file')
+parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, 
+                    help = 'BigQuery dataset to read from')
+parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, 
+                    help = 'BigQuery dataset to write to')
+parser.add_argument('--table', action = 'store', dest = 'tab', required = True, 
+                    help = 'BigQuery table to write to')
+parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, 
+                    help = 'Full path to CLOC executable')
+parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, 
+                    help = 'Output log file')
 args = parser.parse_args()
 
 # Log file

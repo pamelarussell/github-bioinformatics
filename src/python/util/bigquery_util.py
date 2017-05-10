@@ -18,7 +18,7 @@ def run_bq_query(client, query, timeout):
     complete, row_count = client.check_job(job_id)
     if complete:
         results = client.get_query_rows(job_id)
-        print('Got %s records' %row_count)
+        print('\nGot %s records' %row_count)
     else:
         raise RuntimeError('Query not complete')
     return(results)
@@ -62,7 +62,7 @@ def delete_bq_table(client, dataset, table):
     
     exists = client.check_table(dataset, table)
     if exists:
-        print('WARNING: Deleting existing table %s.%s' % (dataset, table))
+        print('\nWARNING: Deleting existing table %s.%s' % (dataset, table))
         deleted = client.delete_table(dataset, table)
         if not deleted:
             raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
@@ -80,13 +80,13 @@ def push_bq_records(client, dataset, table, records):
                  Each record is a dictionary with keys matching the schema
     
     """
-    print('Pushing %s results to table %s.%s' % (len(records), dataset, table))
+    #print('\nPushing %s results to table %s.%s' % (len(records), dataset, table))
     succ = client.push_rows(dataset, table, records)
     if not succ:
         raise RuntimeError('Push to BigQuery table was unsuccessful')
 
     
-def run_query_and_save_results(client, query, res_dataset, res_table):
+def run_query_and_save_results(client, query, res_dataset, res_table, timeout = 60):
     """ Run a query and save the results to a BigQuery table
     
     Args:
@@ -95,14 +95,15 @@ def run_query_and_save_results(client, query, res_dataset, res_table):
         query: The query to run
         res_dataset: Dataset to write results to
         res_table: Table to write results to
+        timeout: Timeout
         
     """
     # Delete the results table if it exists
     delete_bq_table(client, res_dataset, res_table)
     # Run the query and write results to table
-    print('Running query and writing to table %s.%s\n' % (res_dataset, res_table))
+    print('\nRunning query and writing to table %s.%s\n' % (res_dataset, res_table))
     job = client.write_to_table(query, res_dataset, res_table, allow_large_results = True)
-    client.wait_for_job(job)
+    client.wait_for_job(job, timeout)
     
 
     

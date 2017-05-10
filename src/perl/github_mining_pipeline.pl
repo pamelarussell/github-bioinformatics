@@ -37,7 +37,7 @@ my $run_forks_by_repo = 0;
 my $run_todo_fix_by_repo = 0;
 
 # Count lines of code and push to BigQuery table
-my $run_count_lines_of_code = 1;
+my $run_count_lines_of_code = 0;
 
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;
@@ -162,7 +162,7 @@ if($run_count_lines_of_code) {
 
 # Extract comments from source files and push to BigQuery table
 if($run_extract_comments) {
-	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds --ds_lang $bq_ds_analysis_results ".
+	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds --ds_loc $bq_ds_analysis_results ".
 	"--out_ds $bq_ds_analysis_results --table $bq_tb_comments";
 	run_cmmd($cmmd_extract_comments)
 } else {print("\nSkipping step: extract comments\n")}

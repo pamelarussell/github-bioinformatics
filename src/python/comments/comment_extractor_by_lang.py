@@ -11,7 +11,8 @@ comment_extractor = {'C': CommentExtractorC(),
                      'Objective C': CommentExtractorC(),
                      'Perl': CommentExtractorPerl(),
                      'Python': CommentExtractorPython(),
-                     'R': CommentExtractorR()}
+                     'R': CommentExtractorR(),
+                     'Scala': CommentExtractorC()}
 
 
 
