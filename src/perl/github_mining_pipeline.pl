@@ -42,6 +42,9 @@ my $run_count_lines_of_code = 0;
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;
 
+# Analyze word content of code comments by language
+my $run_comments_word_content = 0;
+
 
 # -----------------------------------------------------------------
 #                   BigQuery project structure
@@ -74,15 +77,16 @@ my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
 # Programs
-my $script_plot_bytes_by_lang = "$src_dir_R/bytes_by_language.R";
-my $script_plot_repos_by_lang = "$src_dir_R/repos_by_language.R";
-my $script_plot_repos_by_lang_pair = "$src_dir_R/repos_by_language_pair.R";
-my $script_plot_forks_by_repo = "$src_dir_R/forks_by_repo.R";
-my $script_plot_todo_fix_by_repo = "$src_dir_R/todo_fix_by_repo.R";
+my $script_plot_bytes_by_lang = "$src_dir_R/quick_plots/bytes_by_language.R";
+my $script_plot_repos_by_lang = "$src_dir_R/quick_plots/repos_by_language.R";
+my $script_plot_repos_by_lang_pair = "$src_dir_R/quick_plots/repos_by_language_pair.R";
+my $script_plot_forks_by_repo = "$src_dir_R/quick_plots/forks_by_repo.R";
+my $script_plot_todo_fix_by_repo = "$src_dir_R/quick_plots/todo_fix_by_repo.R";
 my $script_count_lines_of_code = "$src_dir_python/count_lines_of_code.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
+my $script_comments_word_content = "$src_dir_R/text_mining/comments_word_content.R";
 
 # Output directories
 my $out_plots_dir = "/Users/prussell/Documents/Github_mining/plots/test_repos/";
@@ -119,54 +123,68 @@ if($generate_gh_bioinf_dataset) {
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 if($run_bq_analysis_queries) {
 	run_cmmd("$python3 $script_run_bq_queries_analysis --github_ds $bq_ds --results_ds $bq_ds_analysis_results")
-} else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables\n")}
+} else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
+	"save results to tables\n")}
 
 # Plot total size of source files by language
 if($run_bytes_by_lang) {
 	my $out_pdf_bytes_by_lang = "$out_plots_dir/bytes_by_language.pdf";
-	run_cmmd("Rscript $script_plot_bytes_by_lang -p $bq_proj -d $bq_ds_analysis_results -t $bq_tb_bytes_by_lang -o $out_pdf_bytes_by_lang", $out_pdf_bytes_by_lang);
+	run_cmmd("Rscript $script_plot_bytes_by_lang -p $bq_proj -d $bq_ds_analysis_results " .
+	"-t $bq_tb_bytes_by_lang -o $out_pdf_bytes_by_lang", $out_pdf_bytes_by_lang);
 } else {print("\nSkipping step: plot number of bytes by language\n")}
 
 # Plot number of repos by language
 if($run_repos_by_lang) {
 	my $out_pdf_repos_by_lang = "$out_plots_dir/repos_by_language.pdf";
-	run_cmmd("Rscript $script_plot_repos_by_lang -p $bq_proj -d $bq_ds_analysis_results -c $bq_tb_repos_by_lang -l $bq_tb_langs_by_repo -o $out_pdf_repos_by_lang", $out_pdf_repos_by_lang);
+	run_cmmd("Rscript $script_plot_repos_by_lang -p $bq_proj -d $bq_ds_analysis_results " .
+	"-c $bq_tb_repos_by_lang -l $bq_tb_langs_by_repo -o $out_pdf_repos_by_lang", $out_pdf_repos_by_lang);
 } else {print("\nSkipping step: plot number of repos by language\n")}
 	
 
 # Plot number of repos by language pair
 if($run_repos_by_lang_pair) {
 	my $out_pdf_repos_by_lang_pair = "$out_plots_dir/repos_by_language_pair.pdf";
-	run_cmmd("Rscript $script_plot_repos_by_lang_pair -p $bq_proj -d $bq_ds_analysis_results -b $bq_tb_bytes_by_lang -l $bq_tb_langs_by_repo -o $out_pdf_repos_by_lang_pair", $out_pdf_repos_by_lang_pair);
+	run_cmmd("Rscript $script_plot_repos_by_lang_pair -p $bq_proj -d $bq_ds_analysis_results " .
+	"-b $bq_tb_bytes_by_lang -l $bq_tb_langs_by_repo -o $out_pdf_repos_by_lang_pair", 
+	$out_pdf_repos_by_lang_pair);
 } else {print("\nSkipping step: plot number of repos by language pair\n")}
 
 # Plot number of forks by repo
 if($run_forks_by_repo) {
 	my $out_pdf_forks_by_repo = "$out_plots_dir/forks_by_repo.pdf";
-	run_cmmd("Rscript $script_plot_forks_by_repo -p $bq_proj -d $bq_ds_analysis_results -t $bq_tb_forks_by_repo -o $out_pdf_forks_by_repo", $out_pdf_forks_by_repo);
+	run_cmmd("Rscript $script_plot_forks_by_repo -p $bq_proj -d $bq_ds_analysis_results " .
+	"-t $bq_tb_forks_by_repo -o $out_pdf_forks_by_repo", $out_pdf_forks_by_repo);
 } else {print("\nSkipping step: plot number of forks by repo\n")}
 
 # Plot number of occurrences of "TODO: fix" by repo
 if($run_todo_fix_by_repo) {
 	my $out_pdf_todo_fix_by_repo = "$out_plots_dir/todo_fix_by_repo.pdf";
-	run_cmmd("Rscript $script_plot_todo_fix_by_repo -p $bq_proj -d $bq_ds_analysis_results -t $bq_tb_todo_fix_by_repo -o $out_pdf_todo_fix_by_repo", $out_pdf_todo_fix_by_repo);
+	run_cmmd("Rscript $script_plot_todo_fix_by_repo -p $bq_proj -d $bq_ds_analysis_results " .
+	"-t $bq_tb_todo_fix_by_repo -o $out_pdf_todo_fix_by_repo", $out_pdf_todo_fix_by_repo);
 } else {print("\nSkipping step: plot number of occurrences of \"TODO: fix\" by repo\n")}
 
 # Count lines of code and push to BigQuery table
 if($run_count_lines_of_code) {
 	my $out_log_count_lines_of_code = "$out_results_dir_lines_of_code/run.out";
-	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --in_ds $bq_ds --out_ds $bq_ds_analysis_results --table $bq_tb_lines_of_code " .
+	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --in_ds $bq_ds " .
+	"--out_ds $bq_ds_analysis_results --table $bq_tb_lines_of_code " .
 	"--outfile $out_log_count_lines_of_code --cloc $cloc_exec";
 	run_cmmd($cmmd_count_lines_of_code, $out_log_count_lines_of_code)
 } else {print("\nSkipping step: count lines of code\n")}
 
 # Extract comments from source files and push to BigQuery table
 if($run_extract_comments) {
-	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds --ds_loc $bq_ds_analysis_results ".
-	"--out_ds $bq_ds_analysis_results --table $bq_tb_comments";
+	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds --ds_loc " .
+	"$bq_ds_analysis_results --out_ds $bq_ds_analysis_results --table $bq_tb_comments";
 	run_cmmd($cmmd_extract_comments)
 } else {print("\nSkipping step: extract comments\n")}
 
+# Analyze word content of code comments by language
+if($run_comments_word_content) {
+	my $out_pdf_comments_word_content = "$out_plots_dir/comments_word_content.pdf";
+	run_cmmd("Rscript $script_comments_word_content -p $bq_proj -d $bq_ds_analysis_results " .
+	"-c comments -l lines_of_code -o $out_pdf_comments_word_content", $out_pdf_comments_word_content);
+} else {print("\nSkipping step: analyze word content of comments\n")}
 
 print("\n\nAll done: $0.\n\n");
 
