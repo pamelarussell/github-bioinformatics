@@ -18,6 +18,9 @@ use warnings;
 # $$$ Expensive! $$$
 my $generate_gh_bioinf_dataset = 0;
 
+# Use NCBI API to generate and upload table of article data
+my $generate_article_info_table = 0;
+
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 my $run_bq_analysis_queries = 0;
 
@@ -45,6 +48,9 @@ my $run_extract_comments = 0;
 # Analyze word content of code comments by language
 my $run_comments_word_content = 0;
 
+# Analyze word content of article abstracts by language
+my $run_abstracts_word_content = 1;
+
 
 # -----------------------------------------------------------------
 #                   BigQuery project structure
@@ -58,6 +64,7 @@ my $bq_ds = "test_repos";
 my $bq_ds_analysis_results = "test_repos_analysis_results";
 
 # Tables
+my $bq_tb_articles = "articles"; # NCBI article metadata
 my $bq_tb_bytes_by_lang = "bytes_by_language"; # Number of bytes of code by language
 my $bq_tb_forks_by_repo = "num_forks_by_repo"; # Number of forks by repo
 my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
@@ -77,6 +84,7 @@ my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
 # Programs
+my $script_generate_article_info_table = "$src_dir_R/ncbi/paper_metadata.R";
 my $script_plot_bytes_by_lang = "$src_dir_R/quick_plots/bytes_by_language.R";
 my $script_plot_repos_by_lang = "$src_dir_R/quick_plots/repos_by_language.R";
 my $script_plot_repos_by_lang_pair = "$src_dir_R/quick_plots/repos_by_language_pair.R";
@@ -87,6 +95,7 @@ my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dat
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
 my $script_comments_word_content = "$src_dir_R/text_mining/comments_word_content.R";
+my $script_abstracts_word_content = "$src_dir_R/text_mining/abstracts_word_content.R";
 
 # Output directories
 my $out_plots_dir = "/Users/prussell/Documents/Github_mining/plots/test_repos/";
@@ -119,6 +128,12 @@ my $cloc_exec = "/Users/prussell/Software/cloc-1.72.pl";
 if($generate_gh_bioinf_dataset) {
 	run_cmmd("$python3 $script_run_bq_queries_dataset_creation --repos $repo_names_list --results_ds $bq_ds")
 } else {print("\nSkipping step: regenerate GitHub bioinformatics dataset\n")}
+
+# Generate table of article info from NCBI
+if($generate_article_info_table) {
+	run_cmmd("Rscript $script_generate_article_info_table -p $bq_proj -d $bq_ds -t $bq_tb_articles ".
+	"-r $repo_names_list")
+} else {print("\nSkipping step: generate and upload table of article data\n")}
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 if($run_bq_analysis_queries) {
@@ -185,6 +200,13 @@ if($run_comments_word_content) {
 	run_cmmd("Rscript $script_comments_word_content -p $bq_proj -d $bq_ds_analysis_results " .
 	"-c comments -l lines_of_code -o $out_pdf_comments_word_content", $out_pdf_comments_word_content);
 } else {print("\nSkipping step: analyze word content of comments\n")}
+
+# Analyze word content of article abstracts by language
+if($run_abstracts_word_content) {
+	my $out_pdf_abstracts_word_content = "$out_plots_dir/abstracts_word_content";
+	run_cmmd("Rscript $script_abstracts_word_content -p $bq_proj -d $bq_ds " .
+	"-a articles -l languages -o $out_pdf_abstracts_word_content");
+} else {print("\nSkipping step: analyze word content of article abstracts\n")}
 
 print("\n\nAll done: $0.\n\n");
 
