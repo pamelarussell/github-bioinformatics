@@ -5,16 +5,17 @@
 
 rm(list=ls())
 
-library(bigrquery)
-library(optparse)
-library(dplyr)
-library(tidytext)
-library(tidyr)
-library(ggplot2)
-library(hunspell)
-library(scales)
-library(gridExtra)
-library(grid)
+suppressWarnings(library(bigrquery))
+suppressWarnings(library(optparse))
+suppressWarnings(library(dplyr))
+suppressWarnings(library(tidytext))
+suppressWarnings(library(tidyr))
+suppressWarnings(library(ggplot2))
+suppressWarnings(library(hunspell))
+suppressWarnings(library(scales))
+suppressWarnings(library(gridExtra))
+suppressWarnings(library(grid))
+suppressWarnings(library(tm))
 
 message('Calculating overrepresented words in article abstracts by programming language...')
 
@@ -80,31 +81,49 @@ language_words_tfidf <- function(ngram_n, filter_spellcheck) {
     # Remove non-meaningful "languages"
     filter(language_name != 'HTML' & language_name != 'CSS' & language_name != 'Makefile' &
              language_name != 'TeX') %>%
-    group_by(language_name) %>%
     # Count number of abstracts per language
+    group_by(language_name) %>%
     mutate(num_abstracts_for_lang = n()) %>%
     # Remove languages with too few abstracts
     filter(num_abstracts_for_lang > 25) %>%
     # Unnest tokens
-    unnest_tokens(word, abstract, token = 'ngrams', n = ngram_n)
+    unnest_tokens(word, abstract, token = 'ngrams', n = ngram_n) %>%
+    # Count number of times the word appears
+    group_by(word, language_name) %>%
+    mutate(n_word = n())
   
   # Remove words that don't pass spell checker
   if(filter_spellcheck) {
-    tokens <- tokens %>% filter(hunspell_check(word))
+    tokens <- filter(tokens, hunspell_check(word))
   }
   
-  # Add tf-idf
-  tokens %>% 
-    # Count number of times each word occurs by language
-    count(language_name, word, sort = T) %>%
+  # Stem
+  tokens <- mutate(tokens, stem = stemDocument(word))
+  #tokens <- mutate(tokens, stem = word) # This removes stemming
+  
+  # tf-idf by stem
+  tfidf_stem <- tokens %>% 
+    # Count number of times each stem occurs by language
+    count(language_name, stem, sort = T) %>%
     ungroup() %>%
     # Add tf-idf
-    bind_tf_idf(word, language_name, n) %>%
+    bind_tf_idf(stem, language_name, n)
+  
+  # Join to tokens
+  tokens <- left_join(tokens, tfidf_stem)
+  
+  # Reduce each stem to its most common word representative
+  tokens <- tokens %>% 
+    group_by(language_name, stem) %>% 
+    slice(which.max(n_word)) %>%
+    ungroup() %>%
     # Sort by tf-idf
     arrange(desc(tf_idf)) %>%
     # Convert to factors
     mutate(word = factor(word, levels = rev(unique(word)))) %>%
     mutate(language_name = factor(language_name, levels = sort(unique(language_name))))
+  
+  tokens
   
 }
 
@@ -164,4 +183,5 @@ mk_plt_all_langs <- function(ngram_n, filter_spellcheck, axis_lim, num_top) {
 mk_plt_all_langs(1, T, 0.0025, 10)
 mk_plt_all_langs(2, F, 0.0025, 10)
 mk_plt_all_langs(3, F, 0.0025, 10)
+mk_plt_all_langs(4, F, 0.0025, 10)
 
