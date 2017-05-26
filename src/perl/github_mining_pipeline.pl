@@ -49,7 +49,7 @@ my $run_extract_comments = 0;
 my $run_comments_word_content = 0;
 
 # Analyze word content of article abstracts by language
-my $run_abstracts_word_content = 1;
+my $run_abstracts_word_content = 0;
 
 
 # -----------------------------------------------------------------

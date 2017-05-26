@@ -5,6 +5,8 @@ from bigquery import get_client
 from query import *
 from structure import *
 import os
+from query.analysis_query_builder import build_query_test_cases
+from structure.bq_proj_structure import table_test_cases
 
 
 ##### Run analysis queries against GitHub dataset tables and store the results in new tables 
@@ -26,31 +28,36 @@ print('Getting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False)
     
 # Run the queries
-
+ 
 # Number of actors by repo
 run_query_and_save_results(client, build_query_num_actors_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_actors_by_repo)
-
+ 
 # Bytes of code by language
 run_query_and_save_results(client, build_query_bytes_by_language(dataset, table_languages), res_dataset, table_bytes_by_language)
-
+ 
 # Number of repos with code in each language
 run_query_and_save_results(client, build_query_repo_count_by_language(dataset, table_languages), res_dataset, table_num_repos_by_language)
-
+ 
 # List of languages by repo
 run_query_and_save_results(client, build_query_language_list_by_repo(dataset, table_languages), res_dataset, table_language_list_by_repo)
-
+ 
 # Number of forks by repo
 run_query_and_save_results(client, build_query_num_forks_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_forks_by_repo)
-
+ 
 # Number of occurrences of "TODO: fix" by repo
 run_query_and_save_results(client, build_query_num_todo_fix_by_repo(dataset, table_contents), res_dataset, table_num_todo_fix_by_repo)
-
+ 
 # Number of languages by repo
 run_query_and_save_results(client, build_query_num_languages_by_repo(dataset, table_languages), res_dataset, table_num_languages_by_repo)
-
+ 
 # Number of watch events by repo
 run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_watch_events_by_repo)
 
+# "Test cases" (files containing "test" somewhere in the path or filename)
+# Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
+# Only include files that have a language identified in lines_of_code table
+run_query_and_save_results(client, build_query_test_cases(dataset, table_files, res_dataset, table_lines_of_code), 
+                           res_dataset, table_test_cases)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 

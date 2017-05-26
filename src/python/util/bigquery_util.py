@@ -101,8 +101,9 @@ def run_query_and_save_results(client, query, res_dataset, res_table, timeout = 
     # Delete the results table if it exists
     delete_bq_table(client, res_dataset, res_table)
     # Run the query and write results to table
-    print('\nRunning query and writing to table %s.%s\n' % (res_dataset, res_table))
-    job = client.write_to_table(query, res_dataset, res_table, allow_large_results = True)
+    print('\nRunning query and writing to table %s.%s:\n%s\n' % (res_dataset, res_table, query))
+    job = client.write_to_table(query, res_dataset, res_table, allow_large_results = True, 
+                                create_disposition = 'CREATE_IF_NEEDED', write_disposition = 'WRITE_EMPTY')
     client.wait_for_job(job, timeout)
     
 

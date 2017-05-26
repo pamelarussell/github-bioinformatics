@@ -164,8 +164,26 @@ def build_query_num_watch_events_by_repo(dataset, table):
       repo_name
     ORDER BY
       num_watchers DESC    
-  """ % (project_bioinf, dataset, table)
+    """ % (project_bioinf, dataset, table)
 
+
+# "Test cases" (files containing "test" somewhere in the path or filename)
+# Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
+# Only include files that have a language identified in lines_of_code table
+def build_query_test_cases(ds_files, table_files, ds_loc, table_loc):
+    return """
+    SELECT
+      files.repo_name,
+      files.path
+    FROM
+      [%s:%s.%s] AS files
+    INNER JOIN
+      [%s:%s.%s] AS loc
+    ON
+      files.id = loc.id
+    WHERE
+      LOWER(files.path) CONTAINS 'test'
+    """ % (project_bioinf, ds_files, table_files, project_bioinf, ds_loc, table_loc)
 
 
 
