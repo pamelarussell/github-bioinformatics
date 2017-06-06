@@ -22,7 +22,7 @@ my $generate_gh_bioinf_dataset = 0;
 my $generate_article_info_table = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
-my $run_bq_analysis_queries = 0;
+my $run_bq_analysis_queries = 1;
 
 # Plot total size of source files by language
 my $run_bytes_by_lang = 0;

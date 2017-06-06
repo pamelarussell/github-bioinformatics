@@ -5,7 +5,6 @@ from bigquery import get_client
 from query import *
 from structure import *
 import os
-from query.analysis_query_builder import build_query_test_cases
 from structure.bq_proj_structure import table_test_cases
 
 
@@ -55,9 +54,15 @@ run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset,
 
 # "Test cases" (files containing "test" somewhere in the path or filename)
 # Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
+# Kochhar PS, Bissyandé TF, Lo D, Jiang L. An Empirical Study of Adoption of Software Testing in Open Source Projects. 2013 13th International Conference on Quality Software. 2013. pp. 103–112. doi:10.1109/QSIC.2013.57
 # Only include files that have a language identified in lines_of_code table
 run_query_and_save_results(client, build_query_test_cases(dataset, table_files, res_dataset, table_lines_of_code), 
                            res_dataset, table_test_cases)
+
+# Number of bug fix commits and total commits by repo
+# Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages  and Code Quality in Github"
+# Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
+run_query_and_save_results(client, build_query_commit_types(dataset, table_commits), res_dataset, table_commit_types)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 

@@ -6,6 +6,8 @@ from .analysis_query_builder import build_query_num_forks_by_repo
 from .analysis_query_builder import build_query_num_todo_fix_by_repo
 from .analysis_query_builder import build_query_num_languages_by_repo
 from .analysis_query_builder import build_query_num_watch_events_by_repo
+from .analysis_query_builder import build_query_test_cases
+from .analysis_query_builder import build_query_commit_types
 from .dataset_creation_query_builder import build_query_commits
 from .dataset_creation_query_builder import build_query_files
 from .dataset_creation_query_builder import build_query_contents

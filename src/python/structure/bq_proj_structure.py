@@ -39,6 +39,7 @@ table_num_todo_fix_by_repo = 'num_todo_fix_by_repo'
 table_num_watch_events_by_repo = 'num_watch_events_by_repo'
 table_num_repos_by_language = 'num_repos_by_language'
 table_test_cases = 'test_cases'
+table_commit_types = 'commit_types'
 
 
 
