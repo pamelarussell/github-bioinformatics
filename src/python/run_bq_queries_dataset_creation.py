@@ -4,7 +4,6 @@ from util import run_query_and_save_results
 from bigquery import get_client
 from query import *
 from structure import *
-from query.dataset_creation_query_builder import build_query_combine_years_gh_archive
 import time
 import os
 
@@ -51,7 +50,7 @@ run_query_and_save_results(client, build_query_combine_years_gh_archive(res_data
 # Langauges
 run_query_and_save_results(client, build_query_languages(repos), res_dataset, table_languages)
 
-# Langauges
+# Licenses
 run_query_and_save_results(client, build_query_licenses(repos), res_dataset, table_licenses)
 
 

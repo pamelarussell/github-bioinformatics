@@ -278,7 +278,30 @@ def build_query_lines_of_code_by_repo(ds_files, table_files, ds_loc, table_loc):
     """ % (project_bioinf, ds_files, table_files, project_bioinf, ds_loc, table_loc)
     
     
-    
+# Number of developers by repo
+# This is the number of commit *authors*.
+# Authors are identified by the unique combination of name and email.
+def build_query_num_devs_by_repo(dataset, table):
+    return """
+    SELECT
+      repo_name,
+      COUNT(*) AS num_commit_authors
+    FROM (
+      SELECT
+        repo_name,
+        author_name,
+        author_email
+      FROM
+        [%s:%s.%s]
+      GROUP BY
+        repo_name,
+        author_name,
+        author_email)
+    GROUP BY
+      repo_name
+    ORDER BY
+      num_commit_authors DESC    
+    """ % (project_bioinf, dataset, table)
     
     
     

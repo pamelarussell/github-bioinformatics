@@ -36,12 +36,12 @@ table_num_actors_by_repo = 'num_actors_by_repo'
 table_num_forks_by_repo = 'num_forks_by_repo'
 table_num_languages_by_repo = 'num_languages_by_repo'
 table_num_recent_actors_by_repo = 'num_recent_actors_by_repo'
-table_num_todo_fix_by_repo = 'num_todo_fix_by_repo'
-table_num_watch_events_by_repo = 'num_watch_events_by_repo'
+table_num_watch_events_by_repo = 'num_watchers_by_repo'
 table_num_repos_by_language = 'num_repos_by_language'
 table_test_cases = 'test_cases'
 table_commit_types = 'commit_types'
 table_project_duration = 'project_duration'
+table_num_devs_by_repo = 'num_devs_by_repo'
 
 
 

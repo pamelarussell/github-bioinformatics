@@ -10,10 +10,13 @@ from .analysis_query_builder import build_query_test_cases
 from .analysis_query_builder import build_query_commit_types
 from .analysis_query_builder import build_query_project_duration
 from .analysis_query_builder import build_query_lines_of_code_by_repo
+from .analysis_query_builder import build_query_num_devs_by_repo
 from .dataset_creation_query_builder import build_query_commits
 from .dataset_creation_query_builder import build_query_files
 from .dataset_creation_query_builder import build_query_contents
 from .dataset_creation_query_builder import build_query_gh_archive
 from .dataset_creation_query_builder import build_query_languages
 from .dataset_creation_query_builder import build_query_licenses
+from .dataset_creation_query_builder import build_query_combine_years_gh_archive
+
 

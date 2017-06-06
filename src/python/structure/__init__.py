@@ -29,5 +29,6 @@ from .bq_proj_structure import table_num_repos_by_language
 from .bq_proj_structure import table_commit_types
 from .bq_proj_structure import table_test_cases
 from .bq_proj_structure import table_project_duration
+from .bq_proj_structure import table_num_devs_by_repo
 
 

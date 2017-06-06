@@ -22,7 +22,11 @@ def build_query_commits(repos):
       parent,
       subject,
       message,
+      author.name,
+      author.email,
       author.date,
+      committer.name,
+      committer.email,
       committer.date,
       encoding
     FROM
