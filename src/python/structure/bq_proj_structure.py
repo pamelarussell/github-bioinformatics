@@ -26,7 +26,8 @@ table_contents = 'contents'
 table_files = 'files'
 table_languages = 'languages'
 table_licenses = 'licenses'
-table_lines_of_code = 'lines_of_code'
+table_lines_of_code_file = 'lines_of_code_by_file'
+table_lines_of_code_repo = 'lines_of_code_by_repo'
 
 # Table names for query results
 table_bytes_by_language = 'bytes_by_language'
@@ -40,6 +41,8 @@ table_num_watch_events_by_repo = 'num_watch_events_by_repo'
 table_num_repos_by_language = 'num_repos_by_language'
 table_test_cases = 'test_cases'
 table_commit_types = 'commit_types'
+table_project_duration = 'project_duration'
+
 
 
 

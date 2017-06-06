@@ -228,3 +228,71 @@ def build_query_commit_types(dataset, table):
     """ % (project_bioinf, dataset, table, project_bioinf, dataset, table)
     
     
+# Project duration measured from first to last commit
+def build_query_project_duration(dataset, table):
+    return """
+    SELECT
+      repo_name,
+      first_commit,
+      last_commit,
+      (DATEDIFF(last_commit, first_commit) + 1) AS commit_span_days
+    FROM (
+      SELECT
+        repo_name,
+        MIN(author_date) AS first_commit,
+        MAX(author_date) AS last_commit
+      FROM
+        [%s:%s.%s]
+      GROUP BY
+        repo_name )
+    ORDER BY
+      commit_span_days DESC    
+    """ % (project_bioinf, dataset, table)
+    
+    
+# Total number of lines of code by repo
+# Only include files that have a language identified in lines_of_code table
+def build_query_lines_of_code_by_repo(ds_files, table_files, ds_loc, table_loc):
+    return """
+    SELECT
+      files.repo_name AS repo_name,
+      SUM(loc.code) AS lines_of_code
+    FROM (
+      SELECT
+        repo_name,
+        id
+      FROM
+        [%s:%s.%s]) AS files
+    INNER JOIN (
+      SELECT
+        id,
+        code
+      FROM
+        [%s:%s.%s]) AS loc
+    ON
+      files.id = loc.id
+    GROUP BY
+      repo_name
+    ORDER BY
+      lines_of_code DESC    
+    """ % (project_bioinf, ds_files, table_files, project_bioinf, ds_loc, table_loc)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

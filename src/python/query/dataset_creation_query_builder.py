@@ -16,12 +16,14 @@ def comma_separated_quoted_repo_names(file):
 def build_query_commits(repos):
     return """
     SELECT
+      repo_name,
       commit,
       tree,
       parent,
       subject,
       message,
-      repo_name,
+      author.date,
+      committer.date,
       encoding
     FROM
       FLATTEN([%s:%s.%s], repo_name)

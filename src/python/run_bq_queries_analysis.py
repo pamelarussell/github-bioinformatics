@@ -5,7 +5,6 @@ from bigquery import get_client
 from query import *
 from structure import *
 import os
-from structure.bq_proj_structure import table_test_cases
 
 
 ##### Run analysis queries against GitHub dataset tables and store the results in new tables 
@@ -28,41 +27,49 @@ client = get_client(json_key_file=json_key, readonly=False)
     
 # Run the queries
  
-# Number of actors by repo
-run_query_and_save_results(client, build_query_num_actors_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_actors_by_repo)
- 
-# Bytes of code by language
-run_query_and_save_results(client, build_query_bytes_by_language(dataset, table_languages), res_dataset, table_bytes_by_language)
- 
-# Number of repos with code in each language
-run_query_and_save_results(client, build_query_repo_count_by_language(dataset, table_languages), res_dataset, table_num_repos_by_language)
- 
-# List of languages by repo
-run_query_and_save_results(client, build_query_language_list_by_repo(dataset, table_languages), res_dataset, table_language_list_by_repo)
- 
-# Number of forks by repo
-run_query_and_save_results(client, build_query_num_forks_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_forks_by_repo)
- 
-# Number of occurrences of "TODO: fix" by repo
-run_query_and_save_results(client, build_query_num_todo_fix_by_repo(dataset, table_contents), res_dataset, table_num_todo_fix_by_repo)
- 
-# Number of languages by repo
-run_query_and_save_results(client, build_query_num_languages_by_repo(dataset, table_languages), res_dataset, table_num_languages_by_repo)
- 
-# Number of watch events by repo
-run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_watch_events_by_repo)
+# # Number of actors by repo
+# run_query_and_save_results(client, build_query_num_actors_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_actors_by_repo)
+#  
+# # Bytes of code by language
+# run_query_and_save_results(client, build_query_bytes_by_language(dataset, table_languages), res_dataset, table_bytes_by_language)
+#  
+# # Number of repos with code in each language
+# run_query_and_save_results(client, build_query_repo_count_by_language(dataset, table_languages), res_dataset, table_num_repos_by_language)
+#  
+# # List of languages by repo
+# run_query_and_save_results(client, build_query_language_list_by_repo(dataset, table_languages), res_dataset, table_language_list_by_repo)
+#  
+# # Number of forks by repo
+# run_query_and_save_results(client, build_query_num_forks_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_forks_by_repo)
+#  
+# # Number of occurrences of "TODO: fix" by repo
+# run_query_and_save_results(client, build_query_num_todo_fix_by_repo(dataset, table_contents), res_dataset, table_num_todo_fix_by_repo)
+#  
+# # Number of languages by repo
+# run_query_and_save_results(client, build_query_num_languages_by_repo(dataset, table_languages), res_dataset, table_num_languages_by_repo)
+#  
+# # Number of watch events by repo
+# run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_watch_events_by_repo)
+# 
+# # "Test cases" (files containing "test" somewhere in the path or filename)
+# # Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
+# # Kochhar PS, Bissyandé TF, Lo D, Jiang L. An Empirical Study of Adoption of Software Testing in Open Source Projects. 2013 13th International Conference on Quality Software. 2013. pp. 103–112. doi:10.1109/QSIC.2013.57
+# # Only include files that have a language identified in lines_of_code table
+# run_query_and_save_results(client, build_query_test_cases(dataset, table_files, res_dataset, table_lines_of_code_file), 
+#                            res_dataset, table_test_cases)
+# 
+# # Number of bug fix commits and total commits by repo
+# # Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages  and Code Quality in Github"
+# # Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
+# run_query_and_save_results(client, build_query_commit_types(dataset, table_commits), res_dataset, table_commit_types)
+# 
+# # Project duration
+# run_query_and_save_results(client, build_query_project_duration(dataset, table_commits), res_dataset, table_project_duration)
 
-# "Test cases" (files containing "test" somewhere in the path or filename)
-# Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
-# Kochhar PS, Bissyandé TF, Lo D, Jiang L. An Empirical Study of Adoption of Software Testing in Open Source Projects. 2013 13th International Conference on Quality Software. 2013. pp. 103–112. doi:10.1109/QSIC.2013.57
+# Total number of lines of code by repo
 # Only include files that have a language identified in lines_of_code table
-run_query_and_save_results(client, build_query_test_cases(dataset, table_files, res_dataset, table_lines_of_code), 
-                           res_dataset, table_test_cases)
-
-# Number of bug fix commits and total commits by repo
-# Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages  and Code Quality in Github"
-# Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
-run_query_and_save_results(client, build_query_commit_types(dataset, table_commits), res_dataset, table_commit_types)
+run_query_and_save_results(client, build_query_lines_of_code_by_repo(dataset, table_files, res_dataset, table_lines_of_code_file), 
+                           res_dataset, table_lines_of_code_repo)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 

@@ -15,7 +15,8 @@ from .bq_proj_structure import table_contents
 from .bq_proj_structure import table_files
 from .bq_proj_structure import table_languages
 from .bq_proj_structure import table_licenses
-from .bq_proj_structure import table_lines_of_code
+from .bq_proj_structure import table_lines_of_code_file
+from .bq_proj_structure import table_lines_of_code_repo
 from .bq_proj_structure import table_bytes_by_language
 from .bq_proj_structure import table_language_list_by_repo
 from .bq_proj_structure import table_num_actors_by_repo
@@ -26,6 +27,7 @@ from .bq_proj_structure import table_num_todo_fix_by_repo
 from .bq_proj_structure import table_num_watch_events_by_repo
 from .bq_proj_structure import table_num_repos_by_language
 from .bq_proj_structure import table_commit_types
-
+from .bq_proj_structure import table_test_cases
+from .bq_proj_structure import table_project_duration
 
 

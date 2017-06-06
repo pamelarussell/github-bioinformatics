@@ -70,8 +70,9 @@ my $bq_tb_forks_by_repo = "num_forks_by_repo"; # Number of forks by repo
 my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
 my $bq_tb_langs_by_repo = "language_list_by_repo"; # List of languages by repo
 my $bq_tb_todo_fix_by_repo = "num_todo_fix_by_repo"; # Number of occurrences of "TODO: fix" by repo
-my $bq_tb_lines_of_code = "lines_of_code"; # Computed table with language and lines of code per source file
+my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
+my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
 
 
 # -----------------------------------------------------------------
@@ -182,7 +183,7 @@ if($run_todo_fix_by_repo) {
 if($run_count_lines_of_code) {
 	my $out_log_count_lines_of_code = "$out_results_dir_lines_of_code/run.out";
 	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --in_ds $bq_ds " .
-	"--out_ds $bq_ds_analysis_results --table $bq_tb_lines_of_code " .
+	"--out_ds $bq_ds_analysis_results --table $bq_tb_lines_of_code_by_file " .
 	"--outfile $out_log_count_lines_of_code --cloc $cloc_exec";
 	run_cmmd($cmmd_count_lines_of_code, $out_log_count_lines_of_code)
 } else {print("\nSkipping step: count lines of code\n")}
@@ -198,14 +199,14 @@ if($run_extract_comments) {
 if($run_comments_word_content) {
 	my $out_pdf_comments_word_content = "$out_plots_dir/comments_word_content.pdf";
 	run_cmmd("Rscript $script_comments_word_content -p $bq_proj -d $bq_ds_analysis_results " .
-	"-c comments -l lines_of_code -o $out_pdf_comments_word_content", $out_pdf_comments_word_content);
+	"-c $bq_tb_comments -l $bq_tb_lines_of_code_by_file -o $out_pdf_comments_word_content", $out_pdf_comments_word_content);
 } else {print("\nSkipping step: analyze word content of comments\n")}
 
 # Analyze word content of article abstracts by language
 if($run_abstracts_word_content) {
 	my $out_pdf_abstracts_word_content = "$out_plots_dir/abstracts_word_content";
 	run_cmmd("Rscript $script_abstracts_word_content -p $bq_proj -d $bq_ds " .
-	"-a articles -l languages -o $out_pdf_abstracts_word_content");
+	"-a $bq_tb_articles -l $bq_tb_languages -o $out_pdf_abstracts_word_content");
 } else {print("\nSkipping step: analyze word content of article abstracts\n")}
 
 print("\n\nAll done: $0.\n\n");
