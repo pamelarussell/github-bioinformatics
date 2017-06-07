@@ -19,10 +19,10 @@ use warnings;
 my $generate_gh_bioinf_dataset = 0;
 
 # Use NCBI API to generate and upload table of article data
-my $generate_article_info_table = 0;
+my $generate_article_info_table = 1;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
-my $run_bq_analysis_queries = 1;
+my $run_bq_analysis_queries = 0;
 
 # Plot total size of source files by language
 my $run_bytes_by_lang = 0;
@@ -35,9 +35,6 @@ my $run_repos_by_lang_pair = 0;
 
 # Plot number of forks by repo
 my $run_forks_by_repo = 0;
-
-# Plot number of occurrences of "TODO: fix" by repo
-my $run_todo_fix_by_repo = 0;
 
 # Count lines of code and push to BigQuery table
 my $run_count_lines_of_code = 0;
@@ -69,7 +66,6 @@ my $bq_tb_bytes_by_lang = "bytes_by_language"; # Number of bytes of code by lang
 my $bq_tb_forks_by_repo = "num_forks_by_repo"; # Number of forks by repo
 my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
 my $bq_tb_langs_by_repo = "language_list_by_repo"; # List of languages by repo
-my $bq_tb_todo_fix_by_repo = "num_todo_fix_by_repo"; # Number of occurrences of "TODO: fix" by repo
 my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
 my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
@@ -171,13 +167,6 @@ if($run_forks_by_repo) {
 	run_cmmd("Rscript $script_plot_forks_by_repo -p $bq_proj -d $bq_ds_analysis_results " .
 	"-t $bq_tb_forks_by_repo -o $out_pdf_forks_by_repo", $out_pdf_forks_by_repo);
 } else {print("\nSkipping step: plot number of forks by repo\n")}
-
-# Plot number of occurrences of "TODO: fix" by repo
-if($run_todo_fix_by_repo) {
-	my $out_pdf_todo_fix_by_repo = "$out_plots_dir/todo_fix_by_repo.pdf";
-	run_cmmd("Rscript $script_plot_todo_fix_by_repo -p $bq_proj -d $bq_ds_analysis_results " .
-	"-t $bq_tb_todo_fix_by_repo -o $out_pdf_todo_fix_by_repo", $out_pdf_todo_fix_by_repo);
-} else {print("\nSkipping step: plot number of occurrences of \"TODO: fix\" by repo\n")}
 
 # Count lines of code and push to BigQuery table
 if($run_count_lines_of_code) {

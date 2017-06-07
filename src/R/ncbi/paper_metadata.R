@@ -5,6 +5,8 @@ options(stringsAsFactors = F)
 library(RISmed)
 library(bigrquery)
 library(optparse)
+library(XML)
+library(RCurl)
 
 message('Getting article metadata and uploading to BigQuery table...')
 
@@ -50,7 +52,9 @@ for(repo_name in repo_names$repo_name) {
   # Number of results should be 1
   num_res <- QueryCount(search_query)
   if(num_res != 1) {
-    warning(paste('Skipping repo ', repo_name, '. Query ', query, ' returned ', num_res, ' results.'))
+    message = paste('Skipping repo ', repo_name, '. Query ', query, ' returned ', num_res, ' results.')
+    message(message)
+    warning(message)
     next
   }
   
@@ -93,6 +97,15 @@ for(repo_name in repo_names$repo_name) {
   day_pubmed <- DayPubmed(records)
   abstract <- AbstractText(records)
   
+  # Query eutils to get the number of citing articles in PMC
+  url <- paste("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pmc_refs&id=", 
+               pmid, sep="")
+  page <- getURL(url)
+  xml <- xmlTreeParse(page)
+  xl <- xmlToList(xml)
+  pmc_ids <- unlist(xl[which(rownames(xl) == "LinkSetDb"), which(colnames(xl) == "LinkSet")])
+  cited_by_pmc <- length(pmc_ids)
+  
   # Add the record to article data table
   article_data <- rbind(article_data, 
                         data.frame(repo_name, pmid, nlm_unique_id, article_id, journal, medline_ta,
@@ -101,7 +114,7 @@ for(repo_name in repo_names$repo_name) {
                                    pub_status, year_received, month_received, day_received,
                                    year_epublish, month_epublish, day_epublish, year_ppublish,
                                    month_ppublish, day_ppublish, year_pmc, month_pmc, day_pmc,
-                                   year_pubmed, month_pubmed, day_pubmed, abstract))
+                                   year_pubmed, month_pubmed, day_pubmed, cited_by_pmc, abstract))
   
 }
 
