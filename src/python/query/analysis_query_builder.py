@@ -82,7 +82,7 @@ def build_query_num_forks_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
-      COUNT(DISTINCT actor_id) AS forks
+      COUNT(DISTINCT actor_id) AS num_forks
     FROM (
       SELECT
         type,
@@ -92,28 +92,6 @@ def build_query_num_forks_by_repo(dataset, table):
         [%s:%s.%s] AS events
       WHERE
         events.type = 'ForkEvent')
-    GROUP BY
-      1
-    ORDER BY
-      2 DESC
-    """ % (project_bioinf, dataset, table)
-
-
-# Number of occurrences of "TODO: fix" by repo
-def build_query_num_todo_fix_by_repo(dataset, table):
-    return """
-    SELECT
-      files_repo_name AS repo,
-      SUM((LENGTH(content) - LENGTH(REPLACE(LOWER(content), 'todo: fix', '')))/LENGTH('todo: fix')) AS numOccurrences
-    FROM (
-      SELECT
-        files_repo_name,
-        contents_content AS content
-      FROM
-        [%s:%s.%s]
-      WHERE
-        NOT contents_binary
-        AND LOWER(contents_content) CONTAINS 'todo: fix')
     GROUP BY
       1
     ORDER BY
@@ -174,8 +152,11 @@ def build_query_num_watch_events_by_repo(dataset, table):
 def build_query_test_cases(ds_files, table_files, ds_loc, table_loc):
     return """
     SELECT
-      files.repo_name,
-      files.path
+      files.repo_name as repo_name,
+      files.id as id,
+      loc.language as language,
+      files.path as path,
+      loc.code as lines
     FROM
       [%s:%s.%s] AS files
     INNER JOIN
@@ -186,6 +167,21 @@ def build_query_test_cases(ds_files, table_files, ds_loc, table_loc):
       LOWER(files.path) CONTAINS 'test'
     """ % (project_bioinf, ds_files, table_files, project_bioinf, ds_loc, table_loc)
 
+# Number of test cases and total lines of code in test cases by repo
+def build_query_test_cases_by_repo(dataset, table):
+    return """
+    SELECT
+      repo_name,
+      COUNT(*) AS num_test_cases,
+      SUM(lines) AS total_lines_test_cases
+    FROM (
+      SELECT
+        *
+      FROM
+        [%s:%s.%s])
+    GROUP BY
+      repo_name    
+  """ % (project_bioinf, dataset, table)
 
 # Number of bug fix commits and total commits by repo
 # Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages  and Code Quality in Github"

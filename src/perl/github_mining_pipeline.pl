@@ -19,10 +19,10 @@ use warnings;
 my $generate_gh_bioinf_dataset = 0;
 
 # Use NCBI API to generate and upload table of article data
-my $generate_article_info_table = 1;
+my $generate_article_info_table = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
-my $run_bq_analysis_queries = 0;
+my $run_bq_analysis_queries = 1;
 
 # Plot total size of source files by language
 my $run_bytes_by_lang = 0;
@@ -61,13 +61,13 @@ my $bq_ds = "test_repos";
 my $bq_ds_analysis_results = "test_repos_analysis_results";
 
 # Tables
-my $bq_tb_articles = "articles"; # NCBI article metadata
+my $bq_tb_articles = "articles_by_repo"; # NCBI article metadata
 my $bq_tb_bytes_by_lang = "bytes_by_language"; # Number of bytes of code by language
 my $bq_tb_forks_by_repo = "num_forks_by_repo"; # Number of forks by repo
 my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
 my $bq_tb_langs_by_repo = "language_list_by_repo"; # List of languages by repo
 my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
-my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
+my $bq_tb_comments = "source_code_comments"; # Computed table with comments extracted from source files
 my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
 
 

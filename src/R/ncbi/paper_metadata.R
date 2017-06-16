@@ -103,8 +103,8 @@ for(repo_name in repo_names$repo_name) {
   page <- getURL(url)
   xml <- xmlTreeParse(page)
   xl <- xmlToList(xml)
-  pmc_ids <- unlist(xl[which(rownames(xl) == "LinkSetDb"), which(colnames(xl) == "LinkSet")])
-  cited_by_pmc <- length(pmc_ids)
+  lsdb <- unlist(xl[which(rownames(xl) == "LinkSetDb"), which(colnames(xl) == "LinkSet")])
+  cited_by_pmc <- sum(names(lsdb) == "Link.Id")
   
   # Add the record to article data table
   article_data <- rbind(article_data, 

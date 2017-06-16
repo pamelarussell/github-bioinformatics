@@ -23,11 +23,11 @@ from .bq_proj_structure import table_num_actors_by_repo
 from .bq_proj_structure import table_num_forks_by_repo
 from .bq_proj_structure import table_num_languages_by_repo
 from .bq_proj_structure import table_num_recent_actors_by_repo
-from .bq_proj_structure import table_num_todo_fix_by_repo
 from .bq_proj_structure import table_num_watch_events_by_repo
 from .bq_proj_structure import table_num_repos_by_language
 from .bq_proj_structure import table_commit_types
 from .bq_proj_structure import table_test_cases
+from .bq_proj_structure import table_test_cases_by_repo
 from .bq_proj_structure import table_project_duration
 from .bq_proj_structure import table_num_devs_by_repo
 

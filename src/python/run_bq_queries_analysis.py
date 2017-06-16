@@ -55,6 +55,10 @@ run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset,
 run_query_and_save_results(client, build_query_test_cases(dataset, table_files, res_dataset, table_lines_of_code_file), 
                            res_dataset, table_test_cases)
  
+# Number of test cases and lines of code in test cases by repo
+run_query_and_save_results(client, build_query_test_cases_by_repo(res_dataset, table_test_cases),
+                           res_dataset, table_test_cases_by_repo)
+ 
 # Number of bug fix commits and total commits by repo
 # Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages  and Code Quality in Github"
 # Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
