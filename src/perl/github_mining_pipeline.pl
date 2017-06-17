@@ -22,19 +22,7 @@ my $generate_gh_bioinf_dataset = 0;
 my $generate_article_info_table = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
-my $run_bq_analysis_queries = 1;
-
-# Plot total size of source files by language
-my $run_bytes_by_lang = 0;
-
-# Plot number of repos by language
-my $run_repos_by_lang = 0;
-
-# Plot number of repos by language pair
-my $run_repos_by_lang_pair = 0;
-
-# Plot number of forks by repo
-my $run_forks_by_repo = 0;
+my $run_bq_analysis_queries = 0;
 
 # Count lines of code and push to BigQuery table
 my $run_count_lines_of_code = 0;
@@ -62,10 +50,6 @@ my $bq_ds_analysis_results = "test_repos_analysis_results";
 
 # Tables
 my $bq_tb_articles = "articles_by_repo"; # NCBI article metadata
-my $bq_tb_bytes_by_lang = "bytes_by_language"; # Number of bytes of code by language
-my $bq_tb_forks_by_repo = "num_forks_by_repo"; # Number of forks by repo
-my $bq_tb_repos_by_lang = "num_repos_by_language"; # Number of repos by language
-my $bq_tb_langs_by_repo = "language_list_by_repo"; # List of languages by repo
 my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "source_code_comments"; # Computed table with comments extracted from source files
 my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
@@ -137,36 +121,6 @@ if($run_bq_analysis_queries) {
 	run_cmmd("$python3 $script_run_bq_queries_analysis --github_ds $bq_ds --results_ds $bq_ds_analysis_results")
 } else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
 	"save results to tables\n")}
-
-# Plot total size of source files by language
-if($run_bytes_by_lang) {
-	my $out_pdf_bytes_by_lang = "$out_plots_dir/bytes_by_language.pdf";
-	run_cmmd("Rscript $script_plot_bytes_by_lang -p $bq_proj -d $bq_ds_analysis_results " .
-	"-t $bq_tb_bytes_by_lang -o $out_pdf_bytes_by_lang", $out_pdf_bytes_by_lang);
-} else {print("\nSkipping step: plot number of bytes by language\n")}
-
-# Plot number of repos by language
-if($run_repos_by_lang) {
-	my $out_pdf_repos_by_lang = "$out_plots_dir/repos_by_language.pdf";
-	run_cmmd("Rscript $script_plot_repos_by_lang -p $bq_proj -d $bq_ds_analysis_results " .
-	"-c $bq_tb_repos_by_lang -l $bq_tb_langs_by_repo -o $out_pdf_repos_by_lang", $out_pdf_repos_by_lang);
-} else {print("\nSkipping step: plot number of repos by language\n")}
-	
-
-# Plot number of repos by language pair
-if($run_repos_by_lang_pair) {
-	my $out_pdf_repos_by_lang_pair = "$out_plots_dir/repos_by_language_pair.pdf";
-	run_cmmd("Rscript $script_plot_repos_by_lang_pair -p $bq_proj -d $bq_ds_analysis_results " .
-	"-b $bq_tb_bytes_by_lang -l $bq_tb_langs_by_repo -o $out_pdf_repos_by_lang_pair", 
-	$out_pdf_repos_by_lang_pair);
-} else {print("\nSkipping step: plot number of repos by language pair\n")}
-
-# Plot number of forks by repo
-if($run_forks_by_repo) {
-	my $out_pdf_forks_by_repo = "$out_plots_dir/forks_by_repo.pdf";
-	run_cmmd("Rscript $script_plot_forks_by_repo -p $bq_proj -d $bq_ds_analysis_results " .
-	"-t $bq_tb_forks_by_repo -o $out_pdf_forks_by_repo", $out_pdf_forks_by_repo);
-} else {print("\nSkipping step: plot number of forks by repo\n")}
 
 # Count lines of code and push to BigQuery table
 if($run_count_lines_of_code) {

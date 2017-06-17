@@ -1,0 +1,262 @@
+---
+title: 'Exploratory analysis'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T)
+```
+
+```{r echo = F}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+```
+
+# Project info
+
+```{r cache = T}
+proj <- "github-bioinformatics-157418"
+ds_gh <- "test_repos"
+ds_analysis <- "test_repos_analysis_results"
+```
+
+# Programming languages
+
+```{r cache = T, fig.height = 7, fig.width = 8}
+# Access data on Bigquery
+repos_by_lang <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_repos_by_language")
+lang_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = "language_list_by_repo")
+lang_bytes <- list_tabledata(project = proj, dataset = ds_analysis, table = "bytes_by_language")
+repo_count <- data.frame(repos_by_lang[,2], row.names = repos_by_lang[,1])
+
+# Identify languages
+lang <- sort(rownames(repo_count))
+nlang <- length(lang)
+
+# Sort languages by number of repos
+ord <- order(repo_count[,1], decreasing = T)
+rn <- rownames(repo_count)
+repo_count = data.frame(repo_count[order(repo_count[,1], decreasing = T),], row.names = rn[ord])
+colnames(repo_count) <- c("numRepos")
+
+# Get the top languages
+numtop_langs <- 30
+top_langs <- repo_count[1:numtop_langs,]
+names(top_langs) <- rownames(repo_count)[1:numtop_langs]
+top_langs <- top_langs[order(top_langs)]
+
+# Plot number of repos by language
+par(mar=c(5,12,4,2))
+bp <- barplot(
+  t(as.matrix(top_langs)),
+  horiz = T,
+  col = "darkorchid4",
+  las=1,
+  main=paste("Number of repos including language (N=", nrow(lang_by_repo), ")", sep=""),
+  cex.names = 0.9,
+  xlim=c(0, max(top_langs) + 50)
+)
+text(x=top_langs, y=bp, label=top_langs, pos = 4, cex=0.9)
+
+# Identify languages
+lang <- sort(lang_bytes$language_name)
+nlang <- length(lang)
+npair <- nlang * (nlang - 1) / 2
+
+mkPair <- function(l1, l2) {
+  paste(l1, l2, sep=", ")
+}
+
+# Make list of all possible language pairs
+all_pairs <- apply(expand.grid(lang, lang), 1, function(x) {
+      l1 <- as.character(x[1])
+      l2 <- as.character(x[2])
+      if(l1 < l2) {
+        mkPair(l1, l2)
+      }
+      else NA
+})
+all_pairs <- all_pairs[which(!is.na(all_pairs))]
+
+# Empty data frame of pair counts
+pair_count <- data.frame(matrix(0, nrow = npair, ncol = 1), row.names = all_pairs)
+
+# Function to update pair counts based on language list for one repo
+update_pair_count <- function(cslist) {
+  l <- unlist(strsplit(cslist, ',', fixed = T))
+  l <- l[which(!is.na(l))]
+  apply(expand.grid(l, l), 1, function(x) {
+    l1 <- as.character(x[1])
+    l2 <- as.character(x[2])
+    if(l1 < l2) {
+      pair_count[mkPair(l1, l2), 1] <<- pair_count[mkPair(l1, l2), 1] + 1
+    }
+  })
+}
+
+# Update the pair counts for all repos
+x <- lapply(lang_by_repo$languages, update_pair_count)
+rm(x)
+
+# Sort pairs by number of repos
+ord <- order(pair_count[,1], decreasing = T)
+rn <- rownames(pair_count)
+pair_count = data.frame(pair_count[order(pair_count[,1], decreasing = T),], row.names = rn[ord])
+colnames(pair_count) <- c("numRepos")
+
+# Get the top pairs
+num_top_pairs <- 30
+top_pairs <- pair_count[1:num_top_pairs,]
+names(top_pairs) <- rownames(pair_count)[1:num_top_pairs]
+top_pairs <- top_pairs[order(top_pairs)]
+
+# Plot number of repos by language pair
+par(mar=c(5,12,4,2))
+bp <- barplot(
+  t(as.matrix(top_pairs)),
+  horiz = T,
+  col = "darkorchid4",
+  las=1,
+  main=paste("Number of repos including both languages (N=", nrow(lang_by_repo), ")", sep=""),
+  cex.names = 0.9,
+  xlim=c(0, max(top_pairs) + 20)
+)
+text(x=top_pairs, y=bp, label=top_pairs, pos = 4, cex=0.9)
+
+# Construct a vector of number of bytes per language
+language <- lang_bytes$language_name
+bytes <- lang_bytes$total_bytes
+names(bytes) <- language
+bytes <- bytes[order(-bytes)]
+
+# Get the top languages
+num_top_languages <- 25
+top_languages <- bytes[1:num_top_languages]
+names(top_languages) <- names(bytes)[1:num_top_languages]
+top_languages <- top_languages[order(top_languages)]
+# All other languages
+others <- sum(bytes[1+num_top_languages:length(bytes)], na.rm=T)
+new_names <- c("All others", names(top_languages))
+top_languages <- c(others, top_languages)
+names(top_languages) <- new_names
+
+# Plot bytes per language
+par(mar=c(5,12,4,2))
+barplot(
+  t(as.matrix(top_languages)),
+  horiz = T,
+  col = "darkorchid4",
+  las=1,
+  main="Total size of source files",
+  axes=F
+)
+axis(1, at=c(0, 100000000, 200000000, 300000000), labels=c("0", "100Mb", "200Mb", "300Mb"))
+```
+
+# Join all repo-level data
+
+```{r cache = T, fig.height = 7, fig.width = 8}
+# Load all the repo-level data from BigQuery and do a full join by repo name
+table_list <- c("language_list_by_repo", "num_languages_by_repo", "lines_of_code_by_repo", 
+                "project_duration_by_repo", "num_forks_by_repo", "num_watchers_by_repo", 
+                "num_actors_by_repo", "num_devs_by_repo", "commit_types_by_repo", "test_cases_by_repo")
+repo_level_data <- data.frame(repo_name = character())
+for(table in table_list) {
+  table_data <- list_tabledata(project = proj, dataset = ds_analysis, table = table)
+  repo_level_data <- full_join(repo_level_data, table_data, by = "repo_name")
+}
+```
+
+# Forks
+
+```{r cache = T, fig.height = 7, fig.width = 8}
+num_forks <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_forks_by_repo")
+num_forks <- num_forks[order(-num_forks$num_forks),]
+num_top_repos <- 25
+top_repos <- num_forks$num_forks[1:num_top_repos]
+names(top_repos) <- num_forks$repo_name[1:num_top_repos]
+top_repos <- top_repos[order(top_repos)]
+
+# Plot number of forks by repo
+par(mar=c(5,23,4,2))
+bp <- barplot(
+  t(as.matrix(top_repos)),
+  horiz = T,
+  col = "darkorchid4",
+  las=1,
+  main="Number of forks"
+)
+```
+
+# Project duration
+
+```{r}
+qplot(repo_level_data$commit_span_days,
+      geom = "histogram",
+      binwidth = 100,
+      main = "Histogram of project duration",
+      xlab = "Time from first commit to latest commit (years)",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16)) +
+  scale_x_continuous(breaks = function(x) {seq(0, x[2], by=365)},
+                     labels = function(x) x / 365)
+```
+
+```{r}
+# Scatter plot of latest commit vs first commit
+min_date <- min(repo_level_data$first_commit, na.rm = T)
+max_date <- max(repo_level_data$last_commit, na.rm = T)
+ggplot(data = repo_level_data, aes(x = first_commit, y = last_commit)) +
+  geom_point(aes(color = commit_span_days)) +
+  scale_color_gradientn(colors = c("red", "green", "blue"), 
+                        name = "Commit span (years)",
+                        labels = function(x) round(x / 365)) +
+  coord_cartesian(xlim = c(min_date, max_date),
+                  ylim = c(min_date, max_date)) +
+  labs(title = "Project time spans",
+       x = "First commit",
+       y = "Latest commit") +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+# Bug fix commits
+
+### Relationship with project duration
+
+```{r}
+commits_filtered <- repo_level_data %>%
+  filter(num_commits > 100) %>%
+  mutate(pct_bug_fix = num_bug_fix_commits / num_commits)
+summary(lm(pct_bug_fix ~ commit_span_days, data = commits_filtered))
+ggplot(commits_filtered, aes(x = commit_span_days, y = pct_bug_fix)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  scale_x_continuous(breaks = function(x) {seq(0, x[2], by=365)},
+                     labels = function(x) x / 365) +
+  labs(x = "Time from first commit to last commit (years)",
+       y = "Percentage of bug fix commits") +
+  theme(axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
