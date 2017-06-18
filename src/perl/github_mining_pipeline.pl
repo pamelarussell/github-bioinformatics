@@ -30,12 +30,6 @@ my $run_count_lines_of_code = 0;
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;
 
-# Analyze word content of code comments by language
-my $run_comments_word_content = 0;
-
-# Analyze word content of article abstracts by language
-my $run_abstracts_word_content = 0;
-
 
 # -----------------------------------------------------------------
 #                   BigQuery project structure
@@ -66,20 +60,12 @@ my $src_dir_python = "$src_dir/python/";
 
 # Programs
 my $script_generate_article_info_table = "$src_dir_R/ncbi/paper_metadata.R";
-my $script_plot_bytes_by_lang = "$src_dir_R/quick_plots/bytes_by_language.R";
-my $script_plot_repos_by_lang = "$src_dir_R/quick_plots/repos_by_language.R";
-my $script_plot_repos_by_lang_pair = "$src_dir_R/quick_plots/repos_by_language_pair.R";
-my $script_plot_forks_by_repo = "$src_dir_R/quick_plots/forks_by_repo.R";
-my $script_plot_todo_fix_by_repo = "$src_dir_R/quick_plots/todo_fix_by_repo.R";
 my $script_count_lines_of_code = "$src_dir_python/count_lines_of_code.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
-my $script_comments_word_content = "$src_dir_R/text_mining/comments_word_content.R";
-my $script_abstracts_word_content = "$src_dir_R/text_mining/abstracts_word_content.R";
 
 # Output directories
-my $out_plots_dir = "/Users/prussell/Documents/Github_mining/plots/test_repos/";
 my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
 my $out_results_dir_lines_of_code = "$out_results_dir/lines_of_code/";
 
@@ -138,19 +124,6 @@ if($run_extract_comments) {
 	run_cmmd($cmmd_extract_comments)
 } else {print("\nSkipping step: extract comments\n")}
 
-# Analyze word content of code comments by language
-if($run_comments_word_content) {
-	my $out_pdf_comments_word_content = "$out_plots_dir/comments_word_content.pdf";
-	run_cmmd("Rscript $script_comments_word_content -p $bq_proj -d $bq_ds_analysis_results " .
-	"-c $bq_tb_comments -l $bq_tb_lines_of_code_by_file -o $out_pdf_comments_word_content", $out_pdf_comments_word_content);
-} else {print("\nSkipping step: analyze word content of comments\n")}
-
-# Analyze word content of article abstracts by language
-if($run_abstracts_word_content) {
-	my $out_pdf_abstracts_word_content = "$out_plots_dir/abstracts_word_content";
-	run_cmmd("Rscript $script_abstracts_word_content -p $bq_proj -d $bq_ds " .
-	"-a $bq_tb_articles -l $bq_tb_languages -o $out_pdf_abstracts_word_content");
-} else {print("\nSkipping step: analyze word content of article abstracts\n")}
 
 print("\n\nAll done: $0.\n\n");
 
