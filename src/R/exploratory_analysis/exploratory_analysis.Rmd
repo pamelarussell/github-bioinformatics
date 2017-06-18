@@ -25,42 +25,37 @@ ds_analysis <- "test_repos_analysis_results"
 
 # Programming languages
 
+### Load the data from BigQuery
+
 ```{r cache = T, fig.height = 7, fig.width = 8}
-# Access data on Bigquery
 repos_by_lang <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_repos_by_language")
+repos_by_lang <- arrange(repos_by_lang, desc(num_repos))
 lang_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = "language_list_by_repo")
 lang_bytes <- list_tabledata(project = proj, dataset = ds_analysis, table = "bytes_by_language")
-repo_count <- data.frame(repos_by_lang[,2], row.names = repos_by_lang[,1])
+```
 
-# Identify languages
-lang <- sort(rownames(repo_count))
-nlang <- length(lang)
+### Number of repos by language
 
-# Sort languages by number of repos
-ord <- order(repo_count[,1], decreasing = T)
-rn <- rownames(repo_count)
-repo_count = data.frame(repo_count[order(repo_count[,1], decreasing = T),], row.names = rn[ord])
-colnames(repo_count) <- c("numRepos")
-
+```{r}
 # Get the top languages
-numtop_langs <- 30
-top_langs <- repo_count[1:numtop_langs,]
-names(top_langs) <- rownames(repo_count)[1:numtop_langs]
-top_langs <- top_langs[order(top_langs)]
+top_langs <- arrange(repos_by_lang[1:30,], num_repos)
+top_langs$language_name <- factor(top_langs$language_name, levels = top_langs$language_name)
 
 # Plot number of repos by language
-par(mar=c(5,12,4,2))
-bp <- barplot(
-  t(as.matrix(top_langs)),
-  horiz = T,
-  col = "darkorchid4",
-  las=1,
-  main=paste("Number of repos including language (N=", nrow(lang_by_repo), ")", sep=""),
-  cex.names = 0.9,
-  xlim=c(0, max(top_langs) + 50)
-)
-text(x=top_langs, y=bp, label=top_langs, pos = 4, cex=0.9)
+ggplot(top_langs, aes(x = factor(language_name), y = num_repos)) + 
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(y = paste("Number of repos including language (n = ", nrow(lang_by_repo), ")", sep = ""),
+       x = "Language",
+       title = "Number of repos by language") +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
 
+### Number of repos by language pair
+
+```{r}
 # Identify languages
 lang <- sort(lang_bytes$language_name)
 nlang <- length(lang)
@@ -82,7 +77,8 @@ all_pairs <- apply(expand.grid(lang, lang), 1, function(x) {
 all_pairs <- all_pairs[which(!is.na(all_pairs))]
 
 # Empty data frame of pair counts
-pair_count <- data.frame(matrix(0, nrow = npair, ncol = 1), row.names = all_pairs)
+pair_count <- data.frame(num_repos = matrix(0, nrow = npair, ncol = 1), 
+                         row.names = all_pairs)
 
 # Function to update pair counts based on language list for one repo
 update_pair_count <- function(cslist) {
@@ -102,30 +98,31 @@ x <- lapply(lang_by_repo$languages, update_pair_count)
 rm(x)
 
 # Sort pairs by number of repos
-ord <- order(pair_count[,1], decreasing = T)
-rn <- rownames(pair_count)
-pair_count = data.frame(pair_count[order(pair_count[,1], decreasing = T),], row.names = rn[ord])
-colnames(pair_count) <- c("numRepos")
+pair_count$languages <- row.names(pair_count)
+pair_count <- arrange(pair_count, desc(num_repos))
 
 # Get the top pairs
-num_top_pairs <- 30
-top_pairs <- pair_count[1:num_top_pairs,]
-names(top_pairs) <- rownames(pair_count)[1:num_top_pairs]
-top_pairs <- top_pairs[order(top_pairs)]
+top_pairs <- pair_count[1:30,]
+top_pairs <- arrange(top_pairs, num_repos)
+top_pairs$languages <- factor(top_pairs$languages, levels = top_pairs$languages)
 
 # Plot number of repos by language pair
-par(mar=c(5,12,4,2))
-bp <- barplot(
-  t(as.matrix(top_pairs)),
-  horiz = T,
-  col = "darkorchid4",
-  las=1,
-  main=paste("Number of repos including both languages (N=", nrow(lang_by_repo), ")", sep=""),
-  cex.names = 0.9,
-  xlim=c(0, max(top_pairs) + 20)
-)
-text(x=top_pairs, y=bp, label=top_pairs, pos = 4, cex=0.9)
+ggplot(top_pairs, aes(x = languages, y = num_repos)) + 
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(y = paste("Number of repos including both languages (n = ", nrow(lang_by_repo), ")", sep = ""),
+       x = "Languages",
+       title = "Number of repos by language pair") +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
 
+### Total size of source files by language
+
+Use BigQuery's built-in "languages" table, not our CLOC results
+
+```{r}
 # Construct a vector of number of bytes per language
 language <- lang_bytes$language_name
 bytes <- lang_bytes$total_bytes
@@ -170,28 +167,9 @@ for(table in table_list) {
 }
 ```
 
-# Forks
-
-```{r cache = T, fig.height = 7, fig.width = 8}
-num_forks <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_forks_by_repo")
-num_forks <- num_forks[order(-num_forks$num_forks),]
-num_top_repos <- 25
-top_repos <- num_forks$num_forks[1:num_top_repos]
-names(top_repos) <- num_forks$repo_name[1:num_top_repos]
-top_repos <- top_repos[order(top_repos)]
-
-# Plot number of forks by repo
-par(mar=c(5,23,4,2))
-bp <- barplot(
-  t(as.matrix(top_repos)),
-  horiz = T,
-  col = "darkorchid4",
-  las=1,
-  main="Number of forks"
-)
-```
-
 # Project duration
+
+### Histogram of project duration
 
 ```{r}
 qplot(repo_level_data$commit_span_days,
@@ -208,8 +186,10 @@ qplot(repo_level_data$commit_span_days,
                      labels = function(x) x / 365)
 ```
 
+
+### Scatter plot of latest commit vs first commit
+
 ```{r}
-# Scatter plot of latest commit vs first commit
 min_date <- min(repo_level_data$first_commit, na.rm = T)
 max_date <- max(repo_level_data$last_commit, na.rm = T)
 ggplot(data = repo_level_data, aes(x = first_commit, y = last_commit)) +
