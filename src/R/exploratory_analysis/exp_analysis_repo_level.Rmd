@@ -1,0 +1,103 @@
+---
+title: 'Exploratory analysis: repo-level metrics'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T)
+```
+
+```{r echo = F}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+```
+
+### Project info
+
+```{r cache = T}
+proj <- "github-bioinformatics-157418"
+ds_gh <- "test_repos"
+ds_analysis <- "test_repos_analysis_results"
+```
+
+### Join all repo-level data
+
+```{r cache = T, fig.height = 7, fig.width = 8}
+# Load all the repo-level data from BigQuery and do a full join by repo name
+table_list <- c("language_list_by_repo", "num_languages_by_repo", "lines_of_code_by_repo", 
+                "project_duration_by_repo", "num_forks_by_repo", "num_watchers_by_repo", 
+                "num_actors_by_repo", "num_devs_by_repo", "commit_types_by_repo", "test_cases_by_repo")
+repo_level_data <- data.frame(repo_name = character())
+for(table in table_list) {
+  table_data <- list_tabledata(project = proj, dataset = ds_analysis, table = table)
+  repo_level_data <- full_join(repo_level_data, table_data, by = "repo_name")
+}
+```
+
+# Project duration
+
+### Histogram of project duration
+
+```{r}
+qplot(repo_level_data$commit_span_days,
+      geom = "histogram",
+      binwidth = 100,
+      main = "Histogram of project duration",
+      xlab = "Time from first commit to latest commit (years)",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16)) +
+  scale_x_continuous(breaks = function(x) {seq(0, x[2], by=365)},
+                     labels = function(x) x / 365)
+```
+
+
+### Scatter plot of latest commit vs first commit
+
+```{r}
+min_date <- min(repo_level_data$first_commit, na.rm = T)
+max_date <- max(repo_level_data$last_commit, na.rm = T)
+ggplot(data = repo_level_data, aes(x = first_commit, y = last_commit)) +
+  geom_point(aes(color = commit_span_days)) +
+  scale_color_gradientn(colors = c("red", "green", "blue"), 
+                        name = "Commit span (years)",
+                        labels = function(x) round(x / 365)) +
+  coord_cartesian(xlim = c(min_date, max_date),
+                  ylim = c(min_date, max_date)) +
+  labs(title = "Project time spans",
+       x = "First commit",
+       y = "Latest commit") +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+# Bug fix commits
+
+### Relationship with project duration
+
+```{r}
+commits_filtered <- repo_level_data %>%
+  filter(num_commits > 100) %>%
+  mutate(pct_bug_fix = num_bug_fix_commits / num_commits)
+summary(lm(pct_bug_fix ~ commit_span_days, data = commits_filtered))
+ggplot(commits_filtered, aes(x = commit_span_days, y = pct_bug_fix)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  scale_x_continuous(breaks = function(x) {seq(0, x[2], by=365)},
+                     labels = function(x) x / 365) +
+  labs(x = "Time from first commit to last commit (years)",
+       y = "Percentage of bug fix commits") +
+  theme(axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+
+```
+
+
+
+
