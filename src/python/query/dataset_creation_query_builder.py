@@ -4,11 +4,11 @@ from structure.bq_proj_structure import *
 ##### Functions to build queries against public GitHub data to extract data on specific repos
 
 
-# Convert a file containing a list of repo names into a comma separated, double quoted list for SQL queries
-def comma_separated_quoted_repo_names(file):
+# Convert a file containing a list of repo names into a comma separated, lowercase, double quoted list for SQL queries
+def comma_separated_lowercase_quoted_repo_names(file):
     with open(file, encoding = 'utf-8') as f:
         lines = f.readlines()
-    return ','.join(['"%s"' % line.strip() for line in lines])
+    return ','.join(['"%s"' % line.strip().lower() for line in lines])
     
     
 # Commits
@@ -32,9 +32,9 @@ def build_query_commits(repos):
     FROM
       FLATTEN([%s:%s.%s], repo_name)
     WHERE
-      repo_name IN ( %s )
+      lower(repo_name) IN ( %s )
 
-    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_commits, comma_separated_quoted_repo_names(repos))
+    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_commits, comma_separated_lowercase_quoted_repo_names(repos))
     
     
 # Files
@@ -46,8 +46,8 @@ def build_query_files(repos):
     FROM
       [%s:%s.%s]
     WHERE
-      repo_name IN ( %s )
-    """  % (project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_quoted_repo_names(repos))
+      lower(repo_name) IN ( %s )
+    """  % (project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_lowercase_quoted_repo_names(repos))
 
 
 # Contents
@@ -68,7 +68,7 @@ def build_query_contents(repos):
           FROM
             [%s:%s.%s]
           WHERE
-            repo_name IN ( %s )))) AS files
+            lower(repo_name) IN ( %s )))) AS files
     LEFT JOIN (
       SELECT
         *
@@ -87,13 +87,13 @@ def build_query_contents(repos):
             FROM
               [%s:%s.%s]
             WHERE
-              repo_name IN ( %s ) )))) AS contents
+              lower(repo_name) IN ( %s ) )))) AS contents
     ON
       files.id=contents.id
 
-    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_quoted_repo_names(repos),
+    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_lowercase_quoted_repo_names(repos),
            project_bq_public_data, dataset_github_repos, table_github_repos_contents,
-           project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_quoted_repo_names(repos))
+           project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_lowercase_quoted_repo_names(repos))
     
     
 # GitHub Archive activity
@@ -106,8 +106,8 @@ def build_query_gh_archive(repos, year):
     FROM
       [%s:%s.%s]
     WHERE
-      repo.name IN ( %s )
-    """ % (project_github_archive, dataset_gh_archive_year, year, comma_separated_quoted_repo_names(repos))
+      lower(repo.name) IN ( %s )
+    """ % (project_github_archive, dataset_gh_archive_year, year, comma_separated_lowercase_quoted_repo_names(repos))
     
 
 # Combine years of GitHub archive
@@ -125,8 +125,8 @@ def build_query_languages(repos):
     FROM
       [%s:%s.%s]
     WHERE
-      repo_name IN ( %s )
-    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_languages, comma_separated_quoted_repo_names(repos))
+      lower(repo_name) IN ( %s )
+    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_languages, comma_separated_lowercase_quoted_repo_names(repos))
     
     
 # License for each repo
@@ -138,8 +138,8 @@ def build_query_licenses(repos):
     FROM
       [%s:%s.%s]
     WHERE
-      repo_name IN ( %s )
-    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_licenses, comma_separated_quoted_repo_names(repos))
+      lower(repo_name) IN ( %s )
+    """ % (project_bq_public_data, dataset_github_repos, table_github_repos_licenses, comma_separated_lowercase_quoted_repo_names(repos))
     
     
     
