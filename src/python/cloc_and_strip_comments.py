@@ -10,19 +10,22 @@ from local_params import json_key
 from structure.bq_proj_structure import project_bioinf, table_files, \
     table_contents
 from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
+from util import rec_contents_comments_stripped
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
-# Use the GitHub API to grab repo content
 # Use the program CLOC to count lines of code
+# Also strip comments and push the stripped file contents to a new BigQuery table
 # Command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, 
                     help = 'BigQuery dataset to read from')
 parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, 
                     help = 'BigQuery dataset to write to')
-parser.add_argument('--table', action = 'store', dest = 'tab', required = True, 
-                    help = 'BigQuery table to write to')
+parser.add_argument('--table_loc', action = 'store', dest = 'tab_loc', required = True, 
+                    help = 'BigQuery table to write language and LOC results to')
+parser.add_argument('--table_sc', action = 'store', dest = 'tab_sc', required = True, 
+                    help = 'BigQuery table to write comment-stripped versions of source file contents to')
 parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, 
                     help = 'Full path to CLOC executable')
 parser.add_argument('--outfile', action = 'store', dest = 'out', required = True, 
@@ -37,7 +40,8 @@ w = open(outfile, mode = 'x', buffering = 1)
 # BigQuery parameters
 in_ds = args.in_ds
 out_ds = args.out_ds
-table = args.tab
+table_loc = args.tab_loc
+table_sc = args.tab_sc
 
 # CLOC executable
 cloc_exec = args.cloc
@@ -46,18 +50,26 @@ cloc_exec = args.cloc
 print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False)
 
-# Delete the lines of code table if it exists
-delete_bq_table(client, out_ds, table)
+# Delete the output tables if they exist
+delete_bq_table(client, out_ds, table_loc)
+delete_bq_table(client, out_ds, table_sc)
 
 # Create the lines of code table with schema corresponding to CLOC output
-schema = [
+schema_loc = [
     {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'language', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'blank', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'comment', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'code', 'type': 'INTEGER', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, out_ds, table, schema)
+create_bq_table(client, out_ds, table_loc, schema_loc)
+
+# Create the comment-stripped contents table
+schema_sc = [
+    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'contents_comments_stripped', 'type': 'STRING', 'mode': 'NULLABLE'}
+]
+create_bq_table(client, out_ds, table_sc, schema_sc)
 
 # Regex identifying file paths that can be skipped
 skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
@@ -117,18 +129,21 @@ gctable = dataset.table(tmp_table, gcschema)
 # Get iterator over table records
 it = gctable.fetch_data() # https://googlecloudplatform.github.io/google-cloud-python/stable/bigquery-table.html
 
-# Run CLOC on each file and add results to database table
+# Run CLOC on each file and add results to database tables
 print('Running CLOC on each file...\n\n')
-recs_to_add = []
+recs_to_add_loc = []
+recs_to_add_sc = []
 num_done = 0
 
 for rec in it:
     
     # Push each batch of records
-    if num_done % 100 == 0 and len(recs_to_add) > 0:
+    if num_done % 100 == 0 and len(recs_to_add_loc) > 0:
         print('Finished %s files.' % num_done)
-        push_bq_records(client, out_ds, table, recs_to_add)
-        recs_to_add.clear()
+        push_bq_records(client, out_ds, table_loc, recs_to_add_loc)
+        push_bq_records(client, out_ds, table_sc, recs_to_add_sc)
+        recs_to_add_loc.clear()
+        recs_to_add_sc.clear()
 
     num_done = num_done + 1
 
@@ -137,16 +152,22 @@ for rec in it:
     file_id = rec[0]
     content_str = rec[3]
 
-    # Write the file contents to disk
+    # Process the record
     if content_str is not None:
-        content = write_file(content_str, '/tmp/%s' % path.replace('/', '_'))
+        # Write the file contents to disk
+        destfile_content = '/tmp/%s' % path.replace('/', '_')
+        ext_sc = 'comments_stripped'
+        destfile_sc = '%s.%s' % (destfile_content, ext_sc)
+        content = write_file(content_str, destfile_content)
         # Run CLOC
-        cloc_result = subprocess.check_output([cloc_exec, content]).decode('utf-8')
+        cloc_result = subprocess.check_output([cloc_exec, '--strip-comments=%s' % ext_sc, '--original-dir', content]).decode('utf-8')
         os.remove(content)
         cloc_data = parse_cloc_response(cloc_result)
         if cloc_data is not None:
             cloc_data['id'] = file_id
-            recs_to_add.append(cloc_data)
+            recs_to_add_loc.append(cloc_data)
+            recs_to_add_sc.append(rec_contents_comments_stripped(file_id, cloc_data['language'], destfile_sc))
+            os.remove(destfile_sc)
             w.write('%s. %s/%s - success\n' % (num_done, repo, path))
         else:
             w.write('%s. %s/%s - no CLOC result\n' % (num_done, repo, path))
@@ -154,8 +175,9 @@ for rec in it:
         w.write('%s. %s/%s - content is empty\n' % (num_done, repo, path))
 
 # Push final batch of records
-if len(recs_to_add) > 0:
-    push_bq_records(client, out_ds, table, recs_to_add)
+if len(recs_to_add_loc) > 0:
+    push_bq_records(client, out_ds, table_loc, recs_to_add_loc)
+    push_bq_records(client, out_ds, table_loc, recs_to_add_sc)
     
 # Delete the temporary table
 delete_bq_table(client, out_ds, tmp_table)

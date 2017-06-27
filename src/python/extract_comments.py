@@ -13,7 +13,6 @@ from util import delete_bq_table, create_bq_table, push_bq_records, run_query_an
 
 
 # Count lines of code in source files and store this information in a new table in BigQuery
-# Use the GitHub API to grab repo content
 # Use the program CLOC to count lines of code
 # Command line arguments
 parser = argparse.ArgumentParser()

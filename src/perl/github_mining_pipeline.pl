@@ -24,8 +24,8 @@ my $generate_article_info_table = 0;
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 my $run_bq_analysis_queries = 0;
 
-# Count lines of code and push to BigQuery table
-my $run_count_lines_of_code = 0;
+# Count lines of code and push to BigQuery table along with comment-stripped versions of source files
+my $run_cloc = 1;
 
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;
@@ -45,6 +45,7 @@ my $bq_ds_analysis_results = "test_repos_analysis_results";
 # Tables
 my $bq_tb_articles = "articles_by_repo"; # NCBI article metadata
 my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
+my $bq_tb_contents_comments_stripped = "contents_comments_stripped"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "source_code_comments"; # Computed table with comments extracted from source files
 my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
 
@@ -60,14 +61,14 @@ my $src_dir_python = "$src_dir/python/";
 
 # Programs
 my $script_generate_article_info_table = "$src_dir_R/ncbi/paper_metadata.R";
-my $script_count_lines_of_code = "$src_dir_python/count_lines_of_code.py";
+my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
 
 # Output directories
 my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
-my $out_results_dir_lines_of_code = "$out_results_dir/lines_of_code/";
+my $out_results_dir_cloc = "$out_results_dir/cloc/";
 
 # GitHub repo names
 my $repo_names_list = "/Users/prussell/Documents/Github_mining/repos/repos.txt";
@@ -108,13 +109,14 @@ if($run_bq_analysis_queries) {
 } else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
 	"save results to tables\n")}
 
-# Count lines of code and push to BigQuery table
-if($run_count_lines_of_code) {
-	my $out_log_count_lines_of_code = "$out_results_dir_lines_of_code/run.out";
-	my $cmmd_count_lines_of_code = "$python3 $script_count_lines_of_code --in_ds $bq_ds " .
-	"--out_ds $bq_ds_analysis_results --table $bq_tb_lines_of_code_by_file " .
-	"--outfile $out_log_count_lines_of_code --cloc $cloc_exec";
-	run_cmmd($cmmd_count_lines_of_code, $out_log_count_lines_of_code)
+# Count lines of code and push to BigQuery table along with comment-stripped versions of source files
+if($run_cloc) {
+	my $out_log_cloc = "$out_results_dir_cloc/run.out";
+	my $cmmd_cloc = "$python3 $script_cloc --in_ds $bq_ds " .
+	"--out_ds $bq_ds_analysis_results --table_loc $bq_tb_lines_of_code_by_file " .
+	"--table_sc $bq_tb_contents_comments_stripped " .
+	"--outfile $out_log_cloc --cloc $cloc_exec";
+	run_cmmd($cmmd_cloc, $out_log_cloc)
 } else {print("\nSkipping step: count lines of code\n")}
 
 # Extract comments from source files and push to BigQuery table

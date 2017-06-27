@@ -20,13 +20,13 @@ def parse_cloc_response(response):
     if '1 file ignored.' in lines[2]: 
         # The file was ignored by CLOC
         return(None)
-    if len(list(filter(lambda x: x.split() != [], lines))) > 9:
+    if len(list(filter(lambda x: x.split() != [], lines))) > 10:
         raise ValueError('Too many lines in CLOC output:\n%s' % response)
     else:
-        if '0 files ignored.' in lines[2]:
+        if '0 files ignored.' in lines[3]:
             # CLOC was able to detect the language
             # Split on "more than one space" to preserve language names that contain spaces
-            data = re.compile('  +').split(lines[8])
+            data = re.compile('  +').split(lines[9])
             if len(data) != 5:
                 raise ValueError('Malformed data line in CLOC response:\n%s' % data)
             # CLOC response fields: Language, files, blank, comment, code
@@ -35,3 +35,23 @@ def parse_cloc_response(response):
             raise ValueError('Malformed CLOC response: %s' % response)
 
 
+def rec_contents_comments_stripped(file_id, path):
+    """ Reads the contents of a source file and returns a dict object to be pushed as a record to BigQuery
+    
+    Args:
+        file_id: File ID
+        path: Path to source file with comments stripped
+        
+    Returns:
+        A dict object with keys 'id', 'contents_comments_stripped'
+    
+    """
+    with open(path, 'r') as file:
+        contents = file.read()
+    return {'id': file_id, 'contents_comments_stripped': contents}
+
+    
+    
+    
+    
+    
