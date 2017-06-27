@@ -166,7 +166,7 @@ for rec in it:
         if cloc_data is not None:
             cloc_data['id'] = file_id
             recs_to_add_loc.append(cloc_data)
-            recs_to_add_sc.append(rec_contents_comments_stripped(file_id, cloc_data['language'], destfile_sc))
+            recs_to_add_sc.append(rec_contents_comments_stripped(file_id, destfile_sc))
             os.remove(destfile_sc)
             w.write('%s. %s/%s - success\n' % (num_done, repo, path))
         else:
