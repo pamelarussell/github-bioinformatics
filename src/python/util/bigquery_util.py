@@ -62,7 +62,7 @@ def delete_bq_table(client, dataset, table):
     
     exists = client.check_table(dataset, table)
     if exists:
-        print('\nWARNING: Deleting existing table %s.%s' % (dataset, table))
+        print('WARNING: Deleting existing table %s.%s' % (dataset, table))
         deleted = client.delete_table(dataset, table)
         if not deleted:
             raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
