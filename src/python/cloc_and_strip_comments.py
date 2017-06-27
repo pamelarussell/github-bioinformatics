@@ -99,18 +99,17 @@ GROUP BY
   content
 """ % (project_bioinf, in_ds, table_files, project_bioinf, in_ds, table_contents, skip_re)
 
-print('Getting file metadata and contents\n')
-print('Running query: %s\n' %query)
-
 # Run query to get file metadata
 # Write results to a temporary table
-tmp_table = 'tmp_query_result'
+tmp_table = 'tmp_query_res_cloc'
 create_bq_table(client, out_ds, tmp_table, [
     {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'path', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'content', 'type': 'STRING', 'mode': 'NULLABLE'}
 ])
+
+print('Getting file metadata and contents\n')
 run_query_and_save_results(client, query, out_ds, tmp_table)
 
 # Set up connection using google cloud API because bigquery-python package does not support iterating through records

@@ -25,10 +25,13 @@ my $generate_article_info_table = 0;
 my $run_bq_analysis_queries = 0;
 
 # Count lines of code and push to BigQuery table along with comment-stripped versions of source files
-my $run_cloc = 1;
+my $run_cloc = 0;
 
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;
+
+# Analyze frequency of code chunks
+my $run_code_chunk_frequency = 1;
 
 
 # -----------------------------------------------------------------
@@ -48,6 +51,8 @@ my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with
 my $bq_tb_contents_comments_stripped = "contents_comments_stripped"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "source_code_comments"; # Computed table with comments extracted from source files
 my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
+my $bq_tb_code_chunk_frequency_by_repo = "code_chunk_freq_by_repo"; # Frequency of groups of lines of code
+my $bq_tb_files = "files"; # File metadata
 
 
 # -----------------------------------------------------------------
@@ -65,6 +70,7 @@ my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
+my $script_code_chunk_frequency = "$src_dir_python/code_chunk_frequency.py";
 
 # Output directories
 my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
@@ -126,6 +132,12 @@ if($run_extract_comments) {
 	run_cmmd($cmmd_extract_comments)
 } else {print("\nSkipping step: extract comments\n")}
 
+# Analyze frequency of code chunks
+if($run_code_chunk_frequency) {
+	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --ds_gh $bq_ds --ds_res $bq_ds_analysis_results ".
+	"--table_files $bq_tb_files --table_sc $bq_tb_contents_comments_stripped --table_out $bq_tb_code_chunk_frequency_by_repo";
+	run_cmmd($cmmd_code_chunk_freq);
+} else {print("\nSkipping step: analyze code chunk frequency\n")}
 
 print("\n\nAll done: $0.\n\n");
 
