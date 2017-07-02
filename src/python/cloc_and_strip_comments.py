@@ -178,7 +178,7 @@ for rec in it:
 # Push final batch of records
 if len(recs_to_add_loc) > 0:
     push_bq_records(client, out_ds, table_loc, recs_to_add_loc)
-    push_bq_records(client, out_ds, table_loc, recs_to_add_sc)
+    push_bq_records(client, out_ds, table_sc, recs_to_add_sc)
     
 # Delete the temporary table
 delete_bq_table(client, out_ds, tmp_table)
