@@ -110,7 +110,7 @@ create_bq_table(client, out_ds, tmp_table, [
 ])
 
 print('Getting file metadata and contents\n')
-run_query_and_save_results(client, query, out_ds, tmp_table)
+run_query_and_save_results(client, query, out_ds, tmp_table, 300)
 
 # Set up connection using google cloud API because bigquery-python package does not support iterating through records
 # Must have environment variable GOOGLE_APPLICATION_CREDENTIALS set to json key

@@ -7,6 +7,7 @@ library(RCurl)
 library(dplyr)
 options(stringsAsFactors = F)
 
+setwd("~/Documents/Github_mining/src/R/document_classification")
 bq_project <- "github-bioinformatics-171721"
 bq_ds <- "classification"
 bq_table_mc <- "abstracts_to_classify_manually"
@@ -33,7 +34,11 @@ if(!exists_table(bq_project, bq_ds, bq_table_mc)) {
 abstracts_to_classify <- list_tabledata(project = bq_project, dataset = bq_ds, table = bq_table_mc)
 
 # Get the current classification table from BigQuery
-curr_table <- list_tabledata(project = bq_project, dataset = bq_ds, table = bq_table_gs)
+curr_table <- tryCatch({
+  list_tabledata(project = bq_project, dataset = bq_ds, table = bq_table_gs)
+}, error = function(e) {
+  data.frame(bioinf = character(), pmid = character(), title = character(), abstract = character())
+})
 
 # Identify papers that have not already been classified
 remaining_to_classify <- anti_join(abstracts_to_classify, curr_table, by = "pmid")
@@ -53,11 +58,11 @@ get_answer <- function(row_num) {
   print("")
   print(as.character(abstract))
   print("")
-  print("Is this a bioinformatics tool (y/n)? If record is incomplete, type 'skip'. If done, type 'done'.")
+  print("Is this bioinformatics (y/n)? If record is incomplete, type 'skip'. If done, type 'done'.")
   print("")
   answer <- readline()
-  if(tolower(answer) == "y") data.frame(bioinf_tool = "1", pmid = pmid, title = title, abstract = abstract)
-  else if(tolower(answer) == "n") data.frame(bioinf_tool = "0", pmid = pmid, title = title, abstract = abstract)
+  if(tolower(answer) == "y") data.frame(bioinf = "1", pmid = pmid, title = title, abstract = abstract)
+  else if(tolower(answer) == "n") data.frame(bioinf = "0", pmid = pmid, title = title, abstract = abstract)
   else if(tolower(answer) == "done") "done"
   else if(tolower(answer) == "skip") "skip"
   else {
