@@ -213,55 +213,6 @@ ggplot(data = repo_level_data, aes(x = first_commit, y = last_commit)) +
         axis.title.y = element_text(size = 16))
 ```
 
-# Bug fix commits
-
-### Filter for projects with a lot of commits
-
-```{r}
-commits_filtered <- filter(repo_level_data, num_commits > 100)
-```
-
-### Relationship with number of test cases
-
-```{r}
-summary(lm(num_bug_fix_commits ~ num_test_cases + num_commits, data = repo_level_data))
-summary(lm(num_bug_fix_commits ~ num_test_cases + num_commits, data = commits_filtered))
-```
-
-### Relationship with language
-
-```{r}
-lm_bug_fix_lang <- function(lang) {
-  summary(lm(num_bug_fix_commits ~ get(lang, envir = as.environment(repo_level_data)) + num_commits + num_test_cases, 
-             data = repo_level_data))$coefficients[2,]
-}
-lang_coef_bug_fix <- t(sapply(top_languages, lm_bug_fix_lang))
-ord <- order(lang_coef_bug_fix[,4])
-lang_coef_bug_fix[ord,]
-```
-
-### Relationship with number of languages
-
-```{r}
-summary(lm(num_bug_fix_commits ~ num_languages + num_commits, data = repo_level_data))
-summary(lm(num_bug_fix_commits ~ num_languages + num_commits, data = commits_filtered))
-```
-
-# Number of test cases
-
-### Relationship with language
-
-```{r}
-lm_test_case_lang <- function(lang) {
-  summary(lm(total_lines_test_cases ~ 
-               get(lang, envir = as.environment(repo_level_data)) + lines_of_code, 
-             data = repo_level_data))$coefficients[2,]
-}
-lang_coef_test_cases <- t(sapply(top_languages, lm_test_case_lang))
-ord <- order(lang_coef_test_cases[,4])
-lang_coef_test_cases[ord,]
-```
-
 
 
 
