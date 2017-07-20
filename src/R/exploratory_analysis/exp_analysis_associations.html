@@ -120,51 +120,8 @@ $(document).ready(function () {
 </div>
 
 
-<div id="data-processing" class="section level1">
-<h1>Data processing</h1>
-<div id="project-info" class="section level3">
-<h3>Project info</h3>
-<pre class="r"><code>proj &lt;- &quot;github-bioinformatics-157418&quot;
-ds_gh &lt;- &quot;test_repos&quot;
-ds_analysis &lt;- &quot;test_repos_analysis_results&quot;</code></pre>
-</div>
-<div id="join-all-repo-level-data" class="section level3">
-<h3>Join all repo-level data</h3>
-<pre class="r"><code># Load all the repo-level data from BigQuery and do a full join by repo name
-table_list &lt;- c(&quot;language_list_by_repo&quot;, &quot;num_languages_by_repo&quot;, &quot;lines_of_code_by_repo&quot;, 
-                &quot;project_duration_by_repo&quot;, &quot;num_forks_by_repo&quot;, &quot;num_watchers_by_repo&quot;, 
-                &quot;num_actors_by_repo&quot;, &quot;num_devs_by_repo&quot;, &quot;commit_types_by_repo&quot;, &quot;test_cases_by_repo&quot;)
-repo_level_data &lt;- data.frame(repo_name = character())
-for(table in table_list) {
-  table_data &lt;- list_tabledata(project = proj, dataset = ds_analysis, table = table)
-  repo_level_data &lt;- full_join(repo_level_data, table_data, by = &quot;repo_name&quot;)
-}</code></pre>
-<pre><code>## Warning: Column `repo_name` joining factor and character vector, coercing
-## into character vector</code></pre>
-</div>
-<div id="add-languages" class="section level3">
-<h3>Add languages</h3>
-<pre class="r"><code>lang_bytes &lt;- list_tabledata(project = proj, dataset = ds_analysis, table = &quot;bytes_by_language&quot;)
-lang_list &lt;- lang_bytes$language_name
-lang_list_by_repo &lt;- sapply(repo_level_data$languages, function(x) strsplit(x, &quot;,&quot;))
-for(lang in lang_list) {
-  repo_level_data[[lang]] &lt;- unlist(lapply(lang_list_by_repo, function(x) lang %in% x))
-}
-repo_level_data &lt;- repo_level_data %&gt;% rename(Cpp = `C++`)</code></pre>
-</div>
-<div id="languages-of-interest" class="section level2">
-<h2>Languages of interest</h2>
-<pre class="r"><code>top_languages &lt;- c(&quot;Python&quot;, &quot;Shell&quot;, &quot;Cpp&quot;, &quot;R&quot;, &quot;C&quot;, &quot;Perl&quot;, &quot;JavaScript&quot;, &quot;Java&quot;,
-                              &quot;Objective-C&quot;, &quot;Matlab&quot;, &quot;Ruby&quot;, &quot;PHP&quot;, &quot;Haskell&quot;, &quot;Go&quot;, &quot;Lua&quot;,
-                              &quot;Roff&quot;, &quot;Scala&quot;, &quot;M&quot;, &quot;Tcl&quot;)</code></pre>
-</div>
-</div>
 <div id="bug-fix-commits" class="section level1">
 <h1>Bug fix commits</h1>
-<div id="filter-for-projects-with-a-lot-of-commits" class="section level3">
-<h3>Filter for projects with a lot of commits</h3>
-<pre class="r"><code>commits_filtered &lt;- filter(repo_level_data, num_commits &gt; 100)</code></pre>
-</div>
 <div id="relationship-with-number-of-test-cases" class="section level3">
 <h3>Relationship with number of test cases</h3>
 <pre class="r"><code>summary(lm(num_bug_fix_commits ~ num_test_cases + num_commits, data = repo_level_data))</code></pre>

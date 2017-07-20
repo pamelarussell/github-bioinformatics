@@ -4,10 +4,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T)
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
 
-```{r echo = F}
+```{r}
 rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
@@ -15,19 +15,15 @@ suppressPackageStartupMessages(library(ggplot2))
 setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
 ```
 
-# Data processing
-
-### Project info
-
 ```{r}
+# Project info
 proj <- "github-bioinformatics-157418"
 ds_gh <- "test_repos"
 ds_analysis <- "test_repos_analysis_results"
 ```
 
-### Join all repo-level data
-
-```{r cache = T}
+```{r}
+# Join all repo-level data
 # Load all the repo-level data from BigQuery and do a full join by repo name
 table_list <- c("language_list_by_repo", "num_languages_by_repo", "lines_of_code_by_repo", 
                 "project_duration_by_repo", "num_forks_by_repo", "num_watchers_by_repo", 
@@ -39,9 +35,9 @@ for(table in table_list) {
 }
 ```
 
-### Add languages
 
-```{r cache = T}
+```{r}
+# Add languages
 lang_bytes <- list_tabledata(project = proj, dataset = ds_analysis, table = "bytes_by_language")
 lang_list <- lang_bytes$language_name
 lang_list_by_repo <- sapply(repo_level_data$languages, function(x) strsplit(x, ","))
@@ -51,9 +47,9 @@ for(lang in lang_list) {
 repo_level_data <- repo_level_data %>% rename(Cpp = `C++`)
 ```
 
-## Languages of interest
 
 ```{r}
+# Languages of interest
 top_languages <- c("Python", "Shell", "Cpp", "R", "C", "Perl", "JavaScript", "Java",
                               "Objective-C", "Matlab", "Ruby", "PHP", "Haskell", "Go", "Lua",
                               "Roff", "Scala", "M", "Tcl")
@@ -62,22 +58,22 @@ top_languages <- c("Python", "Shell", "Cpp", "R", "C", "Perl", "JavaScript", "Ja
 
 # Bug fix commits
 
-### Filter for projects with a lot of commits
 
 ```{r}
+### Filter for projects with a lot of commits
 commits_filtered <- filter(repo_level_data, num_commits > 100)
 ```
 
 ### Relationship with number of test cases
 
-```{r}
+```{r echo = T}
 summary(lm(num_bug_fix_commits ~ num_test_cases + num_commits, data = repo_level_data))
 summary(lm(num_bug_fix_commits ~ num_test_cases + num_commits, data = commits_filtered))
 ```
 
 ### Relationship with language
 
-```{r}
+```{r echo = T}
 lm_bug_fix_lang <- function(lang) {
   summary(lm(num_bug_fix_commits ~ get(lang, envir = as.environment(repo_level_data)) + num_commits + num_test_cases, 
              data = repo_level_data))$coefficients[2,]
@@ -89,7 +85,7 @@ lang_coef_bug_fix[ord,]
 
 ### Relationship with number of languages
 
-```{r}
+```{r echo = T}
 summary(lm(num_bug_fix_commits ~ num_languages + num_commits, data = repo_level_data))
 summary(lm(num_bug_fix_commits ~ num_languages + num_commits, data = commits_filtered))
 ```
@@ -98,7 +94,7 @@ summary(lm(num_bug_fix_commits ~ num_languages + num_commits, data = commits_fil
 
 ### Relationship with language
 
-```{r}
+```{r echo = T}
 lm_test_case_lang <- function(lang) {
   summary(lm(total_lines_test_cases ~ 
                get(lang, envir = as.environment(repo_level_data)) + lines_of_code, 

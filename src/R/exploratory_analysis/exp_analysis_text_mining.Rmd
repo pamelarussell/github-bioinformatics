@@ -4,10 +4,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T)
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
 
-```{r echo = F}
+```{r}
 rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
@@ -22,9 +22,9 @@ suppressPackageStartupMessages(library(tm))
 setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
 ```
 
-### Project info
 
-```{r cache = T}
+```{r}
+# Project info
 proj <- "github-bioinformatics-157418"
 ds_gh <- "test_repos"
 ds_analysis <- "test_repos_analysis_results"
@@ -32,9 +32,8 @@ ds_analysis <- "test_repos_analysis_results"
 
 # Comments
 
-### Load comments data from BigQuery
-
 ```{r cache = T}
+# Load comments data from BigQuery
 
 tab_com <- "source_code_comments" # Comments table
 tab_loc <- "lines_of_code_by_file" # Lines of code table
@@ -57,7 +56,7 @@ comments_data <- query_exec(query, project = proj, max_pages = Inf)
 
 ### Tf-idf of comments by language
 
-```{r fig.width = 11, fig.height = 8.5}
+```{r fig.width = 11, fig.height = 8.5, cache = T}
 # tf-idf by language
 language_words <- comments_data %>%
   filter(language == 'R' | language == 'Java' | language == 'Perl' |
@@ -102,9 +101,8 @@ grid.arrange(grobs = plots, ncol = 3,
 
 # Article abstracts
 
-### Load abstracts data from BigQuery
-
 ```{r cache = T}
+# Load abstracts data from BigQuery
 # Query to join language to articles table
 tab_art <- "articles_by_repo"
 tab_lang <- "languages"
@@ -139,7 +137,7 @@ abstracts_data <- query_exec(query, project = proj, max_pages = Inf)
 
 Each "document" corresponds to one programming language and is all the abstracts for repos that have any code in that language, according to the "languages" table in the GitHub BigQuery dataset.
 
-```{r fig.width = 13, fig.height = 15}
+```{r fig.width = 13, fig.height = 15, cache = T}
 # Function to get tf-idf by language
 # ngram_n: N for ngrams (1 if single words)
 # Filter_spellcheck: filter tokens with spellchecker
