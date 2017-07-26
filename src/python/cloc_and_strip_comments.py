@@ -40,6 +40,8 @@ w = open(outfile, mode = 'x', buffering = 1)
 # BigQuery parameters
 in_ds = args.in_ds
 out_ds = args.out_ds
+table_loc_ungrouped = "tmp_loc_ungrouped"
+table_sc_ungrouped = "tmp_sc_ungrouped"
 table_loc = args.tab_loc
 table_sc = args.tab_sc
 
@@ -54,7 +56,7 @@ client = get_client(json_key_file=json_key, readonly=False)
 delete_bq_table(client, out_ds, table_loc)
 delete_bq_table(client, out_ds, table_sc)
 
-# Create the lines of code table with schema corresponding to CLOC output
+# Create the ungrouped lines of code table with schema corresponding to CLOC output
 schema_loc = [
     {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'language', 'type': 'STRING', 'mode': 'NULLABLE'},
@@ -63,13 +65,15 @@ schema_loc = [
     {'name': 'code', 'type': 'INTEGER', 'mode': 'NULLABLE'}
 ]
 create_bq_table(client, out_ds, table_loc, schema_loc)
+create_bq_table(client, out_ds, table_loc_ungrouped, schema_loc)
 
-# Create the comment-stripped contents table
+# Create the ungrouped comment-stripped contents table
 schema_sc = [
     {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'contents_comments_stripped', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
 create_bq_table(client, out_ds, table_sc, schema_sc)
+create_bq_table(client, out_ds, table_sc_ungrouped, schema_sc)
 
 # Regex identifying file paths that can be skipped
 skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
@@ -141,8 +145,8 @@ for rec in it:
     
     # Push batch of records; try to keep pipe small
     if num_done % 10 == 0 and len(recs_to_add_loc) > 0:
-        push_bq_records(client, out_ds, table_loc, recs_to_add_loc)
-        push_bq_records(client, out_ds, table_sc, recs_to_add_sc)
+        push_bq_records(client, out_ds, table_loc_ungrouped, recs_to_add_loc)
+        push_bq_records(client, out_ds, table_sc_ungrouped, recs_to_add_sc)
         recs_to_add_loc.clear()
         recs_to_add_sc.clear()
 
@@ -177,12 +181,41 @@ for rec in it:
 
 # Push final batch of records
 if len(recs_to_add_loc) > 0:
-    push_bq_records(client, out_ds, table_loc, recs_to_add_loc)
-    push_bq_records(client, out_ds, table_sc, recs_to_add_sc)
+    push_bq_records(client, out_ds, table_loc_ungrouped, recs_to_add_loc)
+    push_bq_records(client, out_ds, table_sc_ungrouped, recs_to_add_sc)
     
-# Delete the temporary table
+# Group the tables to dedup records and write to final tables
+query_group_loc = """
+SELECT
+  *
+FROM
+  [%s:%s.%s]
+GROUP BY
+  id,
+  language,
+  blank,
+  comment,
+  code
+""" % (project_bioinf, out_ds, table_loc_ungrouped)
+
+query_group_sc = """
+SELECT
+  *
+FROM
+  [%s:%s.%s]
+GROUP BY
+  id,
+  contents_comments_stripped
+""" % (project_bioinf, out_ds, table_sc_ungrouped)
+
+run_query_and_save_results(client, query_group_loc, out_ds, table_loc, 300)
+run_query_and_save_results(client, query_group_sc, out_ds, table_sc, 300)
+    
+# Delete the temporary tables
 delete_bq_table(client, out_ds, tmp_table)
-    
+delete_bq_table(client, out_ds, table_loc_ungrouped)
+delete_bq_table(client, out_ds, table_sc_ungrouped)
+
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 w.close()
 

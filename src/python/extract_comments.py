@@ -31,6 +31,7 @@ args = parser.parse_args()
 ds_gh = args.ds_gh
 ds_loc = args.ds_loc
 out_ds = args.out_ds
+table_ungrouped = "tmp_comments_ungrouped"
 table = args.tab
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
@@ -40,11 +41,12 @@ client = get_client(json_key_file=json_key, readonly=False)
 # Delete the comments table if it exists
 delete_bq_table(client, out_ds, table)
 
-# Create the comments table
+# Create the comments table and intermediate ungrouped version
 schema = [
     {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'comments', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
+create_bq_table(client, out_ds, table_ungrouped, schema)
 create_bq_table(client, out_ds, table, schema)
 
 # Construct query to get file metadata and contents
@@ -102,7 +104,7 @@ for rec in it:
     # Push each batch of records
     if num_done % 1000 == 0 and len(recs_to_add) > 0:
         print('Finished %s files. Skipped %s due to unsupported language.' % (num_done, num_skip))
-        push_bq_records(client, out_ds, table, recs_to_add)
+        push_bq_records(client, out_ds, table_ungrouped, recs_to_add)
         recs_to_add.clear()
 
     num_done = num_done + 1
@@ -128,10 +130,23 @@ for rec in it:
     
 # Push final batch of records
 if len(recs_to_add) > 0:
-    push_bq_records(client, out_ds, table, recs_to_add)
+    push_bq_records(client, out_ds, table_ungrouped, recs_to_add)
     
-# Delete the temporary table
+# Group the table to dedup it and write final table
+query_group = """
+SELECT
+  *
+FROM
+  [%s:%s.%s]
+GROUP BY
+  id,
+  comments
+""" % (project_bioinf, out_ds, table_ungrouped)
+run_query_and_save_results(client, query_group, out_ds, table, 300)
+    
+# Delete the temporary tables
 delete_bq_table(client, out_ds, tmp_table)
+delete_bq_table(client, out_ds, table_ungrouped)
     
 print('\nNumber of files skipped by unsupported language:\n%s' 
       % sorted(unsupported_langs.items(), key=operator.itemgetter(1), reverse = True))
