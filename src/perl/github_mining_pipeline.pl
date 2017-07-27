@@ -88,6 +88,14 @@ my $python3 = "/Library/Frameworks/Python.framework/Versions/3.6/bin/python3";
 my $cloc_exec = "/Users/prussell/Software/cloc-1.72.pl";
 
 
+# -----------------------------------------------------------------
+#                        Other parameters
+# -----------------------------------------------------------------
+
+my $languages = "C++,Python,JavaScript,C,Java,Groff,PHP,Matlab,Perl,R,Mathematica,".
+				"Ruby,Shell,Groovy,Objective-C,Fortran,C#,Go,Roff,Scala,Cuda,Lua,".
+				"M4,Julia,D,Haskell,Prolog,XSLT,Tcl,Gosu,Perl6,M,Lex";
+
 
 # ********************************************************************************************************
 # ***********************************   NO PARAMETERS BEYOND THIS POINT   ********************************
@@ -135,7 +143,8 @@ if($run_extract_comments) {
 # Analyze frequency of code chunks
 if($run_code_chunk_frequency) {
 	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --ds_gh $bq_ds --ds_res $bq_ds_analysis_results ".
-	"--table_files $bq_tb_files --table_sc $bq_tb_contents_comments_stripped --table_out $bq_tb_code_chunk_frequency_by_repo";
+	"--table_files $bq_tb_files --table_sc $bq_tb_contents_comments_stripped --table_out $bq_tb_code_chunk_frequency_by_repo ".
+	"--table_loc $bq_tb_lines_of_code_by_file --langs $languages";
 	run_cmmd($cmmd_code_chunk_freq);
 } else {print("\nSkipping step: analyze code chunk frequency\n")}
 

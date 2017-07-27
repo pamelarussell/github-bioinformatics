@@ -1,4 +1,4 @@
-
+import time
 
 def run_bq_query(client, query, timeout):
     """ Returns the results of a BigQuery query
@@ -78,9 +78,11 @@ def push_bq_records(client, dataset, table, records):
         table: Table name
         records: List of records to add
                  Each record is a dictionary with keys matching the schema
+        try_num: Index of this try at pushing records
+        max_tries: Number of times to try if attempt to push records is unsuccessful
+        sleep_sec: Number of seconds to sleep between attempts
     
     """
-    #print('\nPushing %s results to table %s.%s' % (len(records), dataset, table))
     succ = client.push_rows(dataset, table, records)
     if not succ:
         raise RuntimeError('Push to BigQuery table was unsuccessful')

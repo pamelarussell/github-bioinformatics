@@ -21,6 +21,10 @@ parser.add_argument('--table_files', action = 'store', dest = 'tab_files', requi
                     help = 'BigQuery table of file metadata')
 parser.add_argument('--table_sc', action = 'store', dest = 'tab_sc', required = True, 
                     help = 'BigQuery table of comment-stripped versions of source file contents')
+parser.add_argument('--table_loc', action = 'store', dest = 'tab_loc', required = True,
+                    help = 'BigQuery table of lines of code by file')
+parser.add_argument('--langs', action = 'store', dest = "langs_str", required = True,
+                    help = 'Comma-separated list of languages to include (case insensitive)')
 parser.add_argument('--table_out', action = 'store', dest = 'tab_out', required = True,
                     help = 'Prefix of BigQuery table to write code chunk frequencies to')
 args = parser.parse_args()
@@ -36,12 +40,16 @@ ds_gh = args.ds_gh
 ds_res = args.ds_res
 table_files = args.tab_files
 table_sc = args.tab_sc
+table_loc = args.tab_loc
 table_out_1 = "%s_%s_%s" % (args.tab_out, chunk_size_1, min_line_len_1)
 table_out_2 = "%s_%s_%s" % (args.tab_out, chunk_size_2, min_line_len_2)
 
+# Languages to use
+languages = set([s.lower() for s in args.langs_str.split(",")])
+
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key, readonly=False)
+client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
 
 # Delete the output tables if they exist
 delete_bq_table(client, ds_res, table_out_1)
@@ -57,16 +65,17 @@ create_bq_table(client, ds_res, table_out_1, schema)
 create_bq_table(client, ds_res, table_out_2, schema)
 
 # Construct query to get file metadata and contents
-# Save intermediate ungrouped table and group in a separate query
-# due to "resources exceeded" error when grouping joined data
-tmp_table_ungrouped = 'tmp_query_res_cfreq_ungrouped'
+# Save intermediate ungrouped table and do grouping and ordering in separate queries
+# due to "resources exceeded" errors
+tmp_table_ungrouped = 'tmp_query_res_cfreq_ungrouped_unordered'
 tmp_table_grouped = 'tmp_query_res_cfreq'
 
 query_ungrouped = """
 SELECT
-  files.id AS id,
+  files.id as id,
   repo_name,
   path,
+  loc.language as language,
   contents_comments_stripped
 FROM
   [%s:%s.%s] AS contents
@@ -74,7 +83,11 @@ INNER JOIN
   [%s:%s.%s] AS files
 ON
   contents.id = files.id
-""" % (project_bioinf, ds_res, table_sc, project_bioinf, ds_gh, table_files)
+INNER JOIN
+  [%s:%s.%s] AS loc
+ON
+  contents.id = loc.id
+""" % (project_bioinf, ds_res, table_sc, project_bioinf, ds_gh, table_files, project_bioinf, ds_res, table_loc)
 
 query_group = """
 SELECT
@@ -82,24 +95,21 @@ SELECT
 FROM
   [%s:%s.%s]
 GROUP BY
-  repo_name, id, path, contents_comments_stripped
+  repo_name, id, path, language, contents_comments_stripped
 """ % (project_bioinf, ds_res, tmp_table_ungrouped)
 
 
-# Run query to get file metadata
-# Write results to a temporary table
-create_bq_table(client, ds_res, tmp_table_ungrouped, [
-    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'path', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'content_comments_stripped', 'type': 'STRING', 'mode': 'NULLABLE'}
-])
+# Run queries to get file metadata and contents
 
 print('Getting file metadata and comment-stripped contents\n')
 run_query_and_save_results(client, query_ungrouped, ds_res, tmp_table_ungrouped)
 
 print('Grouping results by repo name\n')
 run_query_and_save_results(client, query_group, ds_res, tmp_table_grouped)
+
+# print('Ordering results by repo name\n')
+# run_query_and_save_results(client, query_order, ds_res, tmp_table_grouped_ordered, 300)
+
 
 # Delete the ungrouped table
 delete_bq_table(client, ds_res, tmp_table_ungrouped)
@@ -113,6 +123,7 @@ gcschema = [
           SchemaField('id', 'STRING', mode = 'required'),
           SchemaField('repo_name', 'STRING', mode = 'required'),
           SchemaField('path', 'STRING', mode = 'required'),
+          SchemaField('language', 'STRING', mode = 'required'),
           SchemaField('content_comments_stripped', 'STRING', mode = 'required')
 ]
 gctable = dataset.table(tmp_table_grouped, gcschema)
@@ -124,6 +135,8 @@ chunks_1 = {}
 chunks_2 = {}
 num_repos_done = 0
 repo_nums_printed = set()
+langs_skipped = set()
+num_skipped_lang = 0
 
 # Get code chunks and put into data structure
 def add_chunks(lines, chunks_dict, chunk_size, min_line_len):
@@ -144,15 +157,18 @@ def make_records(repo_name, chunks_dict):
     return [{'repo_name': repo_name, 'code_chunk': chunk, 'num_occurrences': n} for chunk, n in chunks_dict.items()]
 
 def push_records(repo):
-    if len(chunks_1) > 0:
-        push_bq_records(client, ds_res, table_out_1, make_records(repo, chunks_1))
-        chunks_1.clear()
-    if len(chunks_2) > 0:
-        push_bq_records(client, ds_res, table_out_2, make_records(repo, chunks_2))
-        chunks_2.clear()
+    try:
+        if len(chunks_1) > 0:
+            push_bq_records(client, ds_res, table_out_1, make_records(repo, chunks_1))
+            chunks_1.clear()
+        if len(chunks_2) > 0:
+            push_bq_records(client, ds_res, table_out_2, make_records(repo, chunks_2))
+            chunks_2.clear()
+    except RuntimeError:
+        print("Warning: could not push records for repository %s." %(repo))
 
 # Get iterator over table records
-it = gctable.fetch_data() # https://googlecloudplatform.github.io/google-cloud-python/stable/bigquery-table.html
+it = gctable.fetch_data() # https://googlecloudplatform.github.io/google-cloud-python/stable/bigquery/table.html
 
 num_done = 0
 print("Analyzing source file content...")
@@ -161,6 +177,8 @@ for rec in it:
     num_done = num_done + 1
     if num_done % 1000 == 0:
         print("Finished %s records" % num_done)
+        if num_skipped_lang > 0:
+            print("Skipped %s files in languages: %s" %(num_skipped_lang, ", ".join(langs_skipped)))
     if num_repos_done % 10 == 0 and num_repos_done > 1 and num_repos_done not in repo_nums_printed:
         print("Finished %s repos" % num_repos_done)
         repo_nums_printed.add(num_repos_done)
@@ -168,11 +186,12 @@ for rec in it:
     file_id = rec[0]
     repo = rec[1]
     path = rec[2]
-    content_str = rec[3]
+    language = rec[3]
+    content_str = rec[4]
 
     if repo != curr_repo:
         if repo in repos_done:
-            raise ValueError("Records are not ordered by repo name")
+            raise ValueError("Records are not grouped by repo name: %s has been seen already: %s" %(repo, ", ".join(repos_done)))
         else:
             # Push records for previous repo if applicable
             push_records(curr_repo)
@@ -180,6 +199,11 @@ for rec in it:
             curr_repo = repo
             repos_done.add(repo)
             num_repos_done = num_repos_done + 1
+
+    # Check the language
+    if language.lower() not in languages:
+        langs_skipped.add(language)
+        num_skipped_lang = num_skipped_lang + 1
 
     # Process the record
     # Split into list of lines
