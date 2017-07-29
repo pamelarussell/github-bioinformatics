@@ -29,11 +29,13 @@ parser.add_argument('--table_out', action = 'store', dest = 'tab_out', required 
                     help = 'Prefix of BigQuery table to write code chunk frequencies to')
 args = parser.parse_args()
 
+
 # Parameters for chunk sizes
 chunk_size_1 = 5
 min_line_len_1 = 80
 chunk_size_2 = 10
 min_line_len_2 = 50
+
 
 # BigQuery parameters
 ds_gh = args.ds_gh
@@ -44,16 +46,20 @@ table_loc = args.tab_loc
 table_out_1 = "%s_%s_%s" % (args.tab_out, chunk_size_1, min_line_len_1)
 table_out_2 = "%s_%s_%s" % (args.tab_out, chunk_size_2, min_line_len_2)
 
+
 # Languages to use
 languages = set([s.lower() for s in args.langs_str.split(",")])
+
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
 
+
 # Delete the output tables if they exist
 delete_bq_table(client, ds_res, table_out_1)
 delete_bq_table(client, ds_res, table_out_2)
+
 
 # Create the output tables
 schema = [
@@ -64,11 +70,12 @@ schema = [
 create_bq_table(client, ds_res, table_out_1, schema)
 create_bq_table(client, ds_res, table_out_2, schema)
 
+
 # Construct query to get file metadata and contents
 # Save intermediate ungrouped table and do grouping and ordering in separate queries
 # due to "resources exceeded" errors
-tmp_table_ungrouped = 'tmp_query_res_cfreq_ungrouped_unordered'
-tmp_table_grouped = 'tmp_query_res_cfreq'
+tmp_table_ungrouped = 'tmp_query_res_cfreq_ungrouped'
+tmp_table_grouped = 'tmp_query_res_cfreq_grouped'
 
 query_ungrouped = """
 SELECT
@@ -107,36 +114,10 @@ run_query_and_save_results(client, query_ungrouped, ds_res, tmp_table_ungrouped)
 print('Grouping results by repo name\n')
 run_query_and_save_results(client, query_group, ds_res, tmp_table_grouped)
 
-# print('Ordering results by repo name\n')
-# run_query_and_save_results(client, query_order, ds_res, tmp_table_grouped_ordered, 300)
-
 
 # Delete the ungrouped table
 delete_bq_table(client, ds_res, tmp_table_ungrouped)
 
-# Set up connection using google cloud API because bigquery-python package does not support iterating through records
-# Must have environment variable GOOGLE_APPLICATION_CREDENTIALS set to json key
-# https://developers.google.com/identity/protocols/application-default-credentials
-gcclient = bigquery.Client()
-dataset = gcclient.dataset(ds_res)
-gcschema = [
-          SchemaField('id', 'STRING', mode = 'required'),
-          SchemaField('repo_name', 'STRING', mode = 'required'),
-          SchemaField('path', 'STRING', mode = 'required'),
-          SchemaField('language', 'STRING', mode = 'required'),
-          SchemaField('content_comments_stripped', 'STRING', mode = 'required')
-]
-gctable = dataset.table(tmp_table_grouped, gcschema)
-
-# Keep track of repos while iterating
-repos_done = set()
-curr_repo = ""
-chunks_1 = {}
-chunks_2 = {}
-num_repos_done = 0
-repo_nums_printed = set()
-langs_skipped = set()
-num_skipped_lang = 0
 
 # Get code chunks and put into data structure
 def add_chunks(lines, chunks_dict, chunk_size, min_line_len):
@@ -151,6 +132,7 @@ def add_chunks(lines, chunks_dict, chunk_size, min_line_len):
                 chunks_dict[chunk_join] = prev_count + 1
             else:
                 chunks_dict[chunk_join] = 1
+
 
 # Create pushable records from dict of code chunks
 def make_records(repo_name, chunks_dict):
@@ -167,61 +149,122 @@ def push_records(repo):
     except RuntimeError:
         print("Warning: could not push records for repository %s." %(repo))
 
-# Get iterator over table records
-it = gctable.fetch_data() # https://googlecloudplatform.github.io/google-cloud-python/stable/bigquery/table.html
 
+# Set up connection using google cloud API because bigquery-python package does not support iterating through records
+# Must have environment variable GOOGLE_APPLICATION_CREDENTIALS set to json key
+# https://developers.google.com/identity/protocols/application-default-credentials
+gcclient = bigquery.Client()
+
+
+# Keep track of repos while iterating through results
+repos_done = set()
+curr_repo = ""
+chunks_1 = {}
+chunks_2 = {}
+num_repos_done = 0
+repo_nums_printed = set()
+langs_skipped = set()
+num_skipped_lang = 0
 num_done = 0
-print("Analyzing source file content...")
-for rec in it:
+PAGE_SIZE = 1000
+
+
+# Process all repos whose repo name starts with letter
+def process_repos(first_letter):
     
-    num_done = num_done + 1
-    if num_done % 1000 == 0:
-        print("Finished %s records" % num_done)
-        if num_skipped_lang > 0:
-            print("Skipped %s files in languages: %s" %(num_skipped_lang, ", ".join(langs_skipped)))
-    if num_repos_done % 10 == 0 and num_repos_done > 1 and num_repos_done not in repo_nums_printed:
-        print("Finished %s repos" % num_repos_done)
-        repo_nums_printed.add(num_repos_done)
+    print("Processing repos starting with: %s" %(first_letter))
     
-    file_id = rec[0]
-    repo = rec[1]
-    path = rec[2]
-    language = rec[3]
-    content_str = rec[4]
-
-    if repo != curr_repo:
-        if repo in repos_done:
-            raise ValueError("Records are not grouped by repo name: %s has been seen already: %s" %(repo, ", ".join(repos_done)))
-        else:
-            # Push records for previous repo if applicable
-            push_records(curr_repo)
-            # Reset current repo
-            curr_repo = repo
-            repos_done.add(repo)
-            num_repos_done = num_repos_done + 1
-
-    # Check the language
-    if language.lower() not in languages:
-        langs_skipped.add(language)
-        num_skipped_lang = num_skipped_lang + 1
-
-    # Process the record
-    # Split into list of lines
-    lines = content_str.split("\n")
-    # Strip leading and trailing whitespace
-    lines = map(lambda x: x.strip(), lines)
-    # Remove empty lines
-    lines = list(filter(lambda x: len(x) > 0, lines))
+    global repos_done, curr_repo, chunks_1, chunks_2, num_repos_done, repo_nums_printed, langs_skipped, num_skipped_lang, num_done
+        
+    # Query to get the records in order by repo name
+    sql_order = """
+    SELECT
+      *
+    FROM
+      [%s:%s.%s]
+    WHERE
+      LOWER(SUBSTR(repo_name, 1, 1)) = "%s"
+    ORDER BY
+      repo_name
+    """ % (project_bioinf, ds_res, tmp_table_grouped, first_letter.lower())
+    
+    # Run the query
+    query_order = gcclient.run_sync_query(sql_order)
+    query_order.timeout_ms = 300000
+    query_order.max_results = PAGE_SIZE
+    query_order.run()
+    assert query_order.complete
+    assert query_order.page_token is not None
+    rows = query_order.rows
+    token = query_order.page_token
+    
+    print("Analyzing source file content...")
+    while True:
+        for rec in rows:
+            num_done = num_done + 1
+            if num_done % 1000 == 0:
+                print("Finished %s records" % num_done)
+            if num_done % 10000 == 0:
+                if num_skipped_lang > 0:
+                    print("Skipped %s files in languages: %s" %(num_skipped_lang, ", ".join(langs_skipped)))
+            if num_repos_done % 10 == 0 and num_repos_done > 1 and num_repos_done not in repo_nums_printed:
+                print("Finished %s repos" % num_repos_done)
+                repo_nums_printed.add(num_repos_done)
             
-    # Count the chunks from this file
-    add_chunks(lines, chunks_1, chunk_size_1, min_line_len_1)
-    add_chunks(lines, chunks_2, chunk_size_2, min_line_len_2)
-
+            repo = rec[1]
+            language = rec[3]
+            content_str = rec[4]
+        
+            if repo != curr_repo:
+                if repo in repos_done:
+                    raise ValueError("Records are not grouped by repo name: %s has been seen already: %s" %(repo, ", ".join(repos_done)))
+                else:
+                    # Push records for previous repo if applicable
+                    push_records(curr_repo)
+                    # Reset current repo
+                    curr_repo = repo
+                    repos_done.add(repo)
+                    num_repos_done = num_repos_done + 1
+        
+            # Check the language
+            if language.lower() not in languages:
+                langs_skipped.add(language)
+                num_skipped_lang = num_skipped_lang + 1
+        
+            # Process the record
+            # Split into list of lines
+            lines = content_str.split("\n")
+            # Strip leading and trailing whitespace
+            lines = map(lambda x: x.strip(), lines)
+            # Remove empty lines
+            lines = list(filter(lambda x: len(x) > 0, lines))
+                    
+            # Count the chunks from this file
+            add_chunks(lines, chunks_1, chunk_size_1, min_line_len_1)
+            add_chunks(lines, chunks_2, chunk_size_2, min_line_len_2)
+            
+        if token is None:
+            break
+        rows, total_count, token = query_order.fetch_data(page_token = token)
+    
+    
 # Push final batch of records
-push_records(repo)
+push_records(curr_repo)
+    
+    
+chars = []
+for letter in range(ord('a'), ord('z') + 1):
+    chars.append(chr(letter))
+for digit in range(ord('0'), ord('9') + 1):
+    chars.append(chr(digit))
+
+for char in chars:
+    process_repos(char)
+    
     
 # Delete the temporary table
 delete_bq_table(client, ds_res, tmp_table_grouped)
+    
     
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 
