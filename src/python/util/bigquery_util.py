@@ -1,4 +1,3 @@
-import time
 
 def run_bq_query(client, query, timeout):
     """ Returns the results of a BigQuery query

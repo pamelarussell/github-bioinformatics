@@ -3,6 +3,8 @@ import os
 
 from bigquery import get_client
 
+from dry import add_chunks, make_records, split_into_lines
+
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
 from local_params import json_key
@@ -119,35 +121,22 @@ run_query_and_save_results(client, query_group, ds_res, tmp_table_grouped)
 delete_bq_table(client, ds_res, tmp_table_ungrouped)
 
 
-# Get code chunks and put into data structure
-def add_chunks(lines, chunks_dict, chunk_size, min_line_len):
-    nlines = len(lines)
-    for i in range(nlines - chunk_size):
-        chunk = lines[i:i+chunk_size]
-        # Make sure all lines in the chunk are long enough
-        if all(len(line) >= min_line_len for line in chunk):
-            chunk_join = "\n".join(lines[i:i+chunk_size])
-            if chunk_join in chunks_dict:
-                prev_count = chunks_dict[chunk_join]
-                chunks_dict[chunk_join] = prev_count + 1
+def slice_dict(d, start, end):
+    return dict(list(d.items())[start:end])
+
+def push_records(table, repo, chunks):
+    if len(chunks) > 0:
+        try:
+            push_bq_records(client, ds_res, table, make_records(repo, chunks))
+        except RuntimeError:
+            n = len(chunks)
+            if(n == 1):
+                raise RuntimeError("Could not push analysis for %s." %(repo))
             else:
-                chunks_dict[chunk_join] = 1
-
-
-# Create pushable records from dict of code chunks
-def make_records(repo_name, chunks_dict):
-    return [{'repo_name': repo_name, 'code_chunk': chunk, 'num_occurrences': n} for chunk, n in chunks_dict.items()]
-
-def push_records(repo):
-    try:
-        if len(chunks_1) > 0:
-            push_bq_records(client, ds_res, table_out_1, make_records(repo, chunks_1))
-            chunks_1.clear()
-        if len(chunks_2) > 0:
-            push_bq_records(client, ds_res, table_out_2, make_records(repo, chunks_2))
-            chunks_2.clear()
-    except RuntimeError:
-        print("Warning: could not push records for repository %s." %(repo))
+                k = n // 2
+                print("Could not push analysis of %s chunks for %s. Dividing in half and retrying." %(n, repo))
+                push_records(table, repo, slice_dict(chunks, 0, k))
+                push_records(table, repo, slice_dict(chunks, k, n))
 
 
 # Set up connection using google cloud API because bigquery-python package does not support iterating through records
@@ -194,11 +183,10 @@ def process_repos(first_letter):
     query_order.max_results = PAGE_SIZE
     query_order.run()
     assert query_order.complete
-    assert query_order.page_token is not None
+    #assert query_order.page_token is not None
     rows = query_order.rows
     token = query_order.page_token
     
-    print("Analyzing source file content...")
     while True:
         for rec in rows:
             num_done = num_done + 1
@@ -220,7 +208,10 @@ def process_repos(first_letter):
                     raise ValueError("Records are not grouped by repo name: %s has been seen already: %s" %(repo, ", ".join(repos_done)))
                 else:
                     # Push records for previous repo if applicable
-                    push_records(curr_repo)
+                    push_records(table_out_1, curr_repo, chunks_1)
+                    push_records(table_out_2, curr_repo, chunks_2)
+                    chunks_1.clear()
+                    chunks_2.clear()
                     # Reset current repo
                     curr_repo = repo
                     repos_done.add(repo)
@@ -230,14 +221,10 @@ def process_repos(first_letter):
             if language.lower() not in languages:
                 langs_skipped.add(language)
                 num_skipped_lang = num_skipped_lang + 1
+                continue
         
             # Process the record
-            # Split into list of lines
-            lines = content_str.split("\n")
-            # Strip leading and trailing whitespace
-            lines = map(lambda x: x.strip(), lines)
-            # Remove empty lines
-            lines = list(filter(lambda x: len(x) > 0, lines))
+            lines = split_into_lines(content_str)
                     
             # Count the chunks from this file
             add_chunks(lines, chunks_1, chunk_size_1, min_line_len_1)
@@ -249,7 +236,10 @@ def process_repos(first_letter):
     
     
 # Push final batch of records
-push_records(curr_repo)
+push_records(table_out_1, curr_repo, chunks_1)
+push_records(table_out_2, curr_repo, chunks_2)
+chunks_1.clear()
+chunks_2.clear()
     
     
 chars = []
