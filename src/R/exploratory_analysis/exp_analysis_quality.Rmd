@@ -4,18 +4,19 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+# knitr options
 knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
 
-
 ```{r echo = F}
+# Environment setup
 rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(tidyr))
 setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
 ```
-
 
 ```{r}
 # Project info
@@ -28,30 +29,94 @@ table_code_chunk_freq_10_50 <- "code_chunk_freq_by_repo_10_50"
 table_code_chunk_freq_5_80 <- "code_chunk_freq_by_repo_5_80"
 ```
 
+```{r}
+# Functions to analyze duplicated chunks of code
 
-```{r fig.height = 7, fig.width = 7}
-# Load the data from BigQuery
-lines_of_code_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = table_loc_by_repo)
-query_10_50 <- paste("SELECT * FROM [", proj, ":", ds_analysis, ".", table_code_chunk_freq_10_50, "] WHERE num_occurrences > 1", sep="")
-dup_chunks_10_50 <- query_exec(query_10_50, project = proj)
-total_loc_in_dup_chunks_10_50 <- 
-  dup_chunks_10_50 %>% 
-  group_by(repo_name) %>% 
-  summarize(sum_dup_chunk_len = 10 * sum(num_occurrences)) %>%
-  right_join(lines_of_code_by_repo, by = "repo_name")
-total_loc_in_dup_chunks_10_50[is.na(total_loc_in_dup_chunks_10_50)] <- 0
+# Function to load duplicated chunks
+load_dup_chunks <- function(table) {
+  query <- paste("SELECT * FROM [", proj, ":", ds_analysis, ".", table, "] WHERE num_occurrences > 1", sep="")
+  query_exec(query, project = proj)
+}
 
-# Make plot
-axmax <- log10(max(total_loc_in_dup_chunks_10_50$lines_of_code)) + 0.1
-ggplot(total_loc_in_dup_chunks_10_50, aes(x = log10(lines_of_code), y = log10(sum_dup_chunk_len))) + 
+# Function to sum duplicated lines of code
+add_dup_loc <- function(dup_chunks, chunk_size) {
+  total_loc_in_dup_chunks <- 
+    dup_chunks %>% 
+    group_by(repo_name) %>% 
+    summarize(sum_dup_chunk_len = chunk_size * sum(num_occurrences)) %>%
+    right_join(lines_of_code_by_repo, by = "repo_name")
+  total_loc_in_dup_chunks[is.na(total_loc_in_dup_chunks)] <- 0
+  total_loc_in_dup_chunks
+}
+
+# Function to make plot of code chunk frequencies vs lines of code in repo
+scatter_dup_loc <- function(ccf, chunk_size, min_line_len) {
+axmax <- log10(max(ccf$lines_of_code)) + 0.1
+ggplot(ccf, aes(x = log10(lines_of_code), y = log10(sum_dup_chunk_len))) + 
   geom_point() +
   geom_abline(slope = 1, intercept = 0) +
   xlim(0, axmax) +
   ylim(0, axmax) +
-  labs(title = "Lines of code in duplicate chunks (10 lines; length >= 50)",
+  labs(title = paste("Lines of code in duplicate chunks (", chunk_size, " lines; length >= ", min_line_len, ")", sep=""),
        x = "Total lines of code in repo (log10)",
        y = "Total lines of code in duplicated chunks (lines can be double counted)")
+}
 ```
+
+```{r}
+# Load data
+
+# Load lines of code by repo 
+lines_of_code_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = table_loc_by_repo)
+
+# Load duplicated code chunks
+dup_chunks_10_50 <- load_dup_chunks(table_code_chunk_freq_10_50)
+dup_chunks_5_80 <- load_dup_chunks(table_code_chunk_freq_5_80)
+
+# Add up duplicated lines of code
+dup_loc_10_50 <- add_dup_loc(dup_chunks_10_50, 10)
+dup_loc_5_80 <- add_dup_loc(dup_chunks_5_80, 5)
+```
+
+### Lines of code in duplicated chunks (lines can be double counted)
+
+```{r fig.height = 7, fig.width = 7}
+# Make scatter plots
+scatter_dup_loc(dup_loc_10_50, 10, 50)
+scatter_dup_loc(dup_loc_5_80, 5, 80)
+```
+
+```{r}
+# Function to identify unique lines of code in duplicated chunks
+num_unique_dup_lines <- function(dup_chunks) {
+  unique_dup_lines <- dup_chunks %>% 
+    mutate(line = strsplit(code_chunk, "\n")) %>% 
+    unnest(line) %>%
+    select(repo_name, line) %>%
+    distinct()
+  unique_dup_lines %>%
+    group_by(repo_name) %>%
+    summarize(num_unique_dup_lines = n()) %>%
+    arrange(-num_unique_dup_lines)
+}
+```
+
+### Number of unique lines in dupicated chunks
+
+Number of unique lines in duplicated chunks of 10 lines, length at least 50
+
+```{r echo = T}
+num_unique_dup_lines_10_50 <- num_unique_dup_lines(dup_chunks_10_50)
+num_unique_dup_lines_10_50
+```
+
+Number of unique lines in duplicated chunks of 5 lines, length at least 80
+
+```{r echo = T}
+num_unique_dup_lines_5_80 <- num_unique_dup_lines(dup_chunks_5_80)
+num_unique_dup_lines_5_80
+```
+
 
 
 

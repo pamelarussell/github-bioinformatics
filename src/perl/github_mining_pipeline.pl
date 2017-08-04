@@ -127,7 +127,8 @@ if($run_bq_analysis_queries) {
 if($run_cloc) {
 	my $out_log_cloc = "$out_results_dir_cloc/run.out";
 	my $cmmd_cloc = "$python3 $script_cloc --in_ds $bq_ds " .
-	"--out_ds $bq_ds_analysis_results --table_loc $bq_tb_lines_of_code_by_file " .
+	"--out_ds $bq_ds_analysis_results " .
+	"--table_loc $bq_tb_lines_of_code_by_file " .
 	"--table_sc $bq_tb_contents_comments_stripped " .
 	"--outfile $out_log_cloc --cloc $cloc_exec";
 	run_cmmd($cmmd_cloc, $out_log_cloc)
