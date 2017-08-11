@@ -73,7 +73,7 @@ dtm_test <- dtm_all[-train_idx,]
 dtm_train <- dtm_all[train_idx,]
 
 # Identify terms that appear a minimum number of times in training corpus
-dict <- findFreqTerms(dtm_train, lowfreq = 5)
+dict <- findFreqTerms(dtm_train, lowfreq = 20)
 train <- DocumentTermMatrix(corpus_train, list(dictionary = dict))
 test <- DocumentTermMatrix(corpus_test, list(dictionary = dict))
 
@@ -86,65 +86,11 @@ train <- train %>% apply(MARGIN=2, FUN=convert_counts)
 test <- test %>% apply(MARGIN=2, FUN=convert_counts)
 
 # Train the model
-model <- train(train, data_train$Bioinformatics, method = "nb", metric = "Accuracy", na.action = na.omit)
+model <- train(train, data_train$Bioinformatics, method = "nb", metric = "Accuracy", trControl = trainControl(method="cv", 10))
 
-
-
-
-
-
-##
-## Misc exploration
-##
-
-# Tidy the data
-data_train_tidy <- data_train %>%
-  dplyr::select(PMID, Bioinformatics, Abstract) %>%
-  unnest_tokens(Token, Abstract) %>%
-  mutate(Stem = stemDocument(Token))
-
-# Perform tf-idf on abstract text
-tf_idf_train <- data_train_tidy %>%
-  count(Bioinformatics, Stem, sort = T) %>%
-  ungroup() %>%
-  bind_tf_idf(Stem, Bioinformatics, n) %>%
-  arrange(desc(tf_idf))
-
-# Get the top tf-idf tokens
-top_tokens <- function(is_bioinf, n) {
-  top_tokens <- tf_idf_train %>%
-    filter(Bioinformatics == is_bioinf) %>%
-    top_n(n, tf_idf) %>%
-    dplyr::select(Stem)
-  top_tokens[[1]]
-}
-
-# Classification function
-num_top_tokens <- 10
-predict_tfidf <- function(abstract) {
-  unique_stems <- unique(unlist(strsplit(stemDocument(abstract), "\\s+")))
-  top_pos_tokens <- top_tokens(T, num_top_tokens)
-  top_neg_tokens <- top_tokens(F, num_top_tokens)
-  every(top_neg_tokens, function(x) !(x %in% unique_stems)) || some(top_pos_tokens, function(x) x %in% unique_stems)
-}
-
-# Evaluate tf-idf classifier
-conf_matrix_tfidf <- function(data) {
-  pred <- sapply(data$Abstract, predict_tfidf)
-  confusionMatrix(data = pred, reference = data$Bioinformatics)
-}
-
-accuracy <- function(conf_matrix) {
-  conf_matrix$overall["Accuracy"]
-}
-
-conf_matrix_train <- conf_matrix_tfidf(data_train)
-message(paste("tf-idf classifier: training set accuracy:", accuracy(conf_matrix_train)))
-
-
-
-
-
+# Use the model to predict the classification on the test set
+predict <- predict(model, test)
+cm <- confusionMatrix(predict, data_test$Bioinformatics, positive="bioinf")
 
 
 
