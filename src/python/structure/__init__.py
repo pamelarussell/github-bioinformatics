@@ -20,7 +20,7 @@ from .bq_proj_structure import table_lines_of_code_repo
 from .bq_proj_structure import table_bytes_by_language
 from .bq_proj_structure import table_language_list_by_repo
 from .bq_proj_structure import table_num_actors_by_repo
-from .bq_proj_structure import table_num_forks_by_repo
+from .bq_proj_structure import table_num_fork_events_by_repo
 from .bq_proj_structure import table_num_languages_by_repo
 from .bq_proj_structure import table_num_recent_actors_by_repo
 from .bq_proj_structure import table_num_watch_events_by_repo

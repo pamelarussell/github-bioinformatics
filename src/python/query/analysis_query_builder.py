@@ -77,12 +77,12 @@ def build_query_language_list_by_repo(dataset, table):
     """ % (project_bioinf, dataset, table)
 
 
-# Number of forks by repo
-def build_query_num_forks_by_repo(dataset, table):
+# Number of fork events by repo
+def build_query_num_fork_events_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
-      COUNT(DISTINCT actor_id) AS num_forks
+      COUNT(DISTINCT actor_id) AS num_fork_events
     FROM (
       SELECT
         type,
@@ -121,7 +121,7 @@ def build_query_num_watch_events_by_repo(dataset, table):
     return """
     SELECT
       repo_name,
-      COUNT(*) AS num_watchers
+      COUNT(*) AS num_watch_events
     FROM (
       SELECT
         repo_name,
@@ -141,7 +141,7 @@ def build_query_num_watch_events_by_repo(dataset, table):
     GROUP BY
       repo_name
     ORDER BY
-      num_watchers DESC    
+      num_watch_events DESC    
     """ % (project_bioinf, dataset, table)
 
 

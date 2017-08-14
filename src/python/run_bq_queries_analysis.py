@@ -39,8 +39,8 @@ run_query_and_save_results(client, build_query_repo_count_by_language(dataset, t
 # List of languages by repo
 run_query_and_save_results(client, build_query_language_list_by_repo(dataset, table_languages), res_dataset, table_language_list_by_repo)
   
-# Number of forks by repo
-run_query_and_save_results(client, build_query_num_forks_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_forks_by_repo)
+# Number of fork events by repo
+run_query_and_save_results(client, build_query_num_fork_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_fork_events_by_repo)
   
 # Number of languages by repo
 run_query_and_save_results(client, build_query_num_languages_by_repo(dataset, table_languages), res_dataset, table_num_languages_by_repo)
