@@ -9,6 +9,9 @@ api_rate_limit_per_hour = 5000
 # The number of seconds to wait between jobs if expecting to approach the rate limit
 sec_between_requests = 60 * 60 / api_rate_limit_per_hour
 
+# The 'repos' endpoint
+url_repos = "https://api.github.com/repos"
+
 def sleep_gh_rate_limit():
     """ Sleep for an amount of time that, if done between GitHub API requests for a full hour,
     will ensure the API rate limit is not exceeded.
