@@ -38,15 +38,6 @@ run_query_and_save_results(client, build_query_files(repos), res_dataset, table_
 # Contents
 run_query_and_save_results(client, build_query_contents(repos), res_dataset, table_contents)
  
-# GitHub archive
-years = ['2011', '2012', '2013', '2014', '2015', '2016']
-for year in years:
-    run_query_and_save_results(client, build_query_gh_archive(repos, year), res_dataset, table_archive(year))
-    
-# Combine years of GitHub archive
-time.sleep(30) # Wait for GitHub archive tables
-run_query_and_save_results(client, build_query_combine_years_gh_archive(res_dataset, years), res_dataset, table_archive_2011_2016)
-     
 # Langauges
 run_query_and_save_results(client, build_query_languages(repos), res_dataset, table_languages)
 

@@ -28,8 +28,7 @@ ds_analysis <- "test_repos_analysis_results"
 # Join all repo-level data
 # Load all the repo-level data from BigQuery and do a full join by repo name
 table_list <- c("language_list_by_repo", "num_languages_by_repo", "lines_of_code_by_repo", 
-                "project_duration_by_repo", "num_fork_events_by_repo", "num_watch_events_by_repo", 
-                "num_actors_by_repo", "num_devs_by_repo", "commit_types_by_repo", "test_cases_by_repo")
+                "project_duration_by_repo", "num_devs_by_repo", "commit_types_by_repo", "test_cases_by_repo")
 repo_level_data <- data.frame(repo_name = character())
 for(table in table_list) {
   table_data <- list_tabledata(project = proj, dataset = ds_analysis, table = table)
@@ -102,34 +101,6 @@ qplot(repo_level_data$commit_span_days,
         axis.title.y = element_text(size = 16)) +
   scale_x_continuous(breaks = function(x) {seq(0, x[2], by=365)},
                      labels = function(x) x / 365)
-```
-
-
-```{r}
-# Number of fork events
-qplot(repo_level_data$num_fork_events,
-      geom = "histogram",
-      main = "Histogram of number of fork events",
-      xlab = "Number of fork events",
-      ylab = "Number of repos",
-      fill = I("darkmagenta")) +
-  theme(plot.title = element_text(size = 24),
-        axis.title.x = element_text(size = 16),
-        axis.title.y = element_text(size = 16))
-```
-
-
-```{r}
-# Number of watch events
-qplot(repo_level_data$num_watch_events,
-      geom = "histogram",
-      main = "Histogram of number of watch events",
-      xlab = "Number of watch events",
-      ylab = "Number of repos",
-      fill = I("darkmagenta")) +
-  theme(plot.title = element_text(size = 24),
-        axis.title.x = element_text(size = 16),
-        axis.title.y = element_text(size = 16))
 ```
 
 

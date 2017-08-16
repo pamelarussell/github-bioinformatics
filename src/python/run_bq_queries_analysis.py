@@ -27,9 +27,6 @@ client = get_client(json_key_file=json_key, readonly=False)
     
 # Run the queries
  
-# Number of actors by repo
-run_query_and_save_results(client, build_query_num_actors_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_actors_by_repo)
-  
 # Bytes of code by language
 run_query_and_save_results(client, build_query_bytes_by_language(dataset, table_languages), res_dataset, table_bytes_by_language)
   
@@ -39,15 +36,9 @@ run_query_and_save_results(client, build_query_repo_count_by_language(dataset, t
 # List of languages by repo
 run_query_and_save_results(client, build_query_language_list_by_repo(dataset, table_languages), res_dataset, table_language_list_by_repo)
   
-# Number of fork events by repo
-run_query_and_save_results(client, build_query_num_fork_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_fork_events_by_repo)
-  
 # Number of languages by repo
 run_query_and_save_results(client, build_query_num_languages_by_repo(dataset, table_languages), res_dataset, table_num_languages_by_repo)
   
-# Number of watch events by repo
-run_query_and_save_results(client, build_query_num_watch_events_by_repo(dataset, table_archive_2011_2016), res_dataset, table_num_watch_events_by_repo)
- 
 # "Test cases" (files containing "test" somewhere in the path or filename)
 # Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
 # Kochhar PS, Bissyandé TF, Lo D, Jiang L. An Empirical Study of Adoption of Software Testing in Open Source Projects. 2013 13th International Conference on Quality Software. 2013. pp. 103–112. doi:10.1109/QSIC.2013.57

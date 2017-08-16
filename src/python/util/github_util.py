@@ -12,6 +12,10 @@ sec_between_requests = 60 * 60 / api_rate_limit_per_hour
 # The 'repos' endpoint
 url_repos = "https://api.github.com/repos"
 
+def get_pulls_url(repo_name, state = "all"):
+    """ Get GitHub API pull requests URL for given repo name """
+    return "%s/%s/pulls?per_page=100&state=%s" % (url_repos, repo_name, state)
+
 def sleep_gh_rate_limit():
     """ Sleep for an amount of time that, if done between GitHub API requests for a full hour,
     will ensure the API rate limit is not exceeded.

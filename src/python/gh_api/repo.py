@@ -1,6 +1,7 @@
 from util import gh_curl_response, url_repos
 import json
 
+
 class Repo(object):
     """Repo data from the repos endpoint of the GitHub API"""
 
@@ -12,7 +13,6 @@ class Repo(object):
         self.repo_name = repo_name
         self.url = "%s/%s" %(url_repos, repo_name)
         self.response = gh_curl_response(self.url)
-        self.parsed = json.loads(self.response)
         
     def get_repo_name(self):
         return self.repo_name
@@ -23,32 +23,29 @@ class Repo(object):
     def get_gh_api_response(self):
         return self.response
     
-    def get_parsed_gh_api_response(self):
-        return self.parsed
-    
     def get_repo_url(self):
-        return self.parsed['html_url']
+        return self.response.get('html_url')
     
     def get_description(self):
-        return self.parsed['description']
+        return self.response.get('description')
     
     def is_fork(self):
-        return self.parsed['fork']
+        return self.response.get('fork')
     
-    def stargazers_count(self):
-        return self.parsed['stargazers_count']
+    def get_stargazers_count(self):
+        return self.response.get('stargazers_count')
     
-    def watchers_count(self):
-        return self.parsed['watchers_count']
+    def get_watchers_count(self):
+        return self.response.get('watchers_count')
     
-    def forks_count(self):
-        return self.parsed['forks_count']
+    def get_forks_count(self):
+        return self.response.get('forks_count')
     
-    def open_issues_count(self):
-        return self.parsed['open_issues']
+    def get_open_issues_count(self):
+        return self.response.get('open_issues')
     
-    def subscribers_count(self):
-        return self.parsed['subscribers_count']
+    def get_subscribers_count(self):
+        return self.response.get('subscribers_count')
         
         
         

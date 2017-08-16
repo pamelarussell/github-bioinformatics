@@ -96,26 +96,6 @@ def build_query_contents(repos):
            project_bq_public_data, dataset_github_repos, table_github_repos_files, comma_separated_lowercase_quoted_repo_names(repos))
     
     
-# GitHub Archive activity
-# repos is a comma separated, double quoted list of repo names
-# year is a string
-def build_query_gh_archive(repos, year):
-    return """
-    SELECT
-      *
-    FROM
-      [%s:%s.%s]
-    WHERE
-      lower(repo.name) IN ( %s )
-    """ % (project_github_archive, dataset_gh_archive_year, year, comma_separated_lowercase_quoted_repo_names(repos))
-    
-
-# Combine years of GitHub archive
-def build_query_combine_years_gh_archive(dataset, years):
-    tables = ['[%s:%s.%s]' % (project_bioinf, dataset, table_archive(year)) for year in years]
-    return 'SELECT * FROM ( SELECT * FROM %s )' % '), (SELECT * FROM '.join(tables)
-    
-    
 # Languages used in each repo
 # repos is a comma separated, double quoted list of repo names
 def build_query_languages(repos):

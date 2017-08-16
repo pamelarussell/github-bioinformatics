@@ -14,6 +14,9 @@ use warnings;
 #                    Choose steps to run 
 # -----------------------------------------------------------------
 
+# Use GitHub API to get repo-level metrics
+my $generate_gh_api_repo_data = 0;
+
 # Regenerate GitHub bioinformatics dataset
 # $$$ Expensive! $$$
 my $generate_gh_bioinf_dataset = 0;
@@ -31,7 +34,10 @@ my $run_cloc = 0;
 my $run_extract_comments = 0;
 
 # Analyze frequency of code chunks
-my $run_code_chunk_frequency = 1;
+my $run_code_chunk_frequency = 0;
+
+# Use GitHub API to get pull request data
+my $generate_pr_data = 1;
 
 
 # -----------------------------------------------------------------
@@ -46,6 +52,7 @@ my $bq_ds = "test_repos";
 my $bq_ds_analysis_results = "test_repos_analysis_results";
 
 # Tables
+my $bq_tb_repo_info_gh_api = "repo_info_gh_api"; # Repo info from the GitHub API
 my $bq_tb_articles = "articles_by_repo"; # NCBI article metadata
 my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
 my $bq_tb_contents_comments_stripped = "contents_comments_stripped"; # Computed table with language and lines of code per source file
@@ -53,6 +60,7 @@ my $bq_tb_comments = "source_code_comments"; # Computed table with comments extr
 my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
 my $bq_tb_code_chunk_frequency_by_repo = "code_chunk_freq_by_repo"; # Frequency of groups of lines of code
 my $bq_tb_files = "files"; # File metadata
+my $bq_tb_prs = "pull_requests"; # Pull requests
 
 
 # -----------------------------------------------------------------
@@ -65,12 +73,14 @@ my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
 # Programs
+my $script_generate_gh_api_repo_data = "$src_dir_python/gh_api_repo_data.py";
 my $script_generate_article_info_table = "$src_dir_R/ncbi/paper_metadata.R";
 my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
 my $script_code_chunk_frequency = "$src_dir_python/code_chunk_frequency.py";
+my $script_generate_pr_data = "$src_dir_python/extract_pr_data.py";
 
 # Output directories
 my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
@@ -105,6 +115,12 @@ my $languages = "C++,Python,JavaScript,C,Java,Groff,PHP,Matlab,Perl,R,Mathematic
 # -----------------------------------------------------------------
 #                       Run the analyses
 # -----------------------------------------------------------------
+
+# Get repo info from GitHub API
+if($generate_gh_api_repo_data) {
+	run_cmmd("$python3 $script_generate_gh_api_repo_data --ds $bq_ds --table $bq_tb_repo_info_gh_api ".
+	"--repos $repo_names_list")
+} else {print("\nSkipping step: get repo info from GitHub API\n")}
 
 # Regenerate GitHub bioinformatics dataset
 if($generate_gh_bioinf_dataset) {
@@ -148,6 +164,13 @@ if($run_code_chunk_frequency) {
 	"--table_loc $bq_tb_lines_of_code_by_file --langs $languages";
 	run_cmmd($cmmd_code_chunk_freq);
 } else {print("\nSkipping step: analyze code chunk frequency\n")}
+
+# Get repo info from GitHub API
+if($generate_pr_data) {
+	run_cmmd("$python3 $script_generate_pr_data --ds $bq_ds --table $bq_tb_prs ".
+	"--repos $repo_names_list")
+} else {print("\nSkipping step: get pull request info from GitHub API\n")}
+
 
 print("\n\nAll done: $0.\n\n");
 

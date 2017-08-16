@@ -77,28 +77,6 @@ def build_query_language_list_by_repo(dataset, table):
     """ % (project_bioinf, dataset, table)
 
 
-# Number of fork events by repo
-def build_query_num_fork_events_by_repo(dataset, table):
-    return """
-    SELECT
-      repo_name,
-      COUNT(DISTINCT actor_id) AS num_fork_events
-    FROM (
-      SELECT
-        type,
-        repo_name,
-        actor_id
-      FROM
-        [%s:%s.%s] AS events
-      WHERE
-        events.type = 'ForkEvent')
-    GROUP BY
-      1
-    ORDER BY
-      2 DESC
-    """ % (project_bioinf, dataset, table)
-
-
 # Number of languages by repo
 def build_query_num_languages_by_repo(dataset, table):
     return """
@@ -113,35 +91,6 @@ def build_query_num_languages_by_repo(dataset, table):
       1
     ORDER BY
       2 DESC    
-    """ % (project_bioinf, dataset, table)
-
-
-# Number of watch events by repo
-def build_query_num_watch_events_by_repo(dataset, table):
-    return """
-    SELECT
-      repo_name,
-      COUNT(*) AS num_watch_events
-    FROM (
-      SELECT
-        repo_name,
-        actor_id,
-        type
-      FROM
-        [%s:%s.%s]
-      WHERE
-        type = 'WatchEvent'
-      GROUP BY
-        repo_name,
-        actor_id,
-        type
-      ORDER BY
-        repo_name,
-        actor_id ASC)
-    GROUP BY
-      repo_name
-    ORDER BY
-      num_watch_events DESC    
     """ % (project_bioinf, dataset, table)
 
 

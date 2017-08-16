@@ -76,11 +76,7 @@ def push_bq_records(client, dataset, table, records):
         dataset: Dataset name
         table: Table name
         records: List of records to add
-                 Each record is a dictionary with keys matching the schema
-        try_num: Index of this try at pushing records
-        max_tries: Number of times to try if attempt to push records is unsuccessful
-        sleep_sec: Number of seconds to sleep between attempts
-    
+                 Each record is a dictionary with keys matching the schema    
     """
     succ = client.push_rows(dataset, table, records)
     if not succ:
