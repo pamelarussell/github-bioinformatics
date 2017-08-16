@@ -1,0 +1,52 @@
+---
+title: 'Exploratory analysis: testing'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+source("project_info.R")
+source("join_repo_level_data.R")
+```
+
+
+```{r}
+# Number of test cases
+qplot(log10(repo_level_data$num_test_cases),
+      geom = "histogram",
+      main = "Histogram of number of test cases",
+      xlab = "Number of test cases (log10)",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+
+```{r}
+# Total lines of test cases
+qplot(log10(repo_level_data$total_lines_test_cases),
+      geom = "histogram",
+      main = "Histogram of total lines of test cases",
+      xlab = "Total lines of test cases (log10)",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+
+
+
+
+

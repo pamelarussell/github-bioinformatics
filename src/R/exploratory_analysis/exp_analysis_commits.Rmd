@@ -1,0 +1,73 @@
+---
+title: 'Exploratory analysis: commits'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+source("project_info.R")
+source("join_repo_level_data.R")
+```
+
+# Histograms
+
+```{r}
+# Number of commit authors
+qplot(repo_level_data$num_commit_authors,
+      geom = "histogram",
+      main = "Histogram of number of commit authors",
+      xlab = "Number of commit authors",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+
+```{r}
+# Number of commits
+qplot(log10(repo_level_data$num_commits),
+      geom = "histogram",
+      main = "Histogram of number of commits",
+      xlab = "Number of commits (log10)",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+# Project duration
+
+```{r}
+# Scatter plot of latest commit vs first commit
+min_date <- min(repo_level_data$first_commit, na.rm = T)
+max_date <- max(repo_level_data$last_commit, na.rm = T)
+ggplot(data = repo_level_data, aes(x = first_commit, y = last_commit)) +
+  geom_point(aes(color = commit_span_days)) +
+  scale_color_gradientn(colors = c("red", "green", "blue"), 
+                        name = "Commit span (years)",
+                        labels = function(x) round(x / 365)) +
+  coord_cartesian(xlim = c(min_date, max_date),
+                  ylim = c(min_date, max_date)) +
+  labs(title = "Project time spans",
+       x = "First commit",
+       y = "Latest commit") +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+
+
+
+

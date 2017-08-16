@@ -1,0 +1,21 @@
+---
+title: "Exploratory analysis: community engagement"
+author: "Pamela Russell"
+date: "8/16/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+source("project_info.R")
+source("join_repo_level_data.R")
+```
+

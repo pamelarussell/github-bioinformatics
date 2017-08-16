@@ -20,14 +20,7 @@ suppressPackageStartupMessages(library(gridExtra))
 suppressPackageStartupMessages(library(grid))
 suppressPackageStartupMessages(library(tm))
 setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
-```
-
-
-```{r}
-# Project info
-proj <- "github-bioinformatics-157418"
-ds_gh <- "test_repos"
-ds_analysis <- "test_repos_analysis_results"
+source("project_info.R")
 ```
 
 # Comments
@@ -35,17 +28,15 @@ ds_analysis <- "test_repos_analysis_results"
 ```{r cache = T}
 # Load comments data from BigQuery
 
-tab_com <- "source_code_comments" # Comments table
-tab_loc <- "lines_of_code_by_file" # Lines of code table
 
 # Query to add language to comments table
 query <- paste('
                   SELECT id, [language], comments
                   FROM
-                  [', proj, ':', ds_analysis, '.', tab_com, '] AS comments
+                  [', proj, ':', ds_analysis, '.', table_com, '] AS comments
                   INNER JOIN (
                   SELECT id AS loc_id, [language] 
-                  FROM [', proj, ':', ds_analysis, '.', tab_loc, ']) AS lines_of_code
+                  FROM [', proj, ':', ds_analysis, '.', table_loc, ']) AS lines_of_code
                   ON comments.id = loc_id
                   GROUP BY id, [language], comments', 
                sep = '')
@@ -104,21 +95,19 @@ grid.arrange(grobs = plots, ncol = 3,
 ```{r cache = T}
 # Load abstracts data from BigQuery
 # Query to join language to articles table
-tab_art <- "articles_by_repo"
-tab_lang <- "languages"
 query <- paste('
                 SELECT
                   repo_name,
                   language_name,
                   abstract
                 FROM
-                  [', proj, ':', ds_gh, '.', tab_art, '] AS abstracts
+                  [', proj, ':', ds_gh, '.', table_art, '] AS abstracts
                 INNER JOIN (
                   SELECT
                     repo_name AS lang_repo_name,
                     language_name
                   FROM
-                    [', proj, ':', ds_gh, '.', tab_lang, ']) AS languages
+                    [', proj, ':', ds_gh, '.', table_lang, ']) AS languages
                 ON
                   abstracts.repo_name = lang_repo_name
                 GROUP BY
