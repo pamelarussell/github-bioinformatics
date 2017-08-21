@@ -1,0 +1,118 @@
+rm(list=ls())
+
+options(stringsAsFactors = F)
+
+library(RISmed)
+library(bigrquery)
+library(XML)
+library(RCurl)
+library(xml2)
+
+# Read article metadata from Ben's literature search
+art_metadata_search_xml <- "/Users/prussell/Dropbox/GitHub mining/Articles mentioning GitHub/Article metadata/TIAB with github 1-5000.xml"
+art_metadata_search_parsed <- read_xml(art_metadata_search_xml)
+art_metadata_search_list <- as_list(art_metadata_search_parsed)
+
+database <- unname(sapply(art_metadata_search_list[[1]], function(x) as.character(x$`remote-database-name`$style[[1]])))
+accession_num <- unname(sapply(art_metadata_search_list[[1]], function(x) as.character(x$`accession-num`$style[[1]])))
+title <- unname(sapply(art_metadata_search_list[[1]], function(x) as.character(x$titles$title$style[[1]])))
+abstract <- unname(sapply(art_metadata_search_list[[1]], function(x) as.character(x$abstract$style[[1]])))
+
+art_data_search <- data.frame(title = title,
+                           database = database,
+                           accession_num = accession_num,
+                           abstract = abstract)
+
+# Table of article data from NLM to fill in for each repo
+article_data <- data.frame(num_res=NULL)
+
+# Iterate through the articles by PMID
+num_done <- 0
+for(accession in art_data_search$accession_num) {
+  
+  # Print progress
+  num_done <<- num_done +1
+  if(num_done %% 10 == 0) {
+    message(paste('Completed', num_done, 'records.'))
+  }
+  
+  # Query EUtils
+  search_query <- EUtilsSummary(paste (accession, '[pmid]', sep = ''))
+  records <- EUtilsGet(search_query)
+  query <- Query(records)
+  
+  # Number of results should be 1
+  num_res <- QueryCount(search_query)
+  if(num_res != 1) {
+    message = paste('Skipping PMID ', pmid, '. Query ', query, ' returned ', num_res, ' results.')
+    message(message)
+    warning(message)
+    next
+  }
+  
+  # Extract information from the record
+  pmid <- PMID(records)
+  nlm_unique_id <- NlmUniqueID(records)
+  article_id <- ArticleId(records)
+  journal <- Title(records)
+  medline_ta <- MedlineTA(records)
+  iso_abbrev <- ISOAbbreviation(records)
+  volume <- Volume(records)
+  issue <- Issue(records)
+  title <- ArticleTitle(records)
+  country <- Country(records)
+  e_location_id <- ELocationID(records)
+  affiliation <- paste(Affiliation(records)[[1]], collapse = ", ")
+  language <- Language(records)
+  grant_id <- GrantID(records)
+  agency <- Agency(records)
+  acronym <- Acronym(records)
+  registry_num <- RegistryNumber(records)
+  pub_status <- PublicationStatus(records)
+  year_received <- YearReceived(records)
+  month_received <- MonthReceived(records)
+  day_received <- DayReceived(records)
+  year_accepted <- YearAccepted(records)
+  month_accepted <- MonthAccepted(records)
+  day_accepted <- DayAccepted(records)
+  year_epublish <- YearEpublish(records)
+  month_epublish <- MonthEpublish(records)
+  day_epublish <- DayEpublish(records)
+  year_ppublish <- YearPpublish(records)
+  month_ppublish <- MonthPpublish(records)
+  day_ppublish <- DayPpublish(records)
+  year_pmc <- YearPmc(records)
+  month_pmc <- MonthPmc(records)
+  day_pmc <- DayPmc(records)
+  year_pubmed <- YearPubmed(records)
+  month_pubmed <- MonthPubmed(records)
+  day_pubmed <- DayPubmed(records)
+  abstract <- AbstractText(records)
+  
+  # Query eutils to get the number of citing articles in PMC
+  url <- paste("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pmc_refs&id=", 
+               pmid, sep="")
+  page <- getURL(url)
+  xml <- xmlTreeParse(page)
+  xl <- xmlToList(xml)
+  lsdb <- unlist(xl[which(rownames(xl) == "LinkSetDb"), which(colnames(xl) == "LinkSet")])
+  cited_by_pmc <- sum(names(lsdb) == "Link.Id")
+  
+  # Add the record to article data table
+  article_data <- rbind(article_data, 
+                        data.frame(pmid, nlm_unique_id, article_id, journal, medline_ta,
+                                   iso_abbrev, volume, issue, title, country, e_location_id,
+                                   affiliation, language, grant_id, agency, acronym, registry_num,
+                                   pub_status, year_received, month_received, day_received,
+                                   year_epublish, month_epublish, day_epublish, year_ppublish,
+                                   month_ppublish, day_ppublish, year_pmc, month_pmc, day_pmc,
+                                   year_pubmed, month_pubmed, day_pubmed, cited_by_pmc, abstract))
+}
+
+
+
+
+
+
+
+

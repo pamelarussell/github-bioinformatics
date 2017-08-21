@@ -19,3 +19,40 @@ source("project_info.R")
 source("join_repo_level_data.R")
 ```
 
+```{r}
+# Number of forks by repo
+ggplot(data = repo_level_data, aes(log10(forks_count + 1))) + 
+  geom_histogram(bins = 100) + 
+  xlab("log10(number of forks + 1)") + 
+  ylab("Number of repos") + 
+  ggtitle("Histogram of number of forks per repo")
+```
+
+Explanation of watchers, subscribers, stars, etc:
+
+https://github.com/blog/1204-notifications-stars
+
+https://developer.github.com/changes/2012-09-05-watcher-api/
+
+https://developer.github.com/v3/activity/starring/
+
+```{r}
+# Number of watchers by repo
+ggplot(data = repo_level_data, aes(log10(watchers_count + 1))) + 
+  geom_histogram(bins = 100) + 
+  xlab("log10(number of watchers + 1)") + 
+  ylab("Number of repos") + 
+  ggtitle("Histogram of number of watchers per repo")
+```
+
+```{r}
+# Number of subscribers by repo
+ggplot(data = repo_level_data, aes(log10(subscribers_count + 1))) + 
+  geom_histogram(bins = 100) + 
+  xlab("log10(number of subscribers + 1)") + 
+  ylab("Number of repos") + 
+  ggtitle("Histogram of number of subscribers per repo")
+```
+
+
+

@@ -22,3 +22,30 @@ source("project_info.R")
 # Load the data
 pr_data <- list_tabledata(project = proj, dataset = ds_gh, table = table_pr)
 ```
+
+```{r}
+# Number of PRs by repo
+num_prs_by_repo <- pr_data %>% 
+  group_by(repo_name) %>% 
+  summarise(num_pr = n()) %>% 
+  arrange(-num_pr)
+ggplot(data = num_prs_by_repo, aes(log10(num_pr + 1))) + 
+  geom_histogram(bins = 100) + 
+  xlab("log10(number of PRs + 1)") + 
+  ylab("Number of repos") + 
+  ggtitle("Histogram of number of pull requests per repo")
+```
+
+```{r}
+# Number of PR authors by repo
+num_pr_authors_by_repo <- pr_data %>% 
+  group_by(repo_name) %>% 
+  summarize(num_pr_authors = length(unique(user_id))) %>% 
+  arrange(-num_pr_authors)
+ggplot(data = num_pr_authors_by_repo, aes(num_pr_authors)) + 
+  geom_histogram(bins = 100) + 
+  xlab("Number of PR authors") + 
+  ylab("Number of repos") + 
+  ggtitle("Histogram of number of pull request authors per repo")
+```
+
