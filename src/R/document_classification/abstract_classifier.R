@@ -12,7 +12,7 @@ suppressPackageStartupMessages(library(purrr))
 ## Functions to work with PubMed data
 ##
 
-# Get abstract for one paper
+# Function to get abstract for one paper
 get_abstract <- function(pmid_search_term) {
   tryCatch({
     query <- EUtilsSummary(pmid_search_term)
@@ -24,7 +24,7 @@ get_abstract <- function(pmid_search_term) {
   })
 }
 
-# Get PMID from search term
+# Function to get PMID from search term
 pmid_from_search_term <- function(search_term) {
   unlist(strsplit(search_term, "[", fixed = T))[1]
 }
@@ -73,7 +73,7 @@ dtm_test <- dtm_all[-train_idx,]
 dtm_train <- dtm_all[train_idx,]
 
 # Identify terms that appear a minimum number of times in training corpus
-dict <- findFreqTerms(dtm_train, lowfreq = 20)
+dict <- findFreqTerms(dtm_train, lowfreq = 10)
 train <- DocumentTermMatrix(corpus_train, list(dictionary = dict))
 test <- DocumentTermMatrix(corpus_test, list(dictionary = dict))
 
@@ -85,12 +85,70 @@ convert_counts <- function(x) {
 train <- train %>% apply(MARGIN=2, FUN=convert_counts)
 test <- test %>% apply(MARGIN=2, FUN=convert_counts)
 
+##
+## Train Naive Bayes model
+##
+
 # Train the model
-model <- train(train, data_train$Bioinformatics, method = "nb", metric = "Accuracy", trControl = trainControl(method="cv", 10))
+model_nb <- train(train, data_train$Bioinformatics, method = "nb", metric = "Accuracy", trControl = trainControl(method="cv", 10))
 
 # Use the model to predict the classification on the test set
-predict <- predict(model, test)
-cm <- confusionMatrix(predict, data_test$Bioinformatics, positive="bioinf")
+predict_nb_test <- predict(model_nb, test)
+cm_nb_test <- confusionMatrix(predict_nb_test, data_test$Bioinformatics, positive="bioinf")
+predict_nb_train <- predict(model_nb, train)
+cm_nb_train <- confusionMatrix(predict_nb_train, data_train$Bioinformatics, positive="bioinf")
 
+##
+## tf-idf based classifier
+##
 
+# Tidy the data
+data_train_tidy <- data_train %>%
+  dplyr::select(PMID, Bioinformatics, Abstract) %>%
+  unnest_tokens(Token, Abstract) %>%
+  mutate(Stem = stemDocument(Token))
+
+# Perform tf-idf on abstract text
+tf_idf_train <- data_train_tidy %>%
+  dplyr::count(Bioinformatics, Stem, sort = T) %>%
+  ungroup() %>%
+  bind_tf_idf(Stem, Bioinformatics, n) %>%
+  arrange(desc(tf_idf))
+
+# Get the top tf-idf tokens
+top_tokens <- function(is_bioinf, n) {
+  top_tokens <- tf_idf_train %>%
+    filter(if(is_bioinf) Bioinformatics == "bioinf" else Bioinformatics == "not_bioinf") %>%
+    top_n(n, tf_idf) %>%
+    dplyr::select(Stem)
+  top_tokens[[1]]
+}
+
+# Classification function
+top_pos_tokens <- top_tokens(T, 50)
+top_neg_tokens <- top_tokens(F, 5)
+predict_tfidf <- function(abstract) {
+  unique_stems <- unique(unlist(strsplit(stemDocument(abstract), "\\s+")))
+  # neg_ok <- every(top_neg_tokens, function(x) !(x %in% unique_stems))
+  neg_ok <- sum(sapply(top_neg_tokens, function(x) x %in% unique_stems)) < 2
+  pos_ok <- some(top_pos_tokens, function(x) x %in% unique_stems)
+  # pos_ok <- sum(sapply(top_pos_tokens, function(x) x %in% unique_stems)) > 1
+  b <- neg_ok && pos_ok
+  if(b) factor("bioinf") else factor("not_bioinf")
+}
+
+# Evaluate tf-idf classifier
+cm_tfidf <- function(data) {
+  pred <- factor(sapply(data$Abstract, predict_tfidf), levels = c("bioinf", "not_bioinf"))
+  confusionMatrix(data = pred, reference = data$Bioinformatics)
+}
+
+accuracy <- function(conf_matrix) {
+  conf_matrix$overall["Accuracy"]
+}
+
+cm_tfidf_train <- conf_matrix_tfidf(data_train)
+cm_tfidf_test <- conf_matrix_tfidf(data_test)
+
+rm(data_train_tidy, test, train, train_idx, corpus_all, corpus_test, corpus_train, dict)
 
