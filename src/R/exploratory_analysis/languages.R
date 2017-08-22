@@ -109,14 +109,14 @@ bytes <- bytes[order(-bytes)]
 
 # Get the top languages
 num_top_languages <- 25
-top_languages <- bytes[1:num_top_languages]
-names(top_languages) <- names(bytes)[1:num_top_languages]
-top_languages <- top_languages[order(top_languages)]
+top_langs_bytes <- bytes[1:num_top_languages]
+names(top_langs_bytes) <- names(bytes)[1:num_top_languages]
+top_langs_bytes <- top_langs_bytes[order(top_langs_bytes)]
 # All other languages
 others <- sum(bytes[1+num_top_languages:length(bytes)], na.rm=T)
-new_names <- c("All others", names(top_languages))
-top_languages <- c(others, top_languages)
-names(top_languages) <- new_names
+new_names <- c("All others", names(top_langs_bytes))
+top_langs_bytes <- c(others, top_langs_bytes)
+names(top_langs_bytes) <- new_names
 
 # Functions to process language features
 

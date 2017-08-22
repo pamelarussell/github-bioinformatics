@@ -14,42 +14,9 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
 source("project_info.R")
+source("languages.R")
+source("quality.R")
 ```
-
-```{r}
-# Join all repo-level data
-# Load all the repo-level data from BigQuery and do a full join by repo name
-table_list <- c("language_list_by_repo", "num_languages_by_repo", "lines_of_code_by_repo", 
-                "project_duration_by_repo", "num_forks_by_repo", "num_watchers_by_repo", 
-                "num_actors_by_repo", "num_devs_by_repo", "commit_types_by_repo", "test_cases_by_repo")
-repo_level_data <- data.frame(repo_name = character())
-for(table in table_list) {
-  table_data <- list_tabledata(project = proj, dataset = ds_analysis, table = table)
-  repo_level_data <- full_join(repo_level_data, table_data, by = "repo_name")
-}
-```
-
-
-```{r}
-# Add languages
-lang_bytes <- list_tabledata(project = proj, dataset = ds_analysis, table = "bytes_by_language")
-lang_list <- lang_bytes$language_name
-lang_list_by_repo <- sapply(repo_level_data$languages, function(x) strsplit(x, ","))
-for(lang in lang_list) {
-  repo_level_data[[lang]] <- unlist(lapply(lang_list_by_repo, function(x) lang %in% x))
-}
-repo_level_data <- repo_level_data %>% rename(Cpp = `C++`)
-```
-
-
-```{r}
-# Languages of interest
-top_languages <- c("Python", "Shell", "Cpp", "R", "C", "Perl", "JavaScript", "Java",
-                              "Objective-C", "Matlab", "Ruby", "PHP", "Haskell", "Go", "Lua",
-                              "Roff", "Scala", "M", "Tcl")
-```
-
-
 # Bug fix commits
 
 
@@ -69,7 +36,7 @@ summary(lm(num_bug_fix_commits ~ num_test_cases + num_commits, data = commits_fi
 
 ```{r echo = T}
 lm_bug_fix_lang <- function(lang) {
-  summary(lm(num_bug_fix_commits ~ get(lang, envir = as.environment(repo_level_data)) + num_commits + num_test_cases, 
+  summary(lm(num_bug_fix_commits ~ get(lang, envir = as.environment(repo_level_data)) + num_commits + num_test_cases,
              data = repo_level_data))$coefficients[2,]
 }
 lang_coef_bug_fix <- t(sapply(top_languages, lm_bug_fix_lang))
