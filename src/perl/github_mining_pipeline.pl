@@ -14,15 +14,15 @@ use warnings;
 #                    Choose steps to run 
 # -----------------------------------------------------------------
 
+# Extract GitHub repo names from literature search - includes non-bioinformatics repos
+my $extract_repos_from_lit_search = 0;
+
 # Use GitHub API to get repo-level metrics
 my $generate_gh_api_repo_data = 0;
 
 # Regenerate GitHub bioinformatics dataset
 # $$$ Expensive! $$$
 my $generate_gh_bioinf_dataset = 0;
-
-# Use NCBI API to generate and upload table of article data
-my $generate_article_info_table = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 my $run_bq_analysis_queries = 0;
@@ -37,7 +37,7 @@ my $run_extract_comments = 0;
 my $run_code_chunk_frequency = 0;
 
 # Use GitHub API to get pull request data
-my $generate_pr_data = 1;
+my $generate_pr_data = 0;
 
 
 # -----------------------------------------------------------------
@@ -50,6 +50,7 @@ my $bq_proj = "github-bioinformatics-157418";
 # Datasets
 my $bq_ds = "test_repos";
 my $bq_ds_analysis_results = "test_repos_analysis_results";
+my $bq_ds_lit_search = "lit_search";
 
 # Tables
 my $bq_tb_repo_info_gh_api = "repo_info_gh_api"; # Repo info from the GitHub API
@@ -73,8 +74,8 @@ my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
 # Programs
+my $script_extract_repos_from_lit_search = "$src_dir_python/extract_repos_from_articles.py";
 my $script_generate_gh_api_repo_data = "$src_dir_python/gh_api_repo_data.py";
-my $script_generate_article_info_table = "$src_dir_R/ncbi/paper_metadata.R";
 my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
 my $script_run_bq_queries_dataset_creation = "$src_dir_python/run_bq_queries_dataset_creation.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
@@ -88,6 +89,10 @@ my $out_results_dir_cloc = "$out_results_dir/cloc/";
 
 # GitHub repo names
 my $repo_names_list = "/Users/prussell/Documents/Github_mining/repos/repos.txt";
+
+# Literature search
+my $lit_search_metadata_dir = "/Users/prussell/Dropbox/github_mining/articles/article_metadata/";
+my $lit_search_pdf_dir = "/Users/prussell/Dropbox/github_mining/articles/pdfs/";
 
 
 # -----------------------------------------------------------------
@@ -116,6 +121,12 @@ my $languages = "C++,Python,JavaScript,C,Java,Groff,PHP,Matlab,Perl,R,Mathematic
 #                       Run the analyses
 # -----------------------------------------------------------------
 
+# Extract GitHub repo names from literature search - includes non-bioinformatics repos
+if($extract_repos_from_lit_search) {
+	run_cmmd("$python3 $script_extract_repos_from_lit_search --metadata-dir $lit_search_metadata_dir ".
+	"--pdf-dir $lit_search_pdf_dir --bq-ds $bq_ds_lit_search")
+} else {print("\nSkipping step: extract repo names from literature search\n")}
+
 # Get repo info from GitHub API
 if($generate_gh_api_repo_data) {
 	run_cmmd("$python3 $script_generate_gh_api_repo_data --ds $bq_ds --table $bq_tb_repo_info_gh_api ".
@@ -126,12 +137,6 @@ if($generate_gh_api_repo_data) {
 if($generate_gh_bioinf_dataset) {
 	run_cmmd("$python3 $script_run_bq_queries_dataset_creation --repos $repo_names_list --results_ds $bq_ds")
 } else {print("\nSkipping step: regenerate GitHub bioinformatics dataset\n")}
-
-# Generate table of article info from NCBI
-if($generate_article_info_table) {
-	run_cmmd("Rscript $script_generate_article_info_table -p $bq_proj -d $bq_ds -t $bq_tb_articles ".
-	"-r $repo_names_list")
-} else {print("\nSkipping step: generate and upload table of article data\n")}
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 if($run_bq_analysis_queries) {

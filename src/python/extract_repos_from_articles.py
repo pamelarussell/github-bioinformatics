@@ -1,15 +1,26 @@
-import xmltodict
-from lit_search import parse_record, gh_repo_from_text, gh_repo_from_pdf
+import argparse
 import os.path
-from structure.bq_proj_structure import table_articles_mentioning_github
+
 from bigquery import get_client
+import xmltodict
+
+from lit_search import parse_record, gh_repo_from_text, gh_repo_from_pdf
 from local_params import json_key
+from structure.bq_proj_structure import table_articles_mentioning_github
 from util import delete_bq_table, create_bq_table, push_bq_records
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--metadata-dir', action = 'store', dest = 'metadata_dir', required = True, 
+                    help = 'Directory containing article metadata XML files')
+parser.add_argument('--pdf-dir', action = 'store', dest = 'pdf_dir', required = True, 
+                    help = 'Directory containing article PDF files')
+parser.add_argument('--bq-ds', action = 'store', dest = 'bq_ds', required = True,
+                    help = 'BigQuery dataset to write table to')
+args = parser.parse_args()
 
 # Article metadata and PDFs
-metadata_dir = "/Users/prussell/Dropbox/github_mining/articles/article_metadata/"
-pdf_dir = "/Users/prussell/Dropbox/github_mining/articles/pdfs/"
+metadata_dir = args.metadata_dir
+pdf_dir = args.pdf_dir
 metadata_xml = ["%s/Ben_Harnke_%s_Russell.xml" % (metadata_dir, label) 
                 for label in ["1-5000", "5001-10000", "10001-15000", "15001-20000", "20001-25000", "25001-28326"]]
 
@@ -45,9 +56,8 @@ def gh_repos_from_metadata(metadata):
             return None
 
 # Write the results to BigQuery table
-bq_ds = "lit_search"
-
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
+bq_ds = args.bq_ds
 print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False)
 
