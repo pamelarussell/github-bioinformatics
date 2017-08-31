@@ -10,8 +10,7 @@ class CodeChunkFrequencyTest(unittest.TestCase):
     
     def test_multiple_repos(self):
         pdf = "/Users/prussell/Desktop/sample_pdfs/Appl. Environ. Microbiol.-2017-Carroll-AEM.01096-17.pdf"
-        with self.assertRaises(ValueError):
-            gh_repo_from_pdf(pdf)
+        self.assertEqual(gh_repo_from_pdf(pdf), None)
             
             
         

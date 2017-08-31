@@ -31,7 +31,9 @@ def sentences_github(text):
         List of sentences that contain a mention of github.com
     
     """
-    formatted = re.sub('[\s\n\r]+', ' ', text)
+    if text is None:
+        return []
+    formatted = re.sub('[\s\n\r]+', ' ', re.sub('-\n', '-', text))
     sentences = re.split('[.?!]\s+', formatted)
     gh_sentences = filter(re.compile('[gG]it[hH]ub\.com').search, sentences)
     return [sentence for sentence in gh_sentences if _contains_repo_name(sentence)]
@@ -42,8 +44,7 @@ def gh_repo_from_text(text):
     The returned name is username/repo_name. For example, if the repo URL "https://github.com/torvalds/linux"
     is mentioned in one or more of the sentences, the returned value would be "torvalds/linux".
     
-    If more than one repository is mentioned , a ValueError is thrown.
-    If no repositories are mentioned, a ValueError is thrown.
+    If no repositories are mentioned, returns None.
     
     Args:
         text: A string containing some text
@@ -56,15 +57,13 @@ def gh_repo_from_text(text):
     sentences = sentences_github(text)
     
     if not sentences:
-        raise ValueError("List of sentences containing GitHub is empty")
+        return None
     else:
         matches = set([re.search(REGEX_REPO_NAME, sentence).group(1) for sentence in sentences])
         if not matches:
-            raise ValueError("No matches")
-        if len(matches) > 1:
-            raise ValueError("More than one match: %s" % ", ".join(matches))
+            return None
         else:
-            return matches.pop()
+            return matches
 
 def _pdf_to_text(pdf):
     """ Returns the text extracted from a PDF file

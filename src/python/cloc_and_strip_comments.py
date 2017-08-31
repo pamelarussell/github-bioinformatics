@@ -7,8 +7,7 @@ from bigquery import get_client
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
 from local_params import json_key
-from structure.bq_proj_structure import project_bioinf, table_files, \
-    table_contents
+from structure.bq_proj_structure import project_bioinf, table_files, table_contents
 from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
 from util import rec_contents_comments_stripped
 

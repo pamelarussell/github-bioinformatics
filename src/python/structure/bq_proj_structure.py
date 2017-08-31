@@ -28,6 +28,7 @@ table_languages = 'languages'
 table_licenses = 'licenses'
 table_lines_of_code_file = 'lines_of_code_by_file'
 table_lines_of_code_repo = 'lines_of_code_by_repo'
+table_articles_mentioning_github = 'articles_mentioning_github'
 
 # Table names for query results
 table_bytes_by_language = 'bytes_by_language'
