@@ -21,14 +21,15 @@ for metadata_group in metadata_xml:
         records += xmltodict.parse(reader.read())['xml']['records']['record']
         print("Imported %s records." % len(records))
 
+
 # Get a GitHub repo name from a metadata dict
-# Returns a dict with repo name and source (abstract or pdf), or None if couldn't get repo name
-def gh_repo_from_metadata(metadata):
+# Returns a dict with repos = the set of repo names and source = abstract or pdf, or None if couldn't get repo name
+def gh_repos_from_metadata(metadata):
     abstract = metadata['abstract']
     gh_from_abstract = gh_repo_from_text(abstract)
     # If the abstract contains a GitHub repo, return that
     if gh_from_abstract is not None:
-        return {'repo': gh_from_abstract, 'source': 'abstract'}
+        return {'repos': gh_from_abstract, 'source': 'abstract'}
     else:
         # Look for a pdf
         pdf = "%s/%s" % (pdf_dir, metadata['internal_pdf'])
@@ -36,7 +37,7 @@ def gh_repo_from_metadata(metadata):
             # Try to get GitHub repo from pdf; will be None if not applicable
             gh_from_pdf = gh_repo_from_pdf(pdf)
             if gh_from_pdf is not None:
-                return {'repo': gh_from_pdf, 'source': 'pdf'}
+                return {'repos': gh_from_pdf, 'source': 'pdf'}
             else:
                 return None
         else:
@@ -76,12 +77,14 @@ num_found = 0
 recs_to_push = []
 for record in records:
     metadata = parse_record(record)
-    repo = gh_repo_from_metadata(metadata)
-    if repo is not None:
-        num_found += 1
-        metadata['repo_name'] = repo['repo']
-        metadata['repo_source'] = repo['source']
-        recs_to_push.append(metadata)
+    repos = gh_repos_from_metadata(metadata)
+    if repos is not None:
+        num_found += len(repos['repos'])
+        for repo in repos['repos']:
+            metadata_this_repo = metadata.copy()
+            metadata_this_repo['repo_name'] = repo
+            metadata_this_repo['repo_source'] = repos['source']
+            recs_to_push.append(metadata_this_repo)
     num_done += 1
     if num_done % 100 == 0:
         print("Analyzed %s papers. Found %s valid repo names." % (num_done, num_found))

@@ -6,18 +6,12 @@ from pdfminer.pdfinterp import PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 
-"""
-Regular expression to match strings containing a GitHub repo name
-The repo name itself (user/repo) is captured
-"""
-REGEX_REPO_NAME = "github\.com/([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+)"
-
-def _contains_repo_name(string):
-    """ Returns true iff the string contains a GitHub repo name"""
-    return re.search(REGEX_REPO_NAME, string)
+# Regular expressions to match strings containing a GitHub repo name
+REGEX_GH_DOT_COM = "github\.com/([a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+)" # The repo name itself (user/repo) is captured
+REGEX_GH_DOT_IO = "([a-zA-Z0-9_-]+)\.github\.io/([a-zA-Z0-9_-]+)" # Captures two groups: user and repo
 
 def sentences_github(text):
-    """ Returns a list of sentences in some text that contain a mention of github.com
+    """ Returns a list of sentences in some text that contain a mention of github
     
     The sentences might not necessarily contain a properly formatted repository URL.
     For example, this function can be used to extract sentences that *may* contain a
@@ -28,20 +22,19 @@ def sentences_github(text):
         text: A string containing some text
         
     Returns:
-        List of sentences that contain a mention of github.com
+        List of sentences that contain a mention of github
     
     """
     if text is None:
         return []
-    formatted = re.sub('[\s\n\r]+', ' ', re.sub('-\n', '-', text))
+    formatted = re.sub('[\s\n\r]+', ' ', re.sub('-\n', '-', re.sub('/\n', '/', text)))
     sentences = re.split('[.?!]\s+', formatted)
-    gh_sentences = filter(re.compile('[gG]it[hH]ub\.com').search, sentences)
-    return [sentence for sentence in gh_sentences if _contains_repo_name(sentence)]
+    return filter(re.compile('[gG]it[hH]ub').search, sentences)
 
 def gh_repo_from_text(text):
-    """ Returns the unique properly formatted GitHub repository name mentioned in some text
+    """ Returns the set of GitHub repository name(s) mentioned in some text
     
-    The returned name is username/repo_name. For example, if the repo URL "https://github.com/torvalds/linux"
+    The returned names are username/repo_name. For example, if the repo URL "https://github.com/torvalds/linux"
     is mentioned in one or more of the sentences, the returned value would be "torvalds/linux".
     
     If no repositories are mentioned, returns None.
@@ -50,7 +43,7 @@ def gh_repo_from_text(text):
         text: A string containing some text
             
     Returns:
-        The unique repository name (username/repo_name) mentioned in the text
+        Set of repo names (username/repo_name) mentioned in the text
     
     """
     
@@ -59,7 +52,10 @@ def gh_repo_from_text(text):
     if not sentences:
         return None
     else:
-        matches = set([re.search(REGEX_REPO_NAME, sentence).group(1) for sentence in sentences])
+        matches = set()
+        for sentence in sentences:
+            matches.update([match for match in re.findall(REGEX_GH_DOT_COM, sentence, flags = re.IGNORECASE)])
+            matches.update(["%s/%s" % (match[0], match[1]) for match in re.findall(REGEX_GH_DOT_IO, sentence, flags = re.IGNORECASE)])
         if not matches:
             return None
         else:
@@ -88,19 +84,18 @@ def _pdf_to_text(pdf):
     return text
 
 def gh_repo_from_pdf(pdf):
-    """ Returns the unique properly formatted GitHub repository name mentioned in a PDF
+    """ Returns the set of repository names mentioned in a PDF
     
-    The returned name is username/repo_name. For example, if the repo URL "https://github.com/torvalds/linux"
+    The returned names are username/repo_name. For example, if the repo URL "https://github.com/torvalds/linux"
     is mentioned in one or more of the sentences, the returned value would be "torvalds/linux".
     
-    If more than one repository is mentioned , a ValueError is thrown.
-    If no repositories are mentioned, a ValueError is thrown.
+    If no repositories are mentioned, returns None.
     
     Args:
         pdf: Path to a PDF file
             
     Returns:
-        The unique repository name (username/repo_name) mentioned in the PDF
+        Set of repository names (username/repo_name) mentioned in the PDF
     
     """
     return gh_repo_from_text(_pdf_to_text(pdf))
