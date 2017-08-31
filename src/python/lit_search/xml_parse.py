@@ -1,5 +1,3 @@
-import xmltodict
-
 
 def get_title(record):
     return record['titles']['title']['style']['#text']
@@ -51,6 +49,8 @@ def get_remote_database(record):
     try:
         return record['remote-database-name']['style']['#text']
     except KeyError:
+        return None
+    except AttributeError:
         return None
 
 def parse_record(record):

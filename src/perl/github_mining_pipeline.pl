@@ -15,7 +15,7 @@ use warnings;
 # -----------------------------------------------------------------
 
 # Extract GitHub repo names from literature search - includes non-bioinformatics repos
-my $extract_repos_from_lit_search = 0;
+my $extract_repos_from_lit_search = 1;
 
 # Use GitHub API to get repo-level metrics
 my $generate_gh_api_repo_data = 0;

@@ -9,7 +9,7 @@ library(RCurl)
 library(xml2)
 
 # Read article metadata from Ben's literature search
-art_metadata_search_xml <- "/Users/prussell/Dropbox/GitHub mining/Articles mentioning GitHub/Article metadata/TIAB with github 1-5000.xml"
+art_metadata_search_xml <- "/Users/prussell/Dropbox/github_mining/articles/article_metadata/Ben_Harnke_1-5000_Russell.xml"
 art_metadata_search_parsed <- read_xml(art_metadata_search_xml)
 art_metadata_search_list <- as_list(art_metadata_search_parsed)
 
