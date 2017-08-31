@@ -44,13 +44,13 @@ def get_internal_pdf(record):
         return tokens[len(tokens) - 1]
     except KeyError:
         return None
+    except AttributeError:
+        return None
 
 def get_remote_database(record):
     try:
         return record['remote-database-name']['style']['#text']
     except KeyError:
-        return None
-    except AttributeError:
         return None
 
 def parse_record(record):

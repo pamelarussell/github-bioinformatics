@@ -30,7 +30,6 @@ from .bq_proj_structure import table_test_cases
 from .bq_proj_structure import table_test_cases_by_repo
 from .bq_proj_structure import table_project_duration
 from .bq_proj_structure import table_num_devs_by_repo
-from .bq_proj_structure import table_articles_mentioning_github
 
 
 

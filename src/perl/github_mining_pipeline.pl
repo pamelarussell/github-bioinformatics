@@ -15,7 +15,10 @@ use warnings;
 # -----------------------------------------------------------------
 
 # Extract GitHub repo names from literature search - includes non-bioinformatics repos
-my $extract_repos_from_lit_search = 1;
+my $extract_repos_from_lit_search = 0;
+
+# Query Eutils for article metadata
+my $query_eutils_article_metadata = 0;
 
 # Use GitHub API to get repo-level metrics
 my $generate_gh_api_repo_data = 0;
@@ -48,11 +51,13 @@ my $generate_pr_data = 0;
 my $bq_proj = "github-bioinformatics-157418";
 
 # Datasets
-my $bq_ds = "test_repos";
+my $bq_ds_repos = "test_repos";
 my $bq_ds_analysis_results = "test_repos_analysis_results";
 my $bq_ds_lit_search = "lit_search";
 
 # Tables
+my $bq_tb_articles_gh = "articles_mentioning_github"; # Repo names and articles they're mentioned in, including non-bioinformatics
+my $bq_tb_eutils_metadata = "eutils_metadata"; # Article metadata from Eutils
 my $bq_tb_repo_info_gh_api = "repo_info_gh_api"; # Repo info from the GitHub API
 my $bq_tb_articles = "articles_by_repo"; # NCBI article metadata
 my $bq_tb_lines_of_code_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
@@ -74,6 +79,7 @@ my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
 # Programs
+my $script_article_metadata_eutils = "$src_dir_R/ncbi/paper_metadata_eutils.R";
 my $script_extract_repos_from_lit_search = "$src_dir_python/extract_repos_from_articles.py";
 my $script_generate_gh_api_repo_data = "$src_dir_python/gh_api_repo_data.py";
 my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
@@ -124,30 +130,36 @@ my $languages = "C++,Python,JavaScript,C,Java,Groff,PHP,Matlab,Perl,R,Mathematic
 # Extract GitHub repo names from literature search - includes non-bioinformatics repos
 if($extract_repos_from_lit_search) {
 	run_cmmd("$python3 $script_extract_repos_from_lit_search --metadata-dir $lit_search_metadata_dir ".
-	"--pdf-dir $lit_search_pdf_dir --bq-ds $bq_ds_lit_search")
+	"--pdf-dir $lit_search_pdf_dir --bq-ds $bq_ds_lit_search --bq-tb $bq_tb_articles_gh")
 } else {print("\nSkipping step: extract repo names from literature search\n")}
+
+# Get article metadata from Eutils
+if($query_eutils_article_metadata) {
+	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj --dataset $bq_ds_lit_search --table-r " .
+	"$bq_tb_articles_gh --table-w $bq_tb_eutils_metadata")
+} else {print("\nSkipping step: get article metadata from Eutils\n")}
 
 # Get repo info from GitHub API
 if($generate_gh_api_repo_data) {
-	run_cmmd("$python3 $script_generate_gh_api_repo_data --ds $bq_ds --table $bq_tb_repo_info_gh_api ".
+	run_cmmd("$python3 $script_generate_gh_api_repo_data --ds $bq_ds_repos --table $bq_tb_repo_info_gh_api ".
 	"--repos $repo_names_list")
 } else {print("\nSkipping step: get repo info from GitHub API\n")}
 
 # Regenerate GitHub bioinformatics dataset
 if($generate_gh_bioinf_dataset) {
-	run_cmmd("$python3 $script_run_bq_queries_dataset_creation --repos $repo_names_list --results_ds $bq_ds")
+	run_cmmd("$python3 $script_run_bq_queries_dataset_creation --repos $repo_names_list --results_ds $bq_ds_repos")
 } else {print("\nSkipping step: regenerate GitHub bioinformatics dataset\n")}
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 if($run_bq_analysis_queries) {
-	run_cmmd("$python3 $script_run_bq_queries_analysis --github_ds $bq_ds --results_ds $bq_ds_analysis_results")
+	run_cmmd("$python3 $script_run_bq_queries_analysis --github_ds $bq_ds_repos --results_ds $bq_ds_analysis_results")
 } else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
 	"save results to tables\n")}
 
 # Count lines of code and push to BigQuery table along with comment-stripped versions of source files
 if($run_cloc) {
 	my $out_log_cloc = "$out_results_dir_cloc/run.out";
-	my $cmmd_cloc = "$python3 $script_cloc --in_ds $bq_ds " .
+	my $cmmd_cloc = "$python3 $script_cloc --in_ds $bq_ds_repos " .
 	"--out_ds $bq_ds_analysis_results " .
 	"--table_loc $bq_tb_lines_of_code_by_file " .
 	"--table_sc $bq_tb_contents_comments_stripped " .
@@ -157,14 +169,14 @@ if($run_cloc) {
 
 # Extract comments from source files and push to BigQuery table
 if($run_extract_comments) {
-	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds --ds_loc " .
+	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds_repos --ds_loc " .
 	"$bq_ds_analysis_results --out_ds $bq_ds_analysis_results --table $bq_tb_comments";
 	run_cmmd($cmmd_extract_comments)
 } else {print("\nSkipping step: extract comments\n")}
 
 # Analyze frequency of code chunks
 if($run_code_chunk_frequency) {
-	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --ds_gh $bq_ds --ds_res $bq_ds_analysis_results ".
+	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --ds_gh $bq_ds_repos --ds_res $bq_ds_analysis_results ".
 	"--table_files $bq_tb_files --table_sc $bq_tb_contents_comments_stripped --table_out $bq_tb_code_chunk_frequency_by_repo ".
 	"--table_loc $bq_tb_lines_of_code_by_file --langs $languages";
 	run_cmmd($cmmd_code_chunk_freq);
@@ -172,7 +184,7 @@ if($run_code_chunk_frequency) {
 
 # Get repo info from GitHub API
 if($generate_pr_data) {
-	run_cmmd("$python3 $script_generate_pr_data --ds $bq_ds --table $bq_tb_prs ".
+	run_cmmd("$python3 $script_generate_pr_data --ds $bq_ds_repos --table $bq_tb_prs ".
 	"--repos $repo_names_list")
 } else {print("\nSkipping step: get pull request info from GitHub API\n")}
 

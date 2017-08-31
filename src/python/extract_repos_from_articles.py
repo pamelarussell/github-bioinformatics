@@ -6,7 +6,6 @@ import xmltodict
 
 from lit_search import parse_record, gh_repo_from_text, gh_repo_from_pdf
 from local_params import json_key
-from structure.bq_proj_structure import table_articles_mentioning_github
 from util import delete_bq_table, create_bq_table, push_bq_records
 
 parser = argparse.ArgumentParser()
@@ -16,6 +15,8 @@ parser.add_argument('--pdf-dir', action = 'store', dest = 'pdf_dir', required = 
                     help = 'Directory containing article PDF files')
 parser.add_argument('--bq-ds', action = 'store', dest = 'bq_ds', required = True,
                     help = 'BigQuery dataset to write table to')
+parser.add_argument('--bq-tb', action = 'store', dest = 'bq_tb', required = True,
+                    help = 'BigQuery table to write to')
 args = parser.parse_args()
 
 # Article metadata and PDFs

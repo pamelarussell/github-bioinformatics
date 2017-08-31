@@ -2,60 +2,78 @@ rm(list=ls())
 
 options(stringsAsFactors = F)
 
-library(RISmed)
-library(bigrquery)
-library(optparse)
-library(XML)
-library(RCurl)
+suppressPackageStartupMessages(library(RISmed))
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(XML))
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(dplyr))
 
-message('Getting article metadata and uploading to BigQuery table...')
+message('Getting article metadata from Eutils and uploading to BigQuery table...')
 
-option_list = list(
-  make_option(c("-r", "--repos"), action = "store", type = 'character',
-              help = "File containing list of repo names"),
-  make_option(c("-p", "--project"), action="store", type='character', help="BigQuery project"),
-  make_option(c("-d", "--dataset"), action="store", type='character', help="BigQuery dataset"),
-  make_option(c("-t", "--table"), action="store", type='character', help="BigQuery table to write to"))
-opt = parse_args(OptionParser(option_list=option_list))
+# option_list = list(
+#   make_option(c("-p", "--project"), action="store", type='character', help="BigQuery project"),
+#   make_option(c("-d", "--dataset"), action="store", type='character', help="BigQuery dataset"),
+#   make_option(c("-r", "--table-r"), action="store", type='character', help="BigQuery table to read from"),
+#   make_option(c("-w", "--table-w"), action="store", type='character', help="BigQuery table to write to"))
+# opt = parse_args(OptionParser(option_list=option_list))
+# 
+# bq_project <- opt$p
+# bq_ds <- opt$d
+# bq_table_r <- opt$r
+# bq_table_w <- opt$w
 
-repo_names_file <- opt$r # File of repo names
-bq_project <- opt$p # Project
-bq_ds <- opt$d # Dataset
-bq_table <- opt$t # Comments table
+bq_project <- "github-bioinformatics-157418"
+bq_ds <- "lit_search"
+bq_table_r <- "articles_mentioning_github"
+bq_table_w <- "eutils_metadata"
 
-message(paste('File of repo names:', repo_names_file))
 message(paste('BigQuery project:', bq_project))
 message(paste('BigQuery dataset:', bq_ds))
-message(paste('BigQuery table:', bq_table))
+message(paste('BigQuery table to read:', bq_table_r))
+message(paste('BigQuery table to write:', bq_table_w))
 
-# Read the repo names from file
-repo_names <- read.table(repo_names_file, header = F, col.names = 'repo_name')
+# Read repo name and minimal article info from BigQuery
+metadata_by_repo <- list_tabledata(project = bq_project, dataset = bq_ds, table = bq_table_r)
 
 # Table of article data to fill in for each repo
 article_data <- data.frame(num_res=NULL)
 
 # Iterate through the repos
 num_done <- 0
-for(repo_name in repo_names$repo_name) {
-  
+for(i in 1:nrow(metadata_by_repo)) {
   # Print progress
   num_done <<- num_done +1
   if(num_done %% 100 == 0) {
     message(paste('Completed', num_done, 'records.'))
   }
   
-  # Query EUtils
-  search_query <- EUtilsSummary(paste ('"github.com/', repo_name, '"[All Fields]', sep = ''))
-  records <- EUtilsGet(search_query)
-  query <- Query(records)
+  repo_name = metadata_by_repo[i, "repo_name"]
+  title = metadata_by_repo[i, "title"]
+  accession_num = metadata_by_repo[i, "accession_num"]
   
+  # Query EUtils
   # Number of results should be 1
-  num_res <- QueryCount(search_query)
+  num_res <- 0
+  # First search by uid
+  if(!is.na(accession_num)) {
+    query_txt <- paste(accession_num, "[uid]")
+    search_query <- EUtilsSummary(query_txt)
+    records <- EUtilsGet(search_query)
+    num_res <- QueryCount(search_query)
+  }
   if(num_res != 1) {
-    message = paste('Skipping repo ', repo_name, '. Query ', query, ' returned ', num_res, ' results.')
-    message(message)
-    warning(message)
-    next
+    # Try search by title
+    query_txt <- paste(title, "[Title]")
+    search_query <- EUtilsSummary(query_txt)
+    records <- EUtilsGet(search_query)
+    num_res <- QueryCount(search_query)
+    if(num_res != 1) {
+      message = paste('Skipping repo ', repo_name, '. Query returned ', num_res, ' results: ', query_txt, sep="")
+      message(message)
+      warning(message)
+      next
+    }
   }
   
   # Extract information from the record
@@ -70,7 +88,7 @@ for(repo_name in repo_names$repo_name) {
   title <- ArticleTitle(records)
   country <- Country(records)
   e_location_id <- ELocationID(records)
-  affiliation <- Affiliation(records)
+  #affiliation <- Affiliation(records)
   language <- Language(records)
   grant_id <- GrantID(records)
   agency <- Agency(records)
@@ -110,7 +128,7 @@ for(repo_name in repo_names$repo_name) {
   article_data <- rbind(article_data, 
                         data.frame(repo_name, pmid, nlm_unique_id, article_id, journal, medline_ta,
                                    iso_abbrev, volume, issue, title, country, e_location_id,
-                                   affiliation, language, grant_id, agency, acronym, registry_num,
+                                   language, grant_id, agency, acronym, registry_num,
                                    pub_status, year_received, month_received, day_received,
                                    year_epublish, month_epublish, day_epublish, year_ppublish,
                                    month_ppublish, day_ppublish, year_pmc, month_pmc, day_pmc,
@@ -120,12 +138,12 @@ for(repo_name in repo_names$repo_name) {
 
 
 # Write the article data to a BigQuery table
-message(paste('Writing article data to table [', bq_project, ':', bq_ds, '.', bq_table, ']', sep = ''))
-if(exists_table(bq_project, bq_ds, bq_table)) {
-  warning(paste('Overwriting existing table: [', bq_project, ':', bq_ds, '.', bq_table, ']', sep = ''))
+message(paste('Writing article data to table [', bq_project, ':', bq_ds, '.', bq_table_w, ']', sep = ''))
+if(exists_table(bq_project, bq_ds, bq_table_w)) {
+  warning(paste('Overwriting existing table: [', bq_project, ':', bq_ds, '.', bq_table_w, ']', sep = ''))
 }
-upload_job <- insert_upload_job(bq_project, bq_ds, bq_table, values = article_data, 
-                  write_disposition = 'WRITE_TRUNCATE')
+upload_job <- insert_upload_job(bq_project, bq_ds, bq_table_w, values = article_data, 
+                                write_disposition = 'WRITE_TRUNCATE')
 
 
 
