@@ -59,11 +59,12 @@ def gh_repos_from_metadata(metadata):
 # Write the results to BigQuery table
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 bq_ds = args.bq_ds
+bq_tb = args.bq_tb
 print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key, readonly=False)
 
 # Delete the output table if it exists
-delete_bq_table(client, bq_ds, table_articles_mentioning_github)
+delete_bq_table(client, bq_ds, bq_tb)
 
 # Create the table
 schema = [
@@ -79,7 +80,7 @@ schema = [
     {'name': 'internal_pdf', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'abstract', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, bq_ds, table_articles_mentioning_github, schema)
+create_bq_table(client, bq_ds, bq_tb, schema)
 
 # Iterate through the records and write to BQ table
 print('\nExtracting GitHub repo names from articles...')
@@ -99,11 +100,11 @@ for record in records:
     num_done += 1
     if num_done % 100 == 0:
         print("Analyzed %s papers. Found %s valid repo names." % (num_done, num_found))
-        push_bq_records(client, bq_ds, table_articles_mentioning_github, recs_to_push)
+        push_bq_records(client, bq_ds, bq_tb, recs_to_push)
         recs_to_push.clear()
     
 # Push final batch of records
-push_bq_records(client, bq_ds, table_articles_mentioning_github, recs_to_push)
+push_bq_records(client, bq_ds, bq_tb, recs_to_push)
 
 
 print("\n\nAll done.")
