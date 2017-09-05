@@ -31,7 +31,7 @@ for metadata_group in metadata_xml:
     with open(metadata_group, encoding = "utf8") as reader:
         print("\nParsing group %s" % metadata_group)
         records += xmltodict.parse(reader.read())['xml']['records']['record']
-        print("Imported %s records." % len(records))
+        print("Imported %s records so far." % len(records))
 
 
 # Get a GitHub repo name from a metadata dict
@@ -100,11 +100,13 @@ for record in records:
     num_done += 1
     if num_done % 100 == 0:
         print("Analyzed %s papers. Found %s valid repo names." % (num_done, num_found))
-        push_bq_records(client, bq_ds, bq_tb, recs_to_push)
+        if recs_to_push:
+            push_bq_records(client, bq_ds, bq_tb, recs_to_push)
         recs_to_push.clear()
     
 # Push final batch of records
-push_bq_records(client, bq_ds, bq_tb, recs_to_push)
+if recs_to_push:
+    push_bq_records(client, bq_ds, bq_tb, recs_to_push)
 
 
 print("\n\nAll done.")
