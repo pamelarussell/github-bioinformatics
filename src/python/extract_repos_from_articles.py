@@ -61,7 +61,7 @@ def gh_repos_from_metadata(metadata):
 bq_ds = args.bq_ds
 bq_tb = args.bq_tb
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key, readonly=False)
+client = get_client(json_key_file=json_key_final_dataset, readonly=False)
 
 # Delete the output table if it exists
 delete_bq_table(client, bq_ds, bq_tb)
