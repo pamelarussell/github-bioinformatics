@@ -46,6 +46,8 @@ def get_internal_pdf(record):
         return None
     except AttributeError:
         return None
+    except TypeError:
+        return None
 
 def get_remote_database(record):
     try:

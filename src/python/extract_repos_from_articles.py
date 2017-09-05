@@ -5,7 +5,7 @@ from bigquery import get_client
 import xmltodict
 
 from lit_search import parse_record, gh_repo_from_text, gh_repo_from_pdf
-from local_params import json_key
+from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records
 
 parser = argparse.ArgumentParser()
