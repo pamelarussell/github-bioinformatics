@@ -1,6 +1,9 @@
 
 def get_title(record):
-    return record['titles']['title']['style']['#text']
+    try:
+        return record['titles']['title']['style']['#text']
+    except KeyError:
+        return None
 
 def get_abstract(record):
     try:
