@@ -1,3 +1,4 @@
+import time
 
 def run_bq_query(client, query, timeout):
     """ Returns the results of a BigQuery query
@@ -67,7 +68,7 @@ def delete_bq_table(client, dataset, table):
             raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
 
     
-def push_bq_records(client, dataset, table, records):
+def push_bq_records(client, dataset, table, records, sleep = 30):
     """ Push records to a BigQuery table
     
     Args:
@@ -77,8 +78,15 @@ def push_bq_records(client, dataset, table, records):
         table: Table name
         records: List of records to add
                  Each record is a dictionary with keys matching the schema    
+        sleep: Time to sleep if first attempt raises BrokenPipeError, then try
+                one more time
     """
-    succ = client.push_rows(dataset, table, records)
+    try:
+        succ = client.push_rows(dataset, table, records)
+    except BrokenPipeError:
+        print("BrokenPipeError. Waiting %s seconds and trying one more time." % sleep) 
+        time.sleep(sleep)
+        succ = client.push_rows(dataset, table, records)
     if not succ:
         raise RuntimeError('Push to BigQuery table was unsuccessful')
 
