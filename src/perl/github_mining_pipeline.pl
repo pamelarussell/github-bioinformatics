@@ -56,7 +56,7 @@ my $bq_ds_analysis_results = "test_repos_analysis_results";
 my $bq_ds_lit_search = "lit_search";
 
 # Tables
-my $bq_tb_articles_gh = "articles_mentioning_github"; # Repo names and articles they're mentioned in, including non-bioinformatics
+my $bq_tb_articles_gh = "repo_and_article_incl_non_bioinf"; # Repo names and articles they're mentioned in, including non-bioinformatics
 my $bq_tb_eutils_metadata = "eutils_metadata"; # Article metadata from Eutils
 my $bq_tb_repo_info_gh_api = "repo_info_gh_api"; # Repo info from the GitHub API
 my $bq_tb_articles = "articles_by_repo"; # NCBI article metadata
