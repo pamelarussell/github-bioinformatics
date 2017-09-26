@@ -17,6 +17,9 @@ use warnings;
 # Extract GitHub repo names from literature search - includes non-bioinformatics repos
 my $extract_repos_from_lit_search = 0;
 
+# Check for issues with repository names that have been manually curated
+my $check_repo_existence = 0;
+
 # Query Eutils for article metadata
 my $query_eutils_article_metadata = 0;
 
@@ -70,6 +73,13 @@ my $bq_tb_prs = "pull_requests"; # Pull requests
 
 
 # -----------------------------------------------------------------
+#                   Google Drive project structure
+# -----------------------------------------------------------------
+
+my $gsheet_repos_curated = "gh_repos_in_articles_curated";
+
+
+# -----------------------------------------------------------------
 #                    Local project structure
 # -----------------------------------------------------------------
 
@@ -79,6 +89,7 @@ my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
 # Programs
+my $script_check_repo_existence = "$src_dir_python/check_repo_existence.py";
 my $script_article_metadata_eutils = "$src_dir_R/ncbi/paper_metadata_eutils.R";
 my $script_extract_repos_from_lit_search = "$src_dir_python/extract_repos_from_articles.py";
 my $script_generate_gh_api_repo_data = "$src_dir_python/gh_api_repo_data.py";
@@ -132,6 +143,11 @@ if($extract_repos_from_lit_search) {
 	run_cmmd("$python3 $script_extract_repos_from_lit_search --metadata-dir $lit_search_metadata_dir ".
 	"--pdf-dir $lit_search_pdf_dir --bq-ds $bq_ds_lit_search --bq-tb $bq_tb_articles_gh")
 } else {print("\nSkipping step: extract repo names from literature search\n")}
+
+# Check for issues with repository names that have been manually curated
+if($check_repo_existence) {
+	run_cmmd("$python3 $script_check_repo_existence --sheet $gsheet_repos_curated");
+} else {print("\nSkipping step: check for repo existence\n")}
 
 # Get article metadata from Eutils
 if($query_eutils_article_metadata) {
