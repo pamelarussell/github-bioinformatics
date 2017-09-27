@@ -1,9 +1,6 @@
 use strict;
 use warnings;
 
-# AUTHENTICATION NOTE:
-# For this script to work in batch mode, there must be the '.httr-oauth' file in the working directory
-
 
 # ********************************************************************************************************
 # ********************************************   PARAMETERS   ********************************************
