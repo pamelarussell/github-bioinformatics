@@ -1,5 +1,5 @@
 import argparse
-from local_params import json_key
+from local_params import json_key_final_dataset
 from util import run_query_and_save_results
 from bigquery import get_client
 from query import *
@@ -23,7 +23,7 @@ res_dataset = args.res_dataset
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 # Get BigQuery client
 print('Getting BigQuery client\n')
-client = get_client(json_key_file=json_key, readonly=False)
+client = get_client(json_key_file=json_key_final_dataset, readonly=False)
     
 # Run the queries
  

@@ -1,31 +1,32 @@
 import argparse
 from bigquery import get_client
-from local_params import json_key
+from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records
 from gh_api import get_pull_requests
 from builtins import TypeError
+from util import get_repo_names
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 
                     help = 'BigQuery dataset to write table to')
 parser.add_argument('--table', action = 'store', dest = 'table', required = True, 
                     help = 'BigQuery table to write to')
-parser.add_argument('--repos', action = 'store', dest = 'repos', required = True, 
-                    help = 'File with list of repos')
+parser.add_argument('--sheet', action = 'store', dest = 'sheet', required = True, 
+                    help = 'Google Sheet with use_repo as a column')
 args = parser.parse_args()
 
 dataset = args.ds
 table = args.table
-repos_file = args.repos
+sheet = args.sheet
 
-# Read the repo names from file
-with open(repos_file) as f:
-    lines = f.readlines()
-repos = [line.strip() for line in lines]
+# Get repo names
+print("Getting repo names from spreadsheet")
+repos = get_repo_names(sheet)
+print("There are %s repos with use_repo = 1.\n" % len(repos))
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
+client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
 
 # Delete the output table if it exists
 delete_bq_table(client, dataset, table)

@@ -2,7 +2,7 @@
 ##### BigQuery project structure
 
 # Project names
-project_bioinf = 'github-bioinformatics-157418'
+project_bioinf = 'github-bioinformatics-171721'
 project_bq_public_data = 'bigquery-public-data'
 project_github_archive = 'githubarchive'
 
@@ -20,10 +20,10 @@ table_github_repos_licenses = 'licenses_by_repo'
 # Table names within GitHub bioinformatics dataset
 def table_archive(year):
     return 'github_archive_%s' % year
-table_archive_2011_2016 = 'github_archive_2011_2016'
+table_archive_2011_2017 = 'github_archive_2011_2017'
 table_commits = 'commits'
 table_contents = 'contents'
-table_files = 'files'
+table_files = 'file_info'
 table_languages = 'languages'
 table_licenses = 'licenses'
 table_lines_of_code_file = 'lines_of_code_by_file'

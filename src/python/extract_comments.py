@@ -7,8 +7,8 @@ from bigquery import get_client
 from comments import extract_comments_string, comment_extractor
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
-from local_params import json_key
-from structure.bq_proj_structure import project_bioinf, table_contents, table_lines_of_code
+from local_params import json_key_final_dataset
+from structure.bq_proj_structure import project_bioinf, table_contents, table_lines_of_code_file
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 
@@ -36,7 +36,7 @@ table = args.tab
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client')
-client = get_client(json_key_file=json_key, readonly=False)
+client = get_client(json_key_file=json_key_final_dataset, readonly=False)
 
 # Delete the comments table if it exists
 delete_bq_table(client, out_ds, table)
@@ -64,7 +64,7 @@ ON
 GROUP BY
   files_id,
   language,
-  contents_content""" % (project_bioinf, ds_gh, table_contents, project_bioinf, ds_loc, table_lines_of_code)
+  contents_content""" % (project_bioinf, ds_gh, table_contents, project_bioinf, ds_loc, table_lines_of_code_file)
 print('\nGetting file metadata and contents')
 print('\nRunning query: %s\n\n' %query)
 

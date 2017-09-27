@@ -7,7 +7,7 @@ from dry import add_chunks, make_records, split_into_lines
 
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
-from local_params import json_key
+from local_params import json_key_final_dataset
 from structure.bq_proj_structure import project_bioinf
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
@@ -55,7 +55,7 @@ languages = set([s.lower() for s in args.langs_str.split(",")])
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
+client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
 
 
 # Delete the output tables if they exist
