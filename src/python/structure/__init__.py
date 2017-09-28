@@ -9,7 +9,7 @@ from .bq_proj_structure import table_github_repos_contents
 from .bq_proj_structure import table_github_repos_languages
 from .bq_proj_structure import table_github_repos_licenses
 from .bq_proj_structure import table_archive
-from .bq_proj_structure import table_archive_2011_2016
+from .bq_proj_structure import table_archive_2011_2017
 from .bq_proj_structure import table_commits
 from .bq_proj_structure import table_contents
 from .bq_proj_structure import table_files

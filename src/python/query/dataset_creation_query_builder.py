@@ -4,11 +4,9 @@ from structure.bq_proj_structure import *
 ##### Functions to build queries against public GitHub data to extract data on specific repos
 
 
-# Convert a file containing a list of repo names into a comma separated, lowercase, double quoted list for SQL queries
-def comma_separated_lowercase_quoted_repo_names(file):
-    with open(file, encoding = 'utf-8') as f:
-        lines = f.readlines()
-    return ','.join(['"%s"' % line.strip().lower() for line in lines])
+# Convert a list of repo names into a comma separated, lowercase, double quoted list for SQL queries
+def comma_separated_lowercase_quoted_repo_names(repos):
+    return ','.join(['"%s"' % repo.strip().lower() for repo in repos])
     
     
 # Commits

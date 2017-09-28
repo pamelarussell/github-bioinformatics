@@ -15,7 +15,7 @@ table_github_repos_commits = 'commits'
 table_github_repos_files = 'files'
 table_github_repos_contents = 'contents'
 table_github_repos_languages = 'languages'
-table_github_repos_licenses = 'licenses_by_repo'
+table_github_repos_licenses = 'licenses'
 
 # Table names within GitHub bioinformatics dataset
 def table_archive(year):
