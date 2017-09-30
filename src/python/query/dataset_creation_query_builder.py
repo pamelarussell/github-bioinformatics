@@ -11,7 +11,7 @@ def comma_separated_lowercase_quoted_repo_names(repos):
     
 # Commits
 # repos is a comma separated, double quoted list of repo names
-def build_query_commits(repos):
+def build_query_commits(project_bq_public_data, dataset_github_repos, table_github_repos_commits, repos):
     return """
     SELECT
       repo_name,
@@ -37,7 +37,7 @@ def build_query_commits(repos):
     
 # Files
 # repos is a comma separated, double quoted list of repo names
-def build_query_files(repos):
+def build_query_files(project_bq_public_data, dataset_github_repos, table_github_repos_files, repos):
     return """
     SELECT
       *
@@ -50,7 +50,8 @@ def build_query_files(repos):
 
 # Contents
 # repos is a comma separated, double quoted list of repo names
-def build_query_contents(repos):
+def build_query_contents(project_bq_public_data, dataset_github_repos, table_github_repos_files, 
+                         table_github_repos_contents, repos):
     return """
         SELECT
       *
@@ -96,7 +97,7 @@ def build_query_contents(repos):
     
 # Languages used in each repo
 # repos is a comma separated, double quoted list of repo names
-def build_query_languages(repos):
+def build_query_languages(project_bq_public_data, dataset_github_repos, table_github_repos_languages, repos):
     return """
     SELECT
       *
@@ -109,7 +110,7 @@ def build_query_languages(repos):
     
 # License for each repo
 # repos is a comma separated, double quoted list of repo names
-def build_query_licenses(repos):
+def build_query_licenses(project_bq_public_data, dataset_github_repos, table_github_repos_licenses, repos):
     return """
     SELECT
       *

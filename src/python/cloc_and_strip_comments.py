@@ -7,7 +7,7 @@ from bigquery import get_client
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
 from local_params import json_key
-from structure.bq_proj_structure import project_bioinf, table_files, table_contents
+from structure.bq_proj_structure
 from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
 from util import rec_contents_comments_stripped
 
@@ -17,8 +17,12 @@ from util import rec_contents_comments_stripped
 # Also strip comments and push the stripped file contents to a new BigQuery table
 # Command line arguments
 parser = argparse.ArgumentParser()
+parser.add_argument('--proj-bioinf', action = 'store', dest = 'project_bioinf', required = True,
+                    help = 'BigQuery GitHub bioinformatics project')
 parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, 
                     help = 'BigQuery dataset to read from')
+parser.add_argument('--tb_files', action = 'store', dest = 'table_contents', required = True,
+                    help = 'BigQuery files table')
 parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, 
                     help = 'BigQuery dataset to write to')
 parser.add_argument('--table_loc', action = 'store', dest = 'tab_loc', required = True, 
@@ -37,12 +41,15 @@ os.makedirs(os.path.split(outfile)[0], exist_ok = True)
 w = open(outfile, mode = 'x', buffering = 1)
 
 # BigQuery parameters
+project_bioinf = args.project_bioinf
 in_ds = args.in_ds
 out_ds = args.out_ds
+table_contents = args.table_contents
 table_loc_ungrouped = "tmp_loc_ungrouped"
 table_sc_ungrouped = "tmp_sc_ungrouped"
 table_loc = args.tab_loc
 table_sc = args.tab_sc
+table_files = args.tb_Files
 
 # CLOC executable
 cloc_exec = args.cloc

@@ -47,25 +47,59 @@ my $generate_pr_data = 0;
 #                   BigQuery project structure
 # -----------------------------------------------------------------
 
-# Project
-my $bq_proj = "github-bioinformatics-171721";
 
+### BigQuery public data ###
+# Project
+my $bq_proj_public_data = "bigquery-public-data";
+# Datasets
+my $bq_ds_public_data_repos = "github_repos";
+# Tables
+my $bq_tb_public_data_commits = "commits";
+my $bq_tb_public_data_files = "files";
+my $bq_tb_public_data_contents = "contents";
+my $bq_tb_public_data_languages = "languages";
+my $bq_tb_public_data_licenses = "licenses";
+
+### GitHub archive ###
+# Project
+my $bq_proj_gh_archive = "githubarchive";
+# Datasets
+my $bq_ds_gh_archive_year = "year";
+
+### GitHub bioinformatics project ###
+# Project
+my $bq_proj_gh_bioinf = "github-bioinformatics-171721";
 # Datasets
 my $bq_ds_repos = "repos";
 my $bq_ds_analysis_results = "analysis";
 my $bq_ds_lit_search = "lit_search";
-
-# Tables
+# Data tables
+my $bq_tb_commits = "commits";
+my $bq_tb_contents = "contents";
+my $bq_tb_files = "file_info";
+my $bq_tb_languages = "languages";
+my $bq_tb_licenses = "licenses";
+# Processed data tables
 my $bq_tb_repo_article = "repo_and_article"; # Repo names and articles they're mentioned in, including non-bioinformatics
 my $bq_tb_eutils = "article_info_eutils"; # Article metadata from Eutils
 my $bq_tb_repo_info = "repo_info_gh_api"; # Repo info from the GitHub API
 my $bq_tb_loc_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
+my $bq_tb_loc_by_repo = "lines_of_code_by_repo"; # Computed table with total lines of code by repo
 my $bq_tb_contents_comments_stripped = "contents_comments_stripped"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
-my $bq_tb_languages = "languages"; # Languages table extracted from similar table in public GitHub dataset
-my $bq_tb_code_chunk_freq = "code_chunk_freq"; # Frequency of groups of lines of code
-my $bq_tb_files = "file_info"; # File metadata
 my $bq_tb_prs = "pull_requests"; # Pull requests
+# Analysis tables
+my $bq_tb_code_chunk_freq = "code_chunk_freq"; # Frequency of groups of lines of code
+my $bq_tb_bytes_by_lang = "bytes_by_language";
+my $bq_tb_lang_list_by_repo = "language_list_by_repo";
+my $bq_tb_num_langs_by_repo = "num_languages_by_repo";
+my $bq_tb_num_watch_events_by_repo = "num_watch_events_by_repo";
+my $bq_tb_num_repos_by_language = "num_repos_by_language";
+my $bq_tb_test_cases = "test_cases";
+my $bq_tb_test_cases_by_repo = "test_cases_by_repo";
+my $bq_tb_commit_types_by_repo = "commit_types_by_repo";
+my $bq_tb_project_duration_by_repo = "project_duration_by_repo";
+my $bq_tb_num_devs_by_repo = "num_devs_by_repo";
 
 
 # -----------------------------------------------------------------
@@ -144,7 +178,7 @@ if($check_repo_existence) {
 
 # Get article metadata from Eutils
 if($query_eutils_article_metadata) {
-	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj --dataset $bq_ds_lit_search --table-r " .
+	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj_gh_bioinf --dataset $bq_ds_lit_search --table-r " .
 	"$bq_tb_repo_article --table-w $bq_tb_eutils")
 } else {print("\nSkipping step: get article metadata from Eutils\n")}
 

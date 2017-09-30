@@ -8,13 +8,15 @@ from dry import add_chunks, make_records, split_into_lines
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
 from local_params import json_key_final_dataset
-from structure.bq_proj_structure import project_bioinf
+from structure.bq_proj_structure
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 
 # Use comment-stripped source code to count how many times each chunk of code appears
 # in a given repo
 parser = argparse.ArgumentParser()
+parser.add_argument('--proj_bioinf', action = 'store', dest = 'project_bioinf', required = True,
+                    help = 'BigQuery GitHub bioinformatics project')
 parser.add_argument('--ds_gh', action = 'store', dest = 'ds_gh', required = True, 
                     help = 'BigQuery GitHub dataset')
 parser.add_argument('--ds_res', action = 'store', dest = 'ds_res', required = True, 
@@ -40,6 +42,7 @@ min_line_len_2 = 50
 
 
 # BigQuery parameters
+project_bioinf = args.project_bioinf
 ds_gh = args.ds_gh
 ds_res = args.ds_res
 table_files = args.tab_files

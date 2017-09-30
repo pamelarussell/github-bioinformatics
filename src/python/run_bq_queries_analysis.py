@@ -13,11 +13,53 @@ import os
 # Command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--github_ds', action = 'store', dest = 'dataset', required = True, help = 'BigQuery dataset containing GitHub data')
+parser.add_argument('--tb_commits', action = 'store', dest = 'table_commits', required = True,
+                    help = 'BigQuery commits table')
+parser.add_argument('--tb_files', action = 'store', dest = 'table_files', required = True,
+                    help = 'BigQuery files table')
+parser.add_argument('--tb_languages', action = 'store', dest = 'table_languages', required = True,
+                    help = 'BigQuery languages table')
+parser.add_argument('--tb_loc_file', action = 'store', dest = 'table_loc_file', required = True,
+                    help = 'BigQuery table for lines of code by file')
+parser.add_argument('--tb_loc_repo', action = 'store', dest = 'table_loc_repo', required = True,
+                    help = 'BigQuery table for lines of code by repo')
+parser.add_argument('--tb_bytes_by_language', action = 'store', dest = 'table_bytes_by_language', required = True,
+                    help = 'BigQuery table for bytes by language')
+parser.add_argument('--tb_lang_list_by_repo', action = 'store', dest = 'table_lang_list_by_repo', required = True,
+                    help = 'BigQuery table for language list by repo')
+parser.add_argument('--tb_num_langs_by_repo', action = 'store', dest = 'table_num_langs_by_repo', required = True,
+                    help = 'BigQuery table for number of languages by repo')
+parser.add_argument('--tb_num_repos_by_lang', action = 'store', dest = 'table_num_repos_by_lang', required = True,
+                    help = 'BigQuery table for number of repos by language')
+parser.add_argument('--tb_test_cases', action = 'store', dest = 'table_test_cases', required = True,
+                    help = 'BigQuery table for number of test cases')
+parser.add_argument('--tb_test_cases_by_repo', action = 'store', dest = 'table_test_cases_by_repo', required = True,
+                    help = 'BigQuery table for number of test cases by repo')
+parser.add_argument('--tb_commit_types', action = 'store', dest = 'table_commit_types', required = True,
+                    help = 'BigQuery table for commit types')
+parser.add_argument('--tb_project_duration', action = 'store', dest = 'table_project_duration', required = True,
+                    help = 'BigQuery table for project duration')
+parser.add_argument('--tb_num_devs_by_repo', action = 'store', dest = 'table_num_devs_by_repo', required = True,
+                    help = 'BigQuery table for number of devs by repo')
 parser.add_argument('--results_ds', action = 'store', dest = 'res_dataset', required = True, help = 'BigQuery dataset to store tables of results in')
 args = parser.parse_args()
     
 # BigQuery parameters
 dataset = args.dataset
+table_commits = args.table_commits
+table_files = args.table_files
+table_languages = args.table_languages
+table_lines_of_code_file = args.table_loc_file
+table_lines_of_code_repo = args.table_loc_repo
+table_bytes_by_language = args.table_bytes_by_lanugage
+table_language_list_by_repo = args.table_lang_list_by_repo
+table_num_languages_by_repo = args.table_num_langs_by_repo
+table_num_repos_by_language = args.table_num_repos_by_lang
+table_test_cases = args.table_test_cases
+table_test_cases_by_repo = args.table_test_cases_by_repo
+table_commit_types = args.table_commit_types
+table_project_duration = args.table_project_duration
+table_num_devs_by_repo = args.table_num_devs_by_repo
 res_dataset = args.res_dataset
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python

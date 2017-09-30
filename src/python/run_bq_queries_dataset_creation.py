@@ -16,11 +16,26 @@ from util import get_repo_names
 parser = argparse.ArgumentParser()
 parser.add_argument('--sheet', action = 'store', dest = 'sheet', required = True, 
                     help = 'Google Sheet with use_repo as a column')
+parser.add_argument('--tb_commits', action = 'store', dest = 'table_commits', required = True,
+                    help = 'BigQuery commits table')
+parser.add_argument('--tb_contents', action = 'store', dest = 'table_contents', required = True,
+                    help = 'BigQuery contents table')
+parser.add_argument('--tb_files', action = 'store', dest = 'table_files', required = True,
+                    help = 'BigQuery files table')
+parser.add_argument('--tb_languages', action = 'store', dest = 'table_languages', required = True,
+                    help = 'BigQuery languages table')
+parser.add_argument('--tb_licenses', action = 'store', dest = 'table_licenses', required = True,
+                    help = 'BigQuery licenses table')
 parser.add_argument('--results_ds', action = 'store', dest = 'res_dataset', required = True, help = 'BigQuery dataset to store tables of results in')
 args = parser.parse_args()
     
 # BigQuery parameters
 res_dataset = args.res_dataset
+table_commits = args.table_commits
+table_contents = args.table_contents
+table_files = args.table_files
+table_languages = args.table_languages
+table_licenses = args.table_licenses
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 # Get BigQuery client

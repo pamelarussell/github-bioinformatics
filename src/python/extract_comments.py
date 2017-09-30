@@ -8,7 +8,6 @@ from comments import extract_comments_string, comment_extractor
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
 from local_params import json_key_final_dataset
-from structure.bq_proj_structure import project_bioinf, table_contents, table_lines_of_code_file
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 
@@ -16,10 +15,16 @@ from util import delete_bq_table, create_bq_table, push_bq_records, run_query_an
 # Use the program CLOC to count lines of code
 # Command line arguments
 parser = argparse.ArgumentParser()
+parser.add_argument('--proj_bioinf', action = 'store', dest = 'project_bioinf', required = True,
+                    help = 'BigQuery GitHub bioinformatics project')
 parser.add_argument('--ds_gh', action = 'store', dest = 'ds_gh', required = True, 
                     help = 'BigQuery dataset containing GitHub files data')
+parser.add_argument('--tb_contents', action = 'store', dest = 'table_contents', required = True,
+                    help = 'BigQuery contents table')
 parser.add_argument('--ds_loc', action = 'store', dest = 'ds_loc', required = True, 
                     help = 'BigQuery dataset containing lines_of_code table')
+parser.add_argument('--tb_loc', action = 'store', dest = 'tb_loc', required = True,
+                    help = 'BigQuery table for lines of code by file')
 parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, 
                     help = 'BigQuery dataset to write to')
 parser.add_argument('--table', action = 'store', dest = 'tab', required = True, 
@@ -28,11 +33,14 @@ args = parser.parse_args()
 
 
 # BigQuery parameters
+project_bioinf = args.project_bioinf
 ds_gh = args.ds_gh
 ds_loc = args.ds_loc
 out_ds = args.out_ds
+table_contents = args.table_contents
 table_ungrouped = "tmp_comments_ungrouped"
 table = args.tab
+table_lines_of_code_file = args.tb_loc
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client')
