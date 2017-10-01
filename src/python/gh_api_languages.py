@@ -7,7 +7,7 @@ from local_params import json_key_final_dataset
 from util import curr_time_utc
 from util import delete_bq_table, create_bq_table, push_bq_records
 from util import get_repo_names
-from util import curr_commit_master
+from gh_api import curr_commit_master
 
 
 parser = argparse.ArgumentParser()

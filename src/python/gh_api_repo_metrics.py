@@ -3,7 +3,7 @@ from bigquery import get_client
 from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records
 from gh_api import repo
-from util import get_repo_names
+from util import get_repo_names, curr_commit_master, curr_time_utc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 
@@ -41,12 +41,16 @@ schema = [
     {'name': 'watchers_count', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'forks_count', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'open_issues_count', 'type': 'INTEGER', 'mode': 'NULLABLE'},
-    {'name': 'subscribers_count', 'type': 'INTEGER', 'mode': 'NULLABLE'}
+    {'name': 'subscribers_count', 'type': 'INTEGER', 'mode': 'NULLABLE'},
+    {'name': 'curr_commit_master', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'time_accessed', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
 create_bq_table(client, dataset, table, schema)
 
 def get_record(repo_name):
     r = repo.Repo(repo_name)
+    curr_time = curr_time_utc()
+    curr_commit = curr_commit_master(repo_name)
     return {'repo_name': r.get_repo_name(),
             'gh_api_url': r.get_gh_api_url(),
             'repo_url': r.get_repo_url(),
@@ -56,7 +60,9 @@ def get_record(repo_name):
             'watchers_count': r.get_watchers_count(),
             'forks_count': r.get_forks_count(),
             'open_issues_count': r.get_open_issues_count(),
-            'subscribers_count': r.get_subscribers_count()}
+            'subscribers_count': r.get_subscribers_count(),
+            'curr_commit_master': curr_commit,
+            'time_accessed': curr_time}
     
 print("Getting repo info from GitHub API")
 records = []

@@ -21,7 +21,11 @@ my $check_repo_existence = 0;
 my $query_eutils_article_metadata = 0;
 
 # Use GitHub API to get repo data
-my $generate_language_bytes = 1;
+my $generate_language_bytes = 0;
+my $generate_licenses = 1;
+my $generate_commits = 0;
+my $generate_file_info = 0;
+my $generate_contents = 0;
 my $generate_repo_metrics = 0;
 my $generate_pr_data = 0;
 
@@ -109,6 +113,10 @@ my $script_article_metadata_eutils = "$src_dir_R/ncbi/paper_metadata_eutils.R";
 my $script_extract_repos_from_lit_search = "$src_dir_python/extract_repos_from_articles.py";
 my $script_gh_api_repo_metrics = "$src_dir_python/gh_api_repo_metrics.py";
 my $script_gh_api_languages = "$src_dir_python/gh_api_languages.py";
+my $script_gh_api_licenses = "$src_dir_python/gh_api_licenses.py";
+my $script_gh_api_commits = "$src_dir_python/gh_api_commits.py";
+my $script_gh_api_file_info = "$src_dir_python/gh_api_file_info.py";
+my $script_gh_api_contents = "$src_dir_python/gh_api_contents.py";
 my $script_gh_api_pr_data = "$src_dir_python/gh_api_pr_data.py";
 my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
@@ -178,6 +186,30 @@ if($generate_language_bytes) {
 	run_cmmd("$python3 $script_gh_api_languages --ds $bq_ds_repos --table $bq_tb_languages ".
 	"--sheet $gsheet_repos_curated")
 } else {print("\nSkipping step: get language info from GitHub API\n")}
+
+# Get licenses from GitHub API
+if($generate_licenses) {
+	run_cmmd("$python3 $script_gh_api_licenses --ds $bq_ds_repos --table $bq_tb_licenses ".
+	"--sheet $gsheet_repos_curated")
+} else {print("\nSkipping step: get licenses from GitHub API\n")}
+
+# Get commits from GitHub API
+if($generate_commits) {
+	run_cmmd("$python3 $script_gh_api_commits --ds $bq_ds_repos --table $bq_tb_commits ".
+	"--sheet $gsheet_repos_curated")
+} else {print("\nSkipping step: get commits from GitHub API\n")}
+
+# Get file info from GitHub API
+if($generate_file_info) {
+	run_cmmd("$python3 $script_gh_api_file_info --ds $bq_ds_repos --table $bq_tb_files ".
+	"--sheet $gsheet_repos_curated")
+} else {print("\nSkipping step: get file info from GitHub API\n")}
+
+# Get file contents from GitHub API
+if($generate_contents) {
+	run_cmmd("$python3 $script_gh_api_contents --ds $bq_ds_repos --table $bq_tb_contents ".
+	"--sheet $gsheet_repos_curated")
+} else {print("\nSkipping step: get file contents from GitHub API\n")}
 
 # Get pull request info from GitHub API
 if($generate_pr_data) {
