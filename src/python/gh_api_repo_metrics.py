@@ -3,7 +3,8 @@ from bigquery import get_client
 from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records
 from gh_api import repo
-from util import get_repo_names, curr_commit_master, curr_time_utc
+from util import get_repo_names, curr_time_utc
+from gh_api import curr_commit_master
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 

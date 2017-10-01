@@ -1,5 +1,4 @@
-from util import gh_curl_response, url_repos
-import json
+from gh_api import gh_curl_response, url_repos
 
 
 class Repo(object):
@@ -24,28 +23,28 @@ class Repo(object):
         return self.response
     
     def get_repo_url(self):
-        return self.response[0].get('html_url')
+        return self.response.get('html_url')
     
     def get_description(self):
-        return self.response[0].get('description')
+        return self.response.get('description')
     
     def is_fork(self):
-        return self.response[0].get('fork')
+        return self.response.get('fork')
     
     def get_stargazers_count(self):
-        return self.response[0].get('stargazers_count')
+        return self.response.get('stargazers_count')
     
     def get_watchers_count(self):
-        return self.response[0].get('watchers_count')
+        return self.response.get('watchers_count')
     
     def get_forks_count(self):
-        return self.response[0].get('forks_count')
+        return self.response.get('forks_count')
     
     def get_open_issues_count(self):
-        return self.response[0].get('open_issues')
+        return self.response.get('open_issues')
     
     def get_subscribers_count(self):
-        return self.response[0].get('subscribers_count')
+        return self.response.get('subscribers_count')
         
         
         

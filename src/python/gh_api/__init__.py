@@ -8,5 +8,5 @@ from .requests import curr_commit_master
 from .requests import add_page_num
 from .requests import get_license
 from .requests import get_file_info
-
+from .requests import get_file_contents
 

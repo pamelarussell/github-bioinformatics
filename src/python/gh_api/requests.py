@@ -1,9 +1,10 @@
+import base64
 from io import BytesIO
 import json
+from json.decoder import JSONDecodeError
 
 from local_params import gh_userpwd
 from pycurl import Curl
-from json.decoder import JSONDecodeError
 
 
 # The 'repos' endpoint
@@ -136,6 +137,24 @@ def get_file_info(repo_name, path = None):
                     raise ValueError("Type not supported: %s" % tp)
     return rtrn
             
+def get_file_contents(repo_name, path):
+    """ Returns file contents as a string 
+    Returns None if there is a problem, e.g. file is too big to get contents from normal API,
+    or if file can't be decoded into text
+    """
+    response = gh_curl_response(get_contents_url(repo_name, path))
+    try:
+        tp = response["type"]
+        if tp == "dir" or tp == "submodule":
+            raise ValueError("Can't get file contents of directory")
+        encoding = response["encoding"]
+        assert(encoding == "base64")
+        content = response["content"]
+        return base64.b64decode(content).decode()
+    except KeyError:
+        return None
+    except UnicodeDecodeError:
+        return None
             
 def get_language_bytes(repo_name):
     """ Returns dict of bytes by language
