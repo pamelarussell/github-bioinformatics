@@ -16,6 +16,18 @@ sec_between_requests = 60 * 60 / api_rate_limit_per_hour
 # The 'repos' endpoint
 url_repos = "https://api.github.com/repos"
 
+def curr_commit_master(repo_name):
+    """ Returns the sha for the current commit on the master branch """
+    try:
+        response = gh_curl_response(get_commits_master_url(repo_name))
+        return response["sha"]
+    except ValueError:
+        return None
+
+def get_commits_master_url(repo_name):
+    """ Get GitHub API URL for commits to master """
+    return "%s/%s/commits/master" % (url_repos, repo_name)
+
 def get_pulls_url(repo_name, state = "all"):
     """ Get GitHub API pull requests URL for given repo name """
     return "%s/%s/pulls?per_page=100&state=%s" % (url_repos, repo_name, state)
@@ -58,7 +70,8 @@ def gh_curl_response(url):
         url: URL e.g. 'https://api.github.com/repos/samtools/samtools'
         
     returns:
-        Parsed API response. Returns a list of dicts, one for each record.
+        Parsed API response. Returns a list of dicts, one for each record, or just one
+        dict if the response was a single dict.
         
     """
     page_num = 1
@@ -75,7 +88,7 @@ def gh_curl_response(url):
         parsed = json.loads(body.decode())
         validate_response_found(parsed, url)
         if type(parsed) is dict:
-            return [parsed]
+            return parsed
         if len(parsed) == 0:
             break
         else:

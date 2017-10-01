@@ -11,9 +11,7 @@ def get_language_bytes(repo_name):
     response = gh_curl_response(get_languages_url(repo_name))
     if not response:
         return {}
-    if len(response) != 1:
-        raise ValueError("Language response should have length 1")
-    return response[0]
+    return response
 
 def get_pull_requests(repo_name, state = "all"):
     """ Returns list of pull requests.

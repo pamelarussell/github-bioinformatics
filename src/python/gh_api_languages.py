@@ -1,9 +1,14 @@
 import argparse
+
 from bigquery import get_client
+
+from gh_api import get_language_bytes
 from local_params import json_key_final_dataset
+from util import curr_time_utc
 from util import delete_bq_table, create_bq_table, push_bq_records
 from util import get_repo_names
-from gh_api import get_language_bytes
+from util import curr_commit_master
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 
@@ -34,14 +39,22 @@ delete_bq_table(client, dataset, table)
 schema = [
     {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'language_name', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'language_bytes', 'type': 'INTEGER', 'mode': 'NULLABLE'}
+    {'name': 'language_bytes', 'type': 'INTEGER', 'mode': 'NULLABLE'},
+    {'name': 'curr_commit_master', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'time_accessed', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
 create_bq_table(client, dataset, table, schema)
 
 # Get list of language records for a repo
 def get_records(repo_name):
     data = get_language_bytes(repo_name)
-    return [{'repo_name': repo_name, 'language_name': key, 'language_bytes': data[key]} for key in data.keys()]
+    curr_time = curr_time_utc()
+    curr_commit = curr_commit_master(repo_name)
+    return [{'repo_name': repo_name, 
+             'language_name': key, 
+             'language_bytes': data[key],
+             'curr_commit_master': curr_commit,
+             'time_accessed': curr_time} for key in data.keys()]
     
 print("Getting language info from GitHub API")
 records = []
