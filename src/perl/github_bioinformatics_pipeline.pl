@@ -22,7 +22,7 @@ my $query_eutils_article_metadata = 0;
 
 # Use GitHub API to get repo data
 my $generate_language_bytes = 0;
-my $generate_licenses = 1;
+my $generate_licenses = 0;
 my $generate_commits = 0;
 my $generate_file_info = 0;
 my $generate_contents = 0;

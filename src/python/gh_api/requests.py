@@ -3,6 +3,7 @@ import json
 
 from local_params import gh_userpwd
 from pycurl import Curl
+from json.decoder import JSONDecodeError
 
 
 # The 'repos' endpoint
@@ -42,6 +43,7 @@ def gh_curl_response(url):
     """
     page_num = 1
     results = []
+    prev_response = None
     while True:
         buffer = BytesIO()
         c = Curl()
@@ -51,15 +53,25 @@ def gh_curl_response(url):
         c.perform()
         c.close()
         body = buffer.getvalue()
-        parsed = json.loads(body.decode())
-        validate_response_found(parsed, url)
+        try:
+            parsed = json.loads(body.decode())
+        except JSONDecodeError:
+            print("Caught JSONDecodeError. Returning empty list for URL %s" % url)
+            return []
+        validate_response_found(parsed, c.URL)
         if type(parsed) is dict:
             return parsed
-        if len(parsed) == 0:
-            break
         else:
-            results = results + parsed
-            page_num = page_num + 1
+            if len(parsed) == 0:
+                break
+            else:
+                if parsed == prev_response:
+                    # Sometimes GitHub API will return the same response for any provided page num
+                    break
+                else:
+                    prev_response = parsed
+                    results = results + parsed
+                    page_num = page_num + 1
     return results
 
 def curr_commit_master(repo_name):
@@ -86,6 +98,45 @@ def get_license_url(repo_name):
     """ Get GitHub licenses API URL for a given repo name """
     return "%s/%s/license" % (url_repos, repo_name)
 
+def get_contents_url(repo_name, path = None):
+    """ Git GitHub contents URL for a given repo name and optional file path
+    
+    Args:
+        repo_name: Repo name
+        path: Optional path within repo
+    """
+    if path is not None:
+        return "%s/%s" % (get_contents_url(repo_name, None), path)
+    else:
+        return "%s/%s/contents" % (url_repos, repo_name)
+    
+def get_file_info(repo_name, path = None):
+    """ Returns list of dicts, one dict containing info for each file in repo
+        If a path is provided, if the path is a single file, returns info for that
+        file. If path is a directory, returns files in that directory. Ignores submodules.
+    
+    Args:
+        repo_name: Repo name
+        path: Optional path within repo    
+    """
+    response = gh_curl_response(get_contents_url(repo_name, path))
+    rtrn = []
+    for file in response:
+        tp = file["type"]
+        if tp == "dir":
+            # Recursively get files in subdirectories
+            rtrn = rtrn + get_file_info(repo_name, file["path"])
+        else:
+            if tp == "file" or tp == "symlink":
+                rtrn.append(file)
+            else:
+                if tp == "submodule": # Skip submodules
+                    pass
+                else:
+                    raise ValueError("Type not supported: %s" % tp)
+    return rtrn
+            
+            
 def get_language_bytes(repo_name):
     """ Returns dict of bytes by language
     
