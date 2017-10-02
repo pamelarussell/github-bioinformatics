@@ -8,9 +8,12 @@ from local_params import json_key_final_dataset
 from util import curr_time_utc
 from util import delete_bq_table, create_bq_table, push_bq_records
 from util import get_repo_names
+from util import unique_vals
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--proj', action = 'store', dest = 'proj', required = True,
+                    help = 'BigQuery project name')
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 
                     help = 'BigQuery dataset to write table to')
 parser.add_argument('--table_file_info', action = 'store', dest = 'table_info', required = True, 
@@ -21,6 +24,7 @@ parser.add_argument('--sheet', action = 'store', dest = 'sheet', required = True
                     help = 'Google Sheet with use_repo as a column')
 args = parser.parse_args()
  
+proj = args.proj
 dataset = args.ds
 table_info = args.table_info
 table_contents = args.table_contents
@@ -35,9 +39,16 @@ print("There are %s repos with use_repo = 1.\n" % len(repos))
 print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
  
-# Delete the output tables if they exist
-delete_bq_table(client, dataset, table_info)
-delete_bq_table(client, dataset, table_contents)
+# Check which repos are already in the info table and contents table
+existing_repos_info = unique_vals(client, proj, dataset, table_info, "repo_name")
+existing_repos_contents = unique_vals(client, proj, dataset, table_contents, "repo_name")
+if not existing_repos_info == existing_repos_contents:
+    print("Different sets of repos are represented in the info and contents tables. Deleting both and starting over.")
+    delete_bq_table(client, dataset, table_info)
+    delete_bq_table(client, dataset, table_contents)
+else:
+    repos = [repo for repo in repos if repo not in existing_repos_info]
+    print("Only getting data for %s repos not already analyzed" %len(repos))
  
 # Create the output tables
 schema_info = [
@@ -111,8 +122,8 @@ for repo_name in repos:
             file_contents_records.append(get_contents_record(record))
     except UnicodeEncodeError:
         print("Skipping repo %s" % repo_name)
-    push_bq_records(client, dataset, table_info, file_info_records)
     push_bq_records(client, dataset, table_contents, file_contents_records)
+    push_bq_records(client, dataset, table_info, file_info_records)
     file_info_records.clear()
     file_contents_records.clear()
     num_done = num_done + 1

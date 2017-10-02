@@ -1,5 +1,19 @@
 import time
 
+
+def unique_vals(client, proj, dataset, table, col_name):
+    """ Returns the ordered set of unique values in a column of a BigQuery table
+    
+    Args:
+        client: BigQuery-Python client
+        proj: Project name
+        dataset: Dataset name
+        table: Table name
+        col_name: Column name
+    """
+    res = run_bq_query(client, "SELECT %s FROM [%s:%s.%s] GROUP BY %s ORDER BY %s" % (col_name, proj, dataset, table, col_name, col_name), 120)
+    return [rec[col_name] for rec in res]
+
 def run_bq_query(client, query, timeout):
     """ Returns the results of a BigQuery query
     
@@ -68,7 +82,7 @@ def delete_bq_table(client, dataset, table):
             raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
 
     
-def push_bq_records(client, dataset, table, records, sleep = 30):
+def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100):
     """ Push records to a BigQuery table
     
     Args:
@@ -80,7 +94,12 @@ def push_bq_records(client, dataset, table, records, sleep = 30):
                  Each record is a dictionary with keys matching the schema    
         sleep: Time to sleep if first attempt raises BrokenPipeError, then try
                 one more time
+        max_batch: Max number of records to push at one time
     """
+    if len(records) > max_batch:
+        split = records / 2
+        push_bq_records(client, dataset, table, records[0:split], sleep, max_batch)
+        push_bq_records(client, dataset, table, records[split:], sleep, max_batch)
     try:
         succ = client.push_rows(dataset, table, records)
     except BrokenPipeError:

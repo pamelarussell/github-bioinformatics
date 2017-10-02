@@ -200,7 +200,7 @@ if($generate_commits) {
 # Get file info and contents from GitHub API
 if($generate_files) {
 	run_cmmd("$python3 $script_gh_api_file_info --ds $bq_ds_repos --table_file_info $bq_tb_files --table_file_contents $bq_tb_contents ".
-	"--sheet $gsheet_repos_curated")
+	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
 } else {print("\nSkipping step: get file info from GitHub API\n")}
 
 # Get pull request info from GitHub API

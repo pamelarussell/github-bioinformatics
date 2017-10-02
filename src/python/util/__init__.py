@@ -12,5 +12,5 @@ from .gh_api_util import gh_file_contents
 from .gh_api_util import sleep_gh_rate_limit
 from .gh_api_util import gh_login
 from .gh_api_util import write_gh_file_contents
-
+from .bigquery_util import unique_vals
 
