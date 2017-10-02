@@ -5,6 +5,7 @@ from json.decoder import JSONDecodeError
 
 from local_params import gh_userpwd
 from pycurl import Curl
+from util import sleep_gh_rate_limit
 
 
 # The 'repos' endpoint
@@ -42,9 +43,11 @@ def gh_curl_response(url):
         dict if the response was a single dict.
         
     """
+    sleep_gh_rate_limit()
     page_num = 1
     results = []
     prev_response = None
+    url = url.replace(" ", "%20")
     while True:
         buffer = BytesIO()
         c = Curl()
@@ -56,6 +59,9 @@ def gh_curl_response(url):
         body = buffer.getvalue()
         try:
             parsed = json.loads(body.decode())
+            if "message" in parsed:
+                if "API rate limit exceeded" in parsed["message"]:
+                    raise PermissionError(parsed["message"])
         except JSONDecodeError:
             print("Caught JSONDecodeError. Returning empty list for URL %s" % url)
             return []

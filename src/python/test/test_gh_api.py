@@ -1,12 +1,12 @@
 import unittest
 
-from gh_api import get_file_info, get_license, get_language_bytes, get_pull_requests, get_file_contents
+from gh_api import get_file_info, get_license, get_language_bytes, get_pull_requests, get_file_contents, gh_curl_response
 from gh_api.repo import Repo
 
 
 class GitHubAPITest(unittest.TestCase):
     
-    def test_get_file_info(self):
+    def test_get_file_info_1(self):
         files = get_file_info("pamelarussell/TCIApathfinder")
         self.assertTrue(len(files) > 40)
         found_file1 = False
@@ -19,6 +19,27 @@ class GitHubAPITest(unittest.TestCase):
             if file["name"] == "introduction.Rmd" and file["path"] == "vignettes/introduction.Rmd":
                 found_file2 = True
         self.assertTrue(found_file1 and found_file2)
+        
+    def test_get_file_info_2(self):
+        files = get_file_info("samtools/samtools")
+        for file in files:
+            if file["type"] == "dir":
+                raise ValueError("Shouldn't have gotten directories")
+        
+    def test_get_file_info_3(self):
+        files = get_file_info("0asa/TTree-source")
+        examples = get_file_info("0asa/TTree-source", "example")
+        self.assertEqual(len(files), 70)
+        self.assertEqual(len(examples), 5)
+        
+    def test_curl_response(self):
+        # Check that white space in path is correctly handled
+        response = gh_curl_response("https://api.github.com/repos/4ment/seqotron/contents/Seqotron/Coloring/Amino Acid")
+        found = False
+        for file in response:
+            if file["name"] == "color-amino-acid.plist":
+                found = True
+        self.assertTrue(found)
         
     def test_get_license(self):
         self.assertEqual(get_license("pamelarussell/sgxlib"), "mit")

@@ -99,10 +99,11 @@ def get_contents_record(file_info_record):
             'time_accessed': file_info_record["time_accessed"]}
     
     
-print("Getting file info from GitHub API")
+print("%s\tGetting file info from GitHub API and pushing to file info and contents tables" % curr_time_utc())
 file_info_records = []
 file_contents_records = []
 num_done = 0
+num_repos = len(repos)
 for repo_name in repos:
     try:
         for record in get_file_info_records(repo_name):
@@ -110,16 +111,12 @@ for repo_name in repos:
             file_contents_records.append(get_contents_record(record))
     except UnicodeEncodeError:
         print("Skipping repo %s" % repo_name)
+    push_bq_records(client, dataset, table_info, file_info_records)
+    push_bq_records(client, dataset, table_contents, file_contents_records)
+    file_info_records.clear()
+    file_contents_records.clear()
     num_done = num_done + 1
-    if num_done % 10 == 0:
-        print("Finished %s repos. Pushing records to file info and contents tables." % num_done)
-        push_bq_records(client, dataset, table_info, file_info_records)
-        push_bq_records(client, dataset, table_contents, file_contents_records)
-        file_info_records.clear()
-        file_contents_records.clear()
-# Final batch
-push_bq_records(client, dataset, table_info, file_info_records)
-push_bq_records(client, dataset, table_contents, file_contents_records)
+    print("%s\tFinished repo %s/%s: %s" % (curr_time_utc(), num_done, num_repos, repo_name))
 
 
 
