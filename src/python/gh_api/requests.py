@@ -150,12 +150,15 @@ def get_file_info(repo_name, path = None):
 def get_file_contents(repo_name, path):
     """ Returns file contents as a string 
     Returns None if there is a problem, e.g. file is too big to get contents from normal API,
-    or if file can't be decoded into text
+    or if file can't be decoded into text, or if path is a submodule. Raises error if path is
+    a directory. 
     """
     response = gh_curl_response(get_contents_url(repo_name, path))
     try:
         tp = response["type"]
-        if tp == "dir" or tp == "submodule":
+        if tp == "submodule":
+            return None
+        if tp == "dir":
             raise ValueError("Can't get file contents of directory")
         encoding = response["encoding"]
         assert(encoding == "base64")
