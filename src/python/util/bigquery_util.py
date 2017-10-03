@@ -107,12 +107,12 @@ def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100
         push_bq_records(client, dataset, table, records[split:], sleep, max_batch)
     try:
         succ = client.push_rows(dataset, table, records)
+        if not succ:
+            raise RuntimeError('Push to BigQuery table was unsuccessful')
     except BrokenPipeError:
-        print("BrokenPipeError. Waiting %s seconds and trying one more time." % sleep) 
+        print("BrokenPipeError while pushing %s records. Waiting %s seconds and trying again." % (len(records), sleep)) 
         time.sleep(sleep)
-        succ = client.push_rows(dataset, table, records)
-    if not succ:
-        raise RuntimeError('Push to BigQuery table was unsuccessful')
+        push_bq_records(client, dataset, table, records, sleep, max_batch)
 
     
 def run_query_and_save_results(client, query, res_dataset, res_table, timeout = 60):
