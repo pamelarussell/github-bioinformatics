@@ -120,6 +120,9 @@ num_repos = len(repos)
 for repo_name in repos:
     try:
         file_info_records = get_file_info_records(repo_name)
+        if len(file_info_records) > 1000:
+            print("Skipping repo %s which contains %s files" % (repo_name, len(file_info_records)))
+            continue
         file_contents_records = [get_contents_record(record) for record in file_info_records]
     except UnicodeEncodeError:
         print("Skipping repo %s" % repo_name)
