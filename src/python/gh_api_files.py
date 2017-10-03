@@ -47,10 +47,11 @@ if not existing_repos_info == existing_repos_contents:
     delete_bq_table(client, dataset, table_info)
     delete_bq_table(client, dataset, table_contents)
 else:
-    repos = [repo for repo in repos if repo not in existing_repos_info]
-    print("Only getting data for %s repos not already analyzed" %len(repos))
+    if len(existing_repos_info) > 0:
+        repos = [repo for repo in repos if repo not in existing_repos_info]
+        print("Only getting data for %s repos not already analyzed" %len(repos))
  
-# Create the output tables
+# Table schemas
 schema_info = [
     {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'file_name', 'type': 'STRING', 'mode': 'NULLABLE'},
@@ -65,8 +66,6 @@ schema_info = [
     {'name': 'curr_commit_master', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'time_accessed', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, dataset, table_info, schema_info)
-
 schema_contents = [
     {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'file_name', 'type': 'STRING', 'mode': 'NULLABLE'},
@@ -76,7 +75,12 @@ schema_contents = [
     {'name': 'curr_commit_master', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'time_accessed', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, dataset, table_contents, schema_contents)
+
+# Create tables if necessary
+if not client.check_table(dataset, table_info):
+    create_bq_table(client, dataset, table_info, schema_info)
+if not client.check_table(dataset, table_contents):
+    create_bq_table(client, dataset, table_contents, schema_contents)
 
 # Get list of file info records for a repo
 def get_file_info_records(repo_name):

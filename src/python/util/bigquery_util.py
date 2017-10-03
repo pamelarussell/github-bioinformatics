@@ -11,6 +11,8 @@ def unique_vals(client, proj, dataset, table, col_name):
         table: Table name
         col_name: Column name
     """
+    if not client.check_table(dataset, table):
+            return []
     res = run_bq_query(client, "SELECT %s FROM [%s:%s.%s] GROUP BY %s ORDER BY %s" % (col_name, proj, dataset, table, col_name, col_name), 120)
     return [rec[col_name] for rec in res]
 
@@ -57,11 +59,14 @@ def create_bq_table(client, dataset, table, schema):
     """
     
     print('Creating table %s.%s' % (dataset, table))
+    exists = client.check_table(dataset, table)
+    if exists:
+        raise AssertionError("Table already exists: %s.%s" % (dataset,table))
     created = client.create_table(dataset, table, schema)
     # Check that the empty table was created
     exists = client.check_table(dataset, table)
     if not exists:
-        raise RuntimeError('Table creation failed')
+        raise RuntimeError('Table creation failed: %s.%s' % (dataset, table))
 
 def delete_bq_table(client, dataset, table):
     """ Delete a BigQuery table if it exists
