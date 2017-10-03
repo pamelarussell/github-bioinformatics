@@ -89,9 +89,13 @@ def curr_commit_master(repo_name):
     except ValueError:
         return None
 
+def get_commits_url(repo_name):
+    """ Get GitHub API URL for commits to default branch """
+    return "%s/%s/commits" % (url_repos, repo_name)
+
 def get_commits_master_url(repo_name):
-    """ Get GitHub API URL for commits to master """
-    return "%s/%s/commits/master" % (url_repos, repo_name)
+    """ Get GitHub API URL for latest commit to master """
+    return "%s/master" % get_commits_url(repo_name)
 
 def get_pulls_url(repo_name, state = "all"):
     """ Get GitHub API pull requests URL for given repo name """
@@ -181,6 +185,14 @@ def get_license(repo_name):
     except ValueError:
         return None
 
+def get_commits(repo_name):
+    """ Returns list of dicts; each dict is info for one commit to default branch """
+    response = gh_curl_response(get_commits_url(repo_name))
+    if not response:
+        return []
+    else:
+        return response
+
 def get_pull_requests(repo_name, state = "all"):
     """ Returns list of pull requests.
     Each pull request is a dict of data.
@@ -193,10 +205,7 @@ def get_pull_requests(repo_name, state = "all"):
     if not rtrn:
         return []
     else:
-        if "message" in rtrn and rtrn["message"] =="Not Found":
-            return []
-        else:
-            return rtrn
+        return rtrn
 
 
 

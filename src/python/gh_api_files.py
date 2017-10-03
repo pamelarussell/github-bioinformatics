@@ -128,8 +128,6 @@ for repo_name in repos:
           % (curr_time_utc(), len(file_info_records), len(file_contents_records), num_done, num_repos, repo_name))
     push_bq_records(client, dataset, table_contents, file_contents_records)
     push_bq_records(client, dataset, table_info, file_info_records)
-    file_info_records.clear()
-    file_contents_records.clear()
 
 
 

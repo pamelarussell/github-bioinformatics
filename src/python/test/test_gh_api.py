@@ -1,6 +1,6 @@
 import unittest
 
-from gh_api import get_file_info, get_license, get_language_bytes, get_pull_requests, get_file_contents, gh_curl_response
+from gh_api import get_file_info, get_license, get_language_bytes, get_pull_requests, get_file_contents, gh_curl_response, get_commits
 from gh_api.repo import Repo
 
 
@@ -63,6 +63,10 @@ class GitHubAPITest(unittest.TestCase):
     def test_file_contents(self):
         contents = get_file_contents("pamelarussell/TCIApathfinder", "R/TCIApathfinder.R")
         self.assertTrue("Get the names of all TCIA collections" in contents)
+        
+    def test_commits(self):
+        commits = get_commits("samtools/samtools")
+        self.assertTrue(len(commits) > 1700)
         
         
         
