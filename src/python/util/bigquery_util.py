@@ -97,7 +97,7 @@ def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100
         max_batch: Max number of records to push at one time
     """
     if len(records) > max_batch:
-        split = records / 2
+        split = len(records) // 2
         push_bq_records(client, dataset, table, records[0:split], sleep, max_batch)
         push_bq_records(client, dataset, table, records[split:], sleep, max_batch)
     try:
