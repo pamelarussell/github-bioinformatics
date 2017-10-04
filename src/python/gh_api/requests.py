@@ -43,7 +43,6 @@ def gh_curl_response(url):
         dict if the response was a single dict.
         
     """
-    sleep_gh_rate_limit()
     page_num = 1
     results = []
     prev_response = None
@@ -54,6 +53,7 @@ def gh_curl_response(url):
         c.setopt(c.URL, add_page_num(url, page_num))
         c.setopt(c.USERPWD, gh_userpwd)
         c.setopt(c.WRITEDATA, buffer)
+        sleep_gh_rate_limit()
         c.perform()
         c.close()
         body = buffer.getvalue()
