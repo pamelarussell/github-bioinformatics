@@ -133,18 +133,21 @@ def get_file_info(repo_name, path = None):
     response = gh_curl_response(get_contents_url(repo_name, path))
     rtrn = []
     for file in response:
-        tp = file["type"]
-        if tp == "dir":
-            # Recursively get files in subdirectories
-            rtrn = rtrn + get_file_info(repo_name, file["path"])
-        else:
-            if tp == "file" or tp == "symlink":
-                rtrn.append(file)
+        try:
+            tp = file["type"]
+            if tp == "dir":
+                # Recursively get files in subdirectories
+                rtrn = rtrn + get_file_info(repo_name, file["path"])
             else:
-                if tp == "submodule": # Skip submodules
-                    pass
+                if tp == "file" or tp == "symlink":
+                    rtrn.append(file)
                 else:
-                    raise ValueError("Type not supported: %s" % tp)
+                    if tp == "submodule": # Skip submodules
+                        pass
+                    else:
+                        raise ValueError("Type not supported: %s" % tp)
+        except TypeError:
+            print("For repo %s, caught TypeError; skipping file record: %s" %(repo_name, file))
     return rtrn
             
 def get_file_contents(repo_name, path):
