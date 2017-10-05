@@ -148,7 +148,7 @@ def get_file_info(repo_name, path = None):
                         raise ValueError("Type not supported: %s" % tp)
         except TypeError:
             print("For repo %s, caught TypeError; skipping file record: %s" %(repo_name, file))
-    return list(rtrn)
+    return [rec for rec in rtrn]
             
 def get_file_contents(repo_name, path):
     """ Returns file contents as a string 
