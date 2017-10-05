@@ -97,27 +97,29 @@ def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100
         table: Table name
         records: List of records to add
                  Each record is a dictionary with keys matching the schema    
-        sleep: Time to sleep if first attempt raises BrokenPipeError, then try
-                one more time
+        sleep: Time to sleep if first attempt raises BrokenPipeError, then keep trying
         max_batch: Max number of records to push at one time
     """
+    if len(records) == 0:
+        return
     if len(records) > max_batch:
         split = len(records) // 2
         push_bq_records(client, dataset, table, records[0:split], sleep, max_batch)
         push_bq_records(client, dataset, table, records[split:], sleep, max_batch)
-    try:
-        succ = client.push_rows(dataset, table, records)
-        if not succ:
-            print("Record 0:")
-            print(records[0])
-            if len(records) > 1:
-                print("Record %s:" % (len(records) - 1))
-                print(records[len(records)-1])
-            raise RuntimeError('Push to BigQuery table was unsuccessful. See above for sample record(s).')
-    except BrokenPipeError:
-        print("BrokenPipeError while pushing %s records. Waiting %s seconds and trying again." % (len(records), sleep)) 
-        time.sleep(sleep)
-        push_bq_records(client, dataset, table, records, sleep, max_batch)
+    else:
+        try:
+            succ = client.push_rows(dataset, table, records)
+            if not succ:
+                print("\nRecord 0:")
+                print(records[0])
+                if len(records) > 1:
+                    print("\nRecord %s:" % (len(records) - 1))
+                    print(records[len(records)-1])
+                raise RuntimeError('Push to BigQuery table was unsuccessful. See above for sample record(s).')
+        except BrokenPipeError:
+            print("BrokenPipeError while pushing %s records. Waiting %s seconds and trying again." % (len(records), sleep)) 
+            time.sleep(sleep)
+            push_bq_records(client, dataset, table, records, sleep, max_batch)
 
     
 def run_query_and_save_results(client, query, res_dataset, res_table, timeout = 60):
