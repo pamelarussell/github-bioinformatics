@@ -140,7 +140,7 @@ def get_file_info(repo_name, path = None):
                 rtrn.update(get_file_info(repo_name, file["path"]))
             else:
                 if tp == "file" or tp == "symlink":
-                    rtrn.update(file)
+                    rtrn.add(file)
                 else:
                     if tp == "submodule": # Skip submodules
                         pass
