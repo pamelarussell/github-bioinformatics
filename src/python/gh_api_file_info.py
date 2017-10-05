@@ -85,9 +85,6 @@ num_done = 0
 num_repos = len(repos)
 for repo_name in repos:
     file_info_records = get_file_info_records(repo_name)
-    if len(file_info_records) > 5000:
-        print("Skipping repo %s which contains %s files" % (repo_name, len(file_info_records)))
-        continue
     num_done = num_done + 1
     print("%s\tPushing %s file info records for repo %s/%s: %s" 
           % (curr_time_utc(), len(file_info_records), num_done, num_repos, repo_name))

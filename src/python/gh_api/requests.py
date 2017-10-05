@@ -4,7 +4,7 @@ import json
 from json.decoder import JSONDecodeError
 
 from local_params import gh_userpwd
-from pycurl import Curl
+import pycurl
 from util import sleep_gh_rate_limit
 
 
@@ -49,7 +49,7 @@ def gh_curl_response(url):
     url = url.replace(" ", "%20")
     while True:
         buffer = BytesIO()
-        c = Curl()
+        c = pycurl.Curl()
         c.setopt(c.URL, add_page_num(url, page_num))
         c.setopt(c.USERPWD, gh_userpwd)
         c.setopt(c.WRITEDATA, buffer)
@@ -65,7 +65,7 @@ def gh_curl_response(url):
         except JSONDecodeError:
             print("Caught JSONDecodeError. Returning empty list for URL %s" % url)
             return []
-        validate_response_found(parsed, c.URL)
+        validate_response_found(parsed, c.getinfo(pycurl.URL))
         if type(parsed) is dict:
             return parsed
         else:
