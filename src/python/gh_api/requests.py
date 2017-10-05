@@ -137,7 +137,8 @@ def get_file_info(repo_name, path = None):
             tp = file["type"]
             if tp == "dir":
                 # Recursively get files in subdirectories
-                rtrn = rtrn + get_file_info(repo_name, file["path"])
+                existing_paths = set([rec["path"] for rec in rtrn])
+                rtrn = rtrn + [rec for rec in get_file_info(repo_name, file["path"]) if rec["path"] not in existing_paths]
             else:
                 if tp == "file" or tp == "symlink":
                     rtrn.append(file)
@@ -148,7 +149,7 @@ def get_file_info(repo_name, path = None):
                         raise ValueError("Type not supported: %s" % tp)
         except TypeError:
             print("For repo %s, caught TypeError; skipping file record: %s" %(repo_name, file))
-    return list(set(rtrn))
+    return rtrn
             
 def get_file_contents(repo_name, path):
     """ Returns file contents as a string 
