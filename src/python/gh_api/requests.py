@@ -65,7 +65,7 @@ def gh_curl_response(url):
         except JSONDecodeError:
             print("Caught JSONDecodeError. Returning empty list for URL %s" % url)
             return []
-        validate_response_found(parsed, c.getinfo(pycurl.URL))
+        validate_response_found(parsed, add_page_num(url, page_num))
         if type(parsed) is dict:
             return parsed
         else:
