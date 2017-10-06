@@ -47,6 +47,7 @@ def gh_curl_response(url):
     results = []
     prev_response = None
     url = url.replace(" ", "%20")
+    url = url.replace("#", "%23")
     while True:
         buffer = BytesIO()
         c = pycurl.Curl()
