@@ -48,6 +48,7 @@ def gh_curl_response(url):
     prev_response = None
     url = url.replace(" ", "%20")
     url = url.replace("#", "%23")
+    url = url.replace("%", "%25")
     while True:
         buffer = BytesIO()
         c = pycurl.Curl()
@@ -88,6 +89,8 @@ def curr_commit_master(repo_name):
         response = gh_curl_response(get_commits_master_url(repo_name))
         return response["sha"]
     except ValueError:
+        return None
+    except KeyError:
         return None
 
 def get_commits_url(repo_name):
