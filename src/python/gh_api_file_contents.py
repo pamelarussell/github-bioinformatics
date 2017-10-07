@@ -19,30 +19,17 @@ parser.add_argument('--table_file_info', action = 'store', dest = 'table_info', 
                     help = 'BigQuery table to read file info from')
 parser.add_argument('--table_file_contents', action = 'store', dest = 'table_contents', required = True, 
                     help = 'BigQuery table to write file contents to')
-parser.add_argument('--sheet', action = 'store', dest = 'sheet', required = True, 
-                    help = 'Google Sheet with use_repo as a column')
 args = parser.parse_args()
  
 proj = args.proj
 dataset = args.ds
 table_info = args.table_info
 table_contents = args.table_contents
-sheet = args.sheet
  
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
 client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
  
-# Get list of records already in contents table
-existing_contents = run_bq_query(client, """
-SELECT repo_name, path, sha FROM [%s:%s.%s]
-""" % (proj, dataset, table_contents), 120)
-
-# Get list of file info records to download contents for 
-file_info_records = run_bq_query(client, """
-SELECT repo_name, file_name, path, sha FROM [%s:%s.%s] 
-""" % (proj, dataset, table_info), 120)
-
 # Table schema
 schema = [
     {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
@@ -57,6 +44,19 @@ schema = [
 # Create table if necessary
 if not client.check_table(dataset, table_contents):
     create_bq_table(client, dataset, table_contents, schema)
+
+# Get set of records already in contents table
+print("\nBuilding the set of exisiting records...")
+existing_contents_dicts = run_bq_query(client, """
+SELECT repo_name, path, sha FROM [%s:%s.%s]
+""" % (proj, dataset, table_contents), 120)
+existing_contents = {(rec["repo_name"], rec["path"], rec["sha"]) for rec in existing_contents_dicts}
+
+# Get list of file info records to download contents for 
+print("\nGetting file info records...")
+file_info_records = run_bq_query(client, """
+SELECT repo_name, file_name, path, sha FROM [%s:%s.%s] 
+""" % (proj, dataset, table_info), 120)
 
 # Get file contents
 def get_contents_record(file_info_record):
@@ -76,22 +76,27 @@ def get_contents_record(file_info_record):
     
 print("%s\tGetting file contents from GitHub API and pushing to file contents table" % curr_time_utc())
 num_done = 0
+num_skipped_already_done = 0
 num_info_records = len(file_info_records)
 file_contents_records = []
 for record in file_info_records:
+    # Skip if already done
+    if (record["repo_name"], record["path"], record["sha"]) in existing_contents:
+        num_skipped_already_done = num_skipped_already_done + 1
+        continue
     try:
         file_contents_records.append(get_contents_record(record))
     except UnicodeEncodeError:
         print("Skipping file %s in repo %s" % (record["path"], record["repo_name"]))
     num_done = num_done + 1
     if num_done % 100 == 0:
-        print("%s\tFinished %s/%s records. Pushing %s records to BigQuery." 
-              % (curr_time_utc(), num_done, num_info_records, len(file_contents_records)))
+        print("""%s\tFinished %s/%s records. Skipped %s records already done. Pushing %s records to BigQuery.""" 
+              % (curr_time_utc(), num_done, num_info_records, num_skipped_already_done, len(file_contents_records)))
         push_bq_records(client, dataset, table_contents, file_contents_records)
         file_contents_records.clear()
 # Final batch
-print("%s\tFinished %s/%s records. Pushing %s records to BigQuery." 
-    % (curr_time_utc(), num_done, num_info_records, len(file_contents_records)))
+print("""%s\tFinished %s/%s records. Skipped %s records already done. Pushing %s records to BigQuery.""" 
+    % (curr_time_utc(), num_done, num_info_records, num_skipped_already_done, len(file_contents_records)))
 push_bq_records(client, dataset, table_contents, file_contents_records)
 
 

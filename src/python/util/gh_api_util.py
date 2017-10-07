@@ -5,7 +5,10 @@ import chardet
 from github3 import login
 
 from pycurl import Curl
+from local_params import gh_username, gh_oauth_key
 
+# GitHub credentials
+gh_userpwd = '%s:%s' %(gh_username, gh_oauth_key)
 
 # GitHub API rate limit
 api_rate_limit_per_hour = 5000

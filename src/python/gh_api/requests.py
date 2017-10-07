@@ -3,7 +3,7 @@ from io import BytesIO
 import json
 from json.decoder import JSONDecodeError
 
-from local_params import gh_userpwd
+from util import gh_userpwd
 import pycurl
 from util import sleep_gh_rate_limit
 
