@@ -20,7 +20,7 @@ table = args.table
 sheet = args.sheet
 
 # Get repo names
-print("Getting repo names from spreadsheet")
+print("\nGetting repo names from spreadsheet")
 repos = get_repo_names(sheet)
 print("There are %s repos with use_repo = 1.\n" % len(repos))
 
@@ -53,8 +53,8 @@ def get_record(repo_name):
     curr_time = curr_time_utc()
     curr_commit = curr_commit_master(repo_name)
     return {'repo_name': r.get_repo_name(),
-            'gh_api_url': r.get_gh_api_url(),
-            'repo_url': r.get_repo_url(),
+            'api_url': r.get_gh_api_url(),
+            'html_url': r.get_html_url(),
             'description': r.get_description(),
             'is_fork': r.is_fork(),
             'stargazers_count': r.get_stargazers_count(),

@@ -36,8 +36,8 @@ schema = [
     {'name': 'file_name', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'path', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'sha', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'git_url', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'contents', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'curr_commit_master', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'time_accessed', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
 
@@ -55,22 +55,22 @@ existing_contents = {(rec["repo_name"], rec["path"], rec["sha"]) for rec in exis
 # Get list of file info records to download contents for 
 print("\nGetting file info records...")
 file_info_records = run_bq_query(client, """
-SELECT repo_name, file_name, path, sha FROM [%s:%s.%s] 
+SELECT repo_name, file_name, path, sha, git_url FROM [%s:%s.%s] 
 """ % (proj, dataset, table_info), 120)
 
 # Get file contents
 def get_contents_record(file_info_record):
     repo_name = file_info_record["repo_name"]
     path = file_info_record["path"]
+    git_url = file_info_record["git_url"]
     curr_time = curr_time_utc()
-    curr_commit = curr_commit_master(repo_name)
-    contents = get_file_contents(repo_name, path)
+    contents = get_file_contents(git_url)
     return {'repo_name': repo_name,
             'file_name': file_info_record["file_name"],
             'path': path,
             'sha': file_info_record["sha"],
+            'git_url': git_url,
             'contents': contents,
-            'curr_commit_master': curr_commit,
             'time_accessed': curr_time}
     
     

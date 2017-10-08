@@ -22,7 +22,7 @@ class Repo(object):
     def get_gh_api_response(self):
         return self.response
     
-    def get_repo_url(self):
+    def get_html_url(self):
         return self.response.get('html_url')
     
     def get_description(self):

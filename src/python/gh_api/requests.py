@@ -155,19 +155,16 @@ def get_file_info(repo_name, path = None):
             print("For repo %s, caught TypeError; skipping file record: %s" %(repo_name, file))
     return rtrn
             
-def get_file_contents(repo_name, path):
+def get_file_contents(url):
     """ Returns file contents as a string 
     Returns None if there is a problem, e.g. file is too big to get contents from normal API,
-    or if file can't be decoded into text, or if path is a submodule. Raises error if path is
-    a directory. 
+    or if file can't be decoded into text, or if path is a submodule. 
+    
+    Args:
+        url: URL for the specific version of the file from the repos API
     """
-    response = gh_curl_response(get_contents_url(repo_name, path))
+    response = gh_curl_response(url)
     try:
-        tp = response["type"]
-        if tp == "submodule":
-            return None
-        if tp == "dir":
-            raise ValueError("Can't get file contents of directory")
         encoding = response["encoding"]
         assert(encoding == "base64")
         content = response["content"]
