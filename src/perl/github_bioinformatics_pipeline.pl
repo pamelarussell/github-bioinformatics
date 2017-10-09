@@ -21,9 +21,9 @@ my $check_repo_existence = 0;
 my $query_eutils_article_metadata = 0;
 
 # Use GitHub API to get repo data
-my $generate_language_bytes = 1;
+my $generate_language_bytes = 0;
 my $generate_licenses = 0;
-my $generate_commits = 0;
+my $generate_commits = 1;
 my $generate_file_info = 0;
 my $generate_file_contents = 0;
 my $generate_repo_metrics = 0;
@@ -196,7 +196,7 @@ if($generate_licenses) {
 # Get commits from GitHub API
 if($generate_commits) {
 	run_cmmd("$python3 $script_gh_api_commits --ds $bq_ds_repos --table $bq_tb_commits ".
-	"--sheet $gsheet_repos_curated")
+	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
 } else {print("\nSkipping step: get commits from GitHub API\n")}
 
 # Get file info from GitHub API
