@@ -24,7 +24,7 @@ def get_record(repo_name):
     r = repo.Repo(repo_name)
     info = {'repo_name': r.get_repo_name(),
             'gh_api_url': r.get_gh_api_url(),
-            'repo_url': r.get_repo_url(),
+            'html_url': r.get_html_url(),
             'is_fork': r.is_fork(),
             'stargazers_count': r.get_stargazers_count(),
             'watchers_count': r.get_watchers_count(),

@@ -20,6 +20,8 @@ def get_repo_names(sheet):
      
     # Load repos from the spreadsheet
     records = client.open(sheet).get_worksheet(1).get_all_records()
-    return [rec["repo_name"] for rec in records if rec["use_repo"] == 1]
+    return list({rec["repo_name"] for rec in records if rec["use_repo"] == 1})
+    
+    
 
 

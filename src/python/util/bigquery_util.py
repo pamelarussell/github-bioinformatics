@@ -12,7 +12,7 @@ def unique_vals(client, proj, dataset, table, col_name):
         col_name: Column name
     """
     if not client.check_table(dataset, table):
-            return []
+        return []
     res = run_bq_query(client, "SELECT %s FROM [%s:%s.%s] GROUP BY %s ORDER BY %s" % (col_name, proj, dataset, table, col_name, col_name), 120)
     return [rec[col_name] for rec in res]
 
