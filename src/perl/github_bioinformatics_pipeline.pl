@@ -15,7 +15,7 @@ use warnings;
 my $extract_repos_from_lit_search = 0;
 
 # Check for issues with repository names that have been manually curated
-my $check_repo_existence = 1;
+my $check_repo_existence = 0;
 
 # Query Eutils for article metadata
 my $query_eutils_article_metadata = 0;
@@ -23,7 +23,7 @@ my $query_eutils_article_metadata = 0;
 # Use GitHub API to get repo data
 my $generate_language_bytes = 0;
 my $generate_licenses = 0;
-my $generate_commits = 0;
+my $generate_commits = 1;
 my $generate_file_info = 0;
 my $generate_file_contents = 0;
 my $generate_repo_metrics = 0;
@@ -178,7 +178,7 @@ if($query_eutils_article_metadata) {
 # Get repo metrics from GitHub API
 if($generate_repo_metrics) {
 	run_cmmd("$python3 $script_gh_api_repo_metrics --ds $bq_ds_repos --table $bq_tb_repo_metrics ".
-	"--sheet $gsheet_repos_curated")
+	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
 } else {print("\nSkipping step: get repo info from GitHub API\n")}
 
 # Get language info from GitHub API
