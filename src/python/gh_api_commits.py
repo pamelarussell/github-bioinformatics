@@ -116,6 +116,8 @@ def get_records(repo_name):
         validate_response_found(data[0])
     except ValueError:
         return None
+    except KeyError:
+        return None
     curr_time = curr_time_utc()
     curr_commit = curr_commit_master(repo_name)
     return [get_record(dct, repo_name, curr_time, curr_commit) for dct in data]
@@ -126,9 +128,13 @@ num_repos = len(repos)
 for repo_name in repos:
     records = get_records(repo_name)
     num_done = num_done + 1
-    print("%s\tPushing %s commit records for repo %s/%s: %s" 
-          % (curr_time_utc(), len(records), num_done, num_repos, repo_name))
-    push_bq_records(client, dataset, table, records)
+    if records is not None:
+        print("%s\tPushing %s commit records for repo %s/%s: %s" 
+              % (curr_time_utc(), len(records), num_done, num_repos, repo_name))
+        push_bq_records(client, dataset, table, records)
+    else:
+        print("%s\tPushing 0 commit records for repo %s/%s: %s" 
+              % (curr_time_utc(), num_done, num_repos, repo_name))
 
 
 

@@ -23,11 +23,11 @@ my $query_eutils_article_metadata = 0;
 # Use GitHub API to get repo data
 my $generate_language_bytes = 0;
 my $generate_licenses = 0;
-my $generate_commits = 1;
+my $generate_commits = 0;
 my $generate_file_info = 0;
 my $generate_file_contents = 0;
 my $generate_repo_metrics = 0;
-my $generate_pr_data = 0;
+my $generate_pr_data = 1;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 my $run_bq_analysis_queries = 0;
@@ -214,7 +214,7 @@ if($generate_file_contents) {
 # Get pull request info from GitHub API
 if($generate_pr_data) {
 	run_cmmd("$python3 $script_gh_api_pr_data --ds $bq_ds_repos --table $bq_tb_prs ".
-	"--sheet $gsheet_repos_curated")
+	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
 } else {print("\nSkipping step: get pull request info from GitHub API\n")}
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
