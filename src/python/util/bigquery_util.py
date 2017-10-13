@@ -87,7 +87,7 @@ def delete_bq_table(client, dataset, table):
             raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
 
     
-def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100):
+def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100, print_failed_records = True):
     """ Push records to a BigQuery table
     
     Args:
@@ -110,12 +110,13 @@ def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100
         try:
             succ = client.push_rows(dataset, table, records)
             if not succ:
-                print("\nRecord 0:")
-                print(records[0])
-                if len(records) > 1:
-                    print("\nRecord %s:" % (len(records) - 1))
-                    print(records[len(records)-1])
-                raise RuntimeError('Push to BigQuery table was unsuccessful. See above for sample record(s).')
+                if print_failed_records:
+                    print("\nRecord 0:")
+                    print(records[0])
+                    if len(records) > 1:
+                        print("\nRecord %s:" % (len(records) - 1))
+                        print(records[len(records)-1])
+                raise RuntimeError('Push to BigQuery table was unsuccessful. See above for sample record(s) if requested.')
         except BrokenPipeError:
             print("BrokenPipeError while pushing %s records. Waiting %s seconds and trying again." % (len(records), sleep)) 
             time.sleep(sleep)
