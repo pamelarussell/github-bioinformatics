@@ -75,24 +75,23 @@ def get_record(repo_name, pr_data):
             'time_accessed': curr_time}
     
 print("Getting pull request info from GitHub API")
-records = []
 num_done = 0
+num_repos = len(repos)
 for repo_name in repos:
+    num_done = num_done + 1
     try:
-        for pr in get_pull_requests(repo_name, "all"):
-            try:
-                records = records + [get_record(repo_name, pr)]
-            except KeyError:
-                print("Skipping repo %s: %s" % (repo_name, pr['message']))
-                
+        records = [get_record(repo_name, pr) for pr in get_pull_requests(repo_name, "all")]
+        if records is not None:
+            print("%s\tPushing %s pull request records for repo %s/%s: %s" 
+                  % (curr_time_utc(), len(records), num_done, num_repos, repo_name))
+            push_bq_records(client, dataset, table, records)
+        else:
+            print("%s\tPushing 0 pull request records for repo %s/%s: %s" 
+                  % (curr_time_utc(), num_done, num_repos, repo_name))
+    except KeyError:
+        print("Skipping repo %s: %s" % (repo_name, pr['message']))
     except UnicodeEncodeError as e:
         print("Skipping repo %s: %s" % (repo_name, str(e)))
-    num_done = num_done + 1
-    if num_done % 100 == 0:
-        print("Finished %s repos. Pushing %s records." % (num_done, len(records)))
-        push_bq_records(client, dataset, table, records)
-        records.clear()
-push_bq_records(client, dataset, table, records) # Last batch
 
 
 
