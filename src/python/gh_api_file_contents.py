@@ -2,11 +2,11 @@ import argparse
 
 from bigquery import get_client
 
-from gh_api import curr_commit_master
 from gh_api import get_file_contents
 from local_params import json_key_final_dataset
-from util import curr_time_utc
 from util import create_bq_table, push_bq_records
+from util import curr_time_utc
+from util import err_msg
 from util import run_bq_query
 
 
@@ -51,6 +51,8 @@ existing_contents_dicts = run_bq_query(client, """
 SELECT repo_name, path, sha FROM [%s:%s.%s]
 """ % (proj, dataset, table_contents), 120)
 existing_contents = {(rec["repo_name"], rec["path"], rec["sha"]) for rec in existing_contents_dicts}
+num_already_done = len(existing_contents)
+print("The table already contains %s file contents records." % num_already_done)
 
 # Get list of file info records to download contents for 
 print("\nGetting file info records...")
@@ -77,27 +79,24 @@ def get_contents_record(file_info_record):
 print("%s\tGetting file contents from GitHub API and pushing to file contents table" % curr_time_utc())
 num_done = 0
 num_skipped_already_done = 0
-num_info_records = len(file_info_records)
-file_contents_records = []
+num_to_do = len(file_info_records) - num_already_done
 for record in file_info_records:
     # Skip if already done
     if (record["repo_name"], record["path"], record["sha"]) in existing_contents:
         num_skipped_already_done = num_skipped_already_done + 1
         continue
     try:
-        file_contents_records.append(get_contents_record(record))
-    except UnicodeEncodeError:
-        print("Skipping file %s in repo %s" % (record["path"], record["repo_name"]))
+        push_bq_records(client, dataset, table_contents, [get_contents_record(record)], False)
+    except UnicodeEncodeError as e:
+        print("Skipping file %s in repo %s. Caught UnicodeEncodeError: %s" % (record["path"], record["repo_name"], err_msg(e)))
+    except AttributeError as e:
+        print("Skipping file %s in repo %s. Caught AttributeError: %s" % (record["path"], record["repo_name"], err_msg(e)))
+    except RuntimeError as e:
+        print("Skipping file %s in repo %s. Caught RuntimeError: %s" % (record["path"], record["repo_name"], err_msg(e)))
     num_done = num_done + 1
     if num_done % 100 == 0:
-        print("""%s\tFinished %s/%s records. Skipped %s records already done. Pushing %s records to BigQuery.""" 
-              % (curr_time_utc(), num_done, num_info_records, num_skipped_already_done, len(file_contents_records)))
-        push_bq_records(client, dataset, table_contents, file_contents_records)
-        file_contents_records.clear()
-# Final batch
-print("""%s\tFinished %s/%s records. Skipped %s records already done. Pushing %s records to BigQuery.""" 
-    % (curr_time_utc(), num_done, num_info_records, num_skipped_already_done, len(file_contents_records)))
-push_bq_records(client, dataset, table_contents, file_contents_records)
+        print("%s\tFinished %s/%s records."
+              % (curr_time_utc(), num_done, num_to_do))
 
 
 
