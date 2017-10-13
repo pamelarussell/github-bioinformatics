@@ -25,9 +25,9 @@ my $generate_language_bytes = 0;
 my $generate_licenses = 0;
 my $generate_commits = 0;
 my $generate_file_info = 0;
-my $generate_file_contents = 0;
+my $generate_file_contents = 1;
 my $generate_repo_metrics = 0;
-my $generate_pr_data = 1;
+my $generate_pr_data = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 my $run_bq_analysis_queries = 0;

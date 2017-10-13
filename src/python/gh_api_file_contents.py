@@ -6,7 +6,7 @@ from gh_api import get_file_contents
 from local_params import json_key_final_dataset
 from util import create_bq_table, push_bq_records
 from util import curr_time_utc
-from util import err_msg
+from util import max_record_size
 from util import run_bq_query
 
 
@@ -46,18 +46,19 @@ if not client.check_table(dataset, table_contents):
     create_bq_table(client, dataset, table_contents, schema)
 
 # Get set of records already in contents table
-print("\nBuilding the set of exisiting records...")
+print("\nBuilding the set of existing records...")
 existing_contents_dicts = run_bq_query(client, """
 SELECT repo_name, path, sha FROM [%s:%s.%s]
 """ % (proj, dataset, table_contents), 120)
 existing_contents = {(rec["repo_name"], rec["path"], rec["sha"]) for rec in existing_contents_dicts}
 num_already_done = len(existing_contents)
-print("The table already contains %s file contents records." % num_already_done)
+if num_already_done > 0:
+    print("The table already contains %s file contents records." % num_already_done)
 
 # Get list of file info records to download contents for 
 print("\nGetting file info records...")
 file_info_records = run_bq_query(client, """
-SELECT repo_name, file_name, path, sha, git_url FROM [%s:%s.%s] 
+SELECT repo_name, file_name, path, sha, git_url, size FROM [%s:%s.%s] 
 """ % (proj, dataset, table_info), 120)
 
 # Get file contents
@@ -66,7 +67,13 @@ def get_contents_record(file_info_record):
     path = file_info_record["path"]
     git_url = file_info_record["git_url"]
     curr_time = curr_time_utc()
-    contents = get_file_contents(git_url)
+    contents = None
+    size = file_info_record["size"]
+    if size <= max_record_size - 1000:
+        try:
+            contents = get_file_contents(git_url)
+        except:
+            pass
     return {'repo_name': repo_name,
             'file_name': file_info_record["file_name"],
             'path': path,
@@ -80,24 +87,24 @@ print("%s\tGetting file contents from GitHub API and pushing to file contents ta
 num_done = 0
 num_skipped_already_done = 0
 num_to_do = len(file_info_records) - num_already_done
+recs_to_push = []
 for record in file_info_records:
     # Skip if already done
     if (record["repo_name"], record["path"], record["sha"]) in existing_contents:
         num_skipped_already_done = num_skipped_already_done + 1
         continue
-    try:
-        push_bq_records(client, dataset, table_contents, [get_contents_record(record)], False)
-    except UnicodeEncodeError as e:
-        print("Skipping file %s in repo %s. Caught UnicodeEncodeError: %s" % (record["path"], record["repo_name"], err_msg(e)))
-    except AttributeError as e:
-        print("Skipping file %s in repo %s. Caught AttributeError: %s" % (record["path"], record["repo_name"], err_msg(e)))
-    except RuntimeError as e:
-        print("Skipping file %s in repo %s. Caught RuntimeError: %s" % (record["path"], record["repo_name"], err_msg(e)))
+    recs_to_push.append(get_contents_record(record))
     num_done = num_done + 1
     if num_done % 100 == 0:
-        print("%s\tFinished %s/%s records."
-              % (curr_time_utc(), num_done, num_to_do))
-
+        print("%s\tFinished %s/%s records. Pushing %s records to BigQuery."
+              % (curr_time_utc(), num_done, num_to_do, len(recs_to_push)))
+        push_bq_records(client, dataset, table_contents, recs_to_push, print_failed_records = False)
+        recs_to_push.clear()
+    
+# Final batch
+print("%s\tFinished %s/%s records. Pushing %s records to BigQuery."
+    % (curr_time_utc(), num_done, num_to_do, len(recs_to_push)))
+push_bq_records(client, dataset, table_contents, recs_to_push, print_failed_records = False)
 
 
 

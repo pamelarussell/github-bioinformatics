@@ -1,5 +1,6 @@
 import time
 
+max_record_size = 1000000
 
 def unique_vals(client, proj, dataset, table, col_name):
     """ Returns the ordered set of unique values in a column of a BigQuery table

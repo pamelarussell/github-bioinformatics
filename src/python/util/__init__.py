@@ -15,5 +15,5 @@ from .gh_api_util import write_gh_file_contents
 from .bigquery_util import unique_vals
 from .gh_api_util import gh_userpwd
 from .python_util import err_msg
-
+from .bigquery_util import max_record_size
 
