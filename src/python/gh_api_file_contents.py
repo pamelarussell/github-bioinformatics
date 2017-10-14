@@ -8,6 +8,7 @@ from util import create_bq_table, push_bq_records
 from util import curr_time_utc
 from util import max_record_size
 from util import run_bq_query
+from time import sleep
 
 
 parser = argparse.ArgumentParser()
@@ -98,7 +99,24 @@ for record in file_info_records:
     if num_done % 100 == 0:
         print("%s\tFinished %s/%s records. Pushing %s records to BigQuery."
               % (curr_time_utc(), num_done, num_to_do, len(recs_to_push)))
-        push_bq_records(client, dataset, table_contents, recs_to_push, print_failed_records = False)
+        try:
+            # Push the entire batch
+            push_bq_records(client, dataset, table_contents, recs_to_push, print_failed_records = False)
+        except RuntimeError:
+            # Try records individually
+            print("Batch push failed. Trying records individually every 2 seconds due to BigQuery rate limit.")
+            for rec in recs_to_push:
+                sleep(2.1)
+                try:
+                    push_bq_records(client, dataset, table_contents, [rec], print_failed_records = False)
+                except RuntimeError:
+                    # Try setting contents to null
+                    rec["contents"] = None
+                    try:
+                        push_bq_records(client, dataset, table_contents, [rec], print_failed_records = False)
+                    except RuntimeError:
+                        # Finally skip the record
+                        print("Skipping record. Repo: %s. File: %s." % (rec["repo_name"], rec["path"]))
         recs_to_push.clear()
     
 # Final batch
