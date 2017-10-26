@@ -1,12 +1,9 @@
-from structure.bq_proj_structure import *
-
-
 
 #####  Functions to build queries against GitHub dataset tables
 
 
 # Number of actors by repo
-def build_query_num_actors_by_repo(project_bioinf, dataset, table):
+def build_query_num_actors_by_repo(proj, dataset, table):
     return """
     SELECT
       repo_name,
@@ -27,45 +24,41 @@ def build_query_num_actors_by_repo(project_bioinf, dataset, table):
       repo_name
     ORDER BY
       num_actors DESC
-    """ % (project_bioinf, dataset, table)
+    """ % (proj, dataset, table)
 
 
 # Number of bytes of code by language
-def build_query_bytes_by_language(project_bioinf, dataset, table):
+def build_query_bytes_by_language(proj, dataset, table_languages):
     return """
     SELECT
       language_name,
       sum (language_bytes) as total_bytes
     FROM
       [%s:%s.%s]
-    WHERE
-      language_name != "null"
     GROUP BY
       language_name
     ORDER BY
       total_bytes DESC
-    """ % (project_bioinf, dataset, table)
+    """ % (proj, dataset, table_languages)
 
 
 # Number of repos with code in each language
-def build_query_repo_count_by_language(project_bioinf, dataset, table):
+def build_query_repo_count_by_language(proj, dataset, table_languages):
     return """
     SELECT
       language_name,
       COUNT(*) AS num_repos
     FROM
       [%s:%s.%s]
-    WHERE
-      language_name != "null"
     GROUP BY
       1
     ORDER BY
       2 DESC
-    """ % (project_bioinf, dataset, table)
+    """ % (proj, dataset, table_languages)
     
     
 # List of languages by repo
-def build_query_language_list_by_repo(project_bioinf, dataset, table):
+def build_query_language_list_by_repo(proj, dataset, table_languages):
     return """
     SELECT
       repo_name,
@@ -74,31 +67,29 @@ def build_query_language_list_by_repo(project_bioinf, dataset, table):
       [%s:%s.%s]
     GROUP BY
       repo_name
-    """ % (project_bioinf, dataset, table)
+    """ % (proj, dataset, table_languages)
 
 
 # Number of languages by repo
-def build_query_num_languages_by_repo(project_bioinf, dataset, table):
+def build_query_num_languages_by_repo(proj, dataset, table):
     return """
     SELECT
       repo_name,
       COUNT(*) AS num_languages
     FROM
       [%s:%s.%s]
-    WHERE
-      language_name != "null"
     GROUP BY
       1
     ORDER BY
       2 DESC    
-    """ % (project_bioinf, dataset, table)
+    """ % (proj, dataset, table)
 
 
 # "Test cases" (files containing "test" somewhere in the path or filename)
 # Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
 # Kochhar PS, Bissyandé TF, Lo D, Jiang L. An Empirical Study of Adoption of Software Testing in Open Source Projects. 2013 13th International Conference on Quality Software. 2013. pp. 103–112. doi:10.1109/QSIC.2013.57
 # Only include files that have a language identified in lines_of_code table
-def build_query_test_cases(project_bioinf, ds_files, table_files, ds_loc, table_loc):
+def build_query_test_cases(proj, ds_files, table_files, ds_loc, table_loc):
     return """
     SELECT
       files.repo_name as repo_name,
@@ -114,10 +105,10 @@ def build_query_test_cases(project_bioinf, ds_files, table_files, ds_loc, table_
       files.id = loc.id
     WHERE
       LOWER(files.path) CONTAINS 'test'
-    """ % (project_bioinf, ds_files, table_files, project_bioinf, ds_loc, table_loc)
+    """ % (proj, ds_files, table_files, proj, ds_loc, table_loc)
 
 # Number of test cases and total lines of code in test cases by repo
-def build_query_test_cases_by_repo(project_bioinf, dataset, table):
+def build_query_test_cases_by_repo(proj, dataset, table):
     return """
     SELECT
       repo_name,
@@ -130,51 +121,50 @@ def build_query_test_cases_by_repo(project_bioinf, dataset, table):
         [%s:%s.%s])
     GROUP BY
       repo_name    
-  """ % (project_bioinf, dataset, table)
+  """ % (proj, dataset, table)
 
 # Number of bug fix commits and total commits by repo
 # Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages  and Code Quality in Github"
 # Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
-def build_query_commit_types(project_bioinf, dataset, table):
+def build_query_commit_types(proj, dataset, table_commits):
     return """
-    SELECT
-      bug_fix_commits.repo_name AS repo_name,
-      all_commits.num_commits AS num_commits,
-      bug_fix_commits.num_bug_fix_commits AS num_bug_fix_commits
-    FROM (
-      SELECT
-        repo_name,
-        COUNT(DISTINCT(commit)) AS num_bug_fix_commits
-      FROM
-        [%s:%s.%s]
-      WHERE
-        LOWER(message) NOT LIKE 'merge%%'
-        AND (LOWER(message) CONTAINS 'error'
-          OR LOWER(message) CONTAINS 'bug'
-          OR LOWER(message) CONTAINS 'fix'
-          OR LOWER(message) CONTAINS 'issue'
-          OR LOWER(message) CONTAINS 'mistake'
-          OR LOWER(message) CONTAINS 'incorrect'
-          OR LOWER(message) CONTAINS 'fault'
-          OR LOWER(message) CONTAINS 'defect'
-          OR LOWER(message) CONTAINS 'flaw')
-      GROUP BY
-        repo_name) AS bug_fix_commits
-    INNER JOIN (
-      SELECT
-        repo_name,
-        COUNT(DISTINCT(commit)) AS num_commits
-      FROM
-        [%s:%s.%s]
-      GROUP BY
-        repo_name) AS all_commits
-    ON
-      bug_fix_commits.repo_name = all_commits.repo_name
-    """ % (project_bioinf, dataset, table, project_bioinf, dataset, table)
+SELECT
+  all_commits.repo_name AS repo_name,
+  all_commits.num_commits AS num_commits,
+  bug_fix_commits.num_bug_fix_commits AS num_bug_fix_commits
+FROM (
+  SELECT
+    repo_name,
+    COUNT(DISTINCT(commit_sha)) AS num_commits
+  FROM
+    [%s:%s.%s]
+  GROUP BY
+    repo_name) AS all_commits
+LEFT OUTER JOIN (
+  SELECT
+    repo_name,
+    COUNT(DISTINCT(commit_sha)) AS num_bug_fix_commits
+  FROM
+    [%s:%s.%s]
+  WHERE
+    LOWER(commit_message) NOT LIKE 'merge%%'
+    AND (LOWER(commit_message) CONTAINS 'error'
+      OR LOWER(commit_message) CONTAINS 'bug'
+      OR LOWER(commit_message) CONTAINS 'fix'
+      OR LOWER(commit_message) CONTAINS 'issue'
+      OR LOWER(commit_message) CONTAINS 'mistake'
+      OR LOWER(commit_message) CONTAINS 'incorrect'
+      OR LOWER(commit_message) CONTAINS 'fault'
+      OR LOWER(commit_message) CONTAINS 'defect'
+      OR LOWER(commit_message) CONTAINS 'flaw')
+  GROUP BY
+    repo_name) AS bug_fix_commits
+ON
+  bug_fix_commits.repo_name = all_commits.repo_name    """ % (proj, dataset, table_commits, proj, dataset, table_commits)
     
     
 # Project duration measured from first to last commit
-def build_query_project_duration(project_bioinf, dataset, table):
+def build_query_project_duration(proj, dataset, table):
     return """
     SELECT
       repo_name,
@@ -184,20 +174,20 @@ def build_query_project_duration(project_bioinf, dataset, table):
     FROM (
       SELECT
         repo_name,
-        MIN(author_date) AS first_commit,
-        MAX(author_date) AS last_commit
+        MIN(author_commit_date) AS first_commit,
+        MAX(author_commit_date) AS last_commit
       FROM
         [%s:%s.%s]
       GROUP BY
         repo_name )
     ORDER BY
       commit_span_days DESC    
-    """ % (project_bioinf, dataset, table)
+    """ % (proj, dataset, table)
     
     
 # Total number of lines of code by repo
 # Only include files that have a language identified in lines_of_code table
-def build_query_lines_of_code_by_repo(project_bioinf, ds_files, table_files, ds_loc, table_loc):
+def build_query_lines_of_code_by_repo(proj, ds_files, table_files, ds_loc, table_loc):
     return """
     SELECT
       files.repo_name AS repo_name,
@@ -220,33 +210,30 @@ def build_query_lines_of_code_by_repo(project_bioinf, ds_files, table_files, ds_
       repo_name
     ORDER BY
       lines_of_code DESC    
-    """ % (project_bioinf, ds_files, table_files, project_bioinf, ds_loc, table_loc)
+    """ % (proj, ds_files, table_files, proj, ds_loc, table_loc)
     
     
 # Number of developers by repo
 # This is the number of commit *authors*.
-# Authors are identified by the unique combination of name and email.
-def build_query_num_devs_by_repo(dataset, table):
+# Authors are identified by their login.
+def build_query_num_devs_by_repo(proj, dataset, table):
     return """
-    SELECT
-      repo_name,
-      COUNT(*) AS num_commit_authors
-    FROM (
-      SELECT
-        repo_name,
-        author_name,
-        author_email
-      FROM
-        [%s:%s.%s]
-      GROUP BY
-        repo_name,
-        author_name,
-        author_email)
-    GROUP BY
-      repo_name
-    ORDER BY
-      num_commit_authors DESC    
-    """ % (project_bioinf, dataset, table)
+SELECT
+  repo_name,
+  COUNT(*) AS num_commit_authors
+FROM (
+  SELECT
+    repo_name,
+    author_login
+  FROM
+    [%s:%s.%s]
+  GROUP BY
+    repo_name,
+    author_login)
+GROUP BY
+  repo_name
+ORDER BY
+  num_commit_authors DESC   """ % (proj, dataset, table)
     
     
     

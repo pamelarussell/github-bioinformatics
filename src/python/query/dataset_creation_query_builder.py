@@ -1,5 +1,3 @@
-from structure.bq_proj_structure import *
-
 
 ##### Functions to build queries against public GitHub data to extract data on specific repos
 

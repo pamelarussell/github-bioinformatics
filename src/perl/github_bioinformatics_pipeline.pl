@@ -25,15 +25,15 @@ my $generate_language_bytes = 0;
 my $generate_licenses = 0;
 my $generate_commits = 0;
 my $generate_file_info = 0;
-my $generate_file_contents = 1;
+my $generate_file_contents = 0;
 my $generate_repo_metrics = 0;
 my $generate_pr_data = 0;
 
+# Count lines of code and push to BigQuery table along with comment-stripped versions of source files
+my $run_cloc = 1;
+
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 my $run_bq_analysis_queries = 0;
-
-# Count lines of code and push to BigQuery table along with comment-stripped versions of source files
-my $run_cloc = 0;
 
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;
@@ -82,6 +82,10 @@ my $bq_tb_languages = "languages";
 my $bq_tb_licenses = "licenses";
 my $bq_tb_prs = "pull_requests";
 # Analysis tables
+my $bq_tb_bytes_by_language = "bytes_by_language"; # Total bytes of code per language across all repos
+my $bq_tb_lang_list_by_repo = "language_list_by_repo"; # List of languages used by repo
+my $bq_tb_num_langs_by_repo = "num_langs_by_repo"; # Number of languages used by repo
+my $bq_tb_num_repos_by_lang = "num_repos_by_lang"; # Number of repos using each language
 my $bq_tb_repo_article = "repo_and_article"; # Repo names and articles they're mentioned in, including non-bioinformatics
 my $bq_tb_eutils = "article_info_eutils"; # Article metadata from Eutils
 my $bq_tb_loc_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
@@ -89,6 +93,11 @@ my $bq_tb_loc_by_repo = "lines_of_code_by_repo"; # Computed table with total lin
 my $bq_tb_contents_comments_stripped = "contents_comments_stripped"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
 my $bq_tb_code_chunk_freq = "code_chunk_freq"; # Frequency of groups of lines of code
+my $bq_tb_test_cases = "test_cases"; # Test cases
+my $bq_tb_test_cases_by_repo = "test_cases_by_repo"; # Test cases by repo
+my $bq_tb_commit_types = "commit_types"; # Commit types
+my $bq_tb_project_duration = "project_duration"; # Project duration
+my $bq_tb_num_devs_by_repo = "num_devs_by_repo"; # Number of commit authors by repo
 
 
 # -----------------------------------------------------------------
@@ -96,6 +105,14 @@ my $bq_tb_code_chunk_freq = "code_chunk_freq"; # Frequency of groups of lines of
 # -----------------------------------------------------------------
 
 my $gsheet_repos_curated = "gh_repos_in_articles_curated";
+
+
+# -----------------------------------------------------------------
+#                Google Cloud Storage project structure
+# -----------------------------------------------------------------
+
+my $gcs_bucket = "ghbioinf_paper_data";
+my $gcs_regex_csv = "contents-[0-9]+\.csv";
 
 
 # -----------------------------------------------------------------
@@ -219,18 +236,39 @@ if($generate_pr_data) {
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 if($run_bq_analysis_queries) {
-	run_cmmd("$python3 $script_run_bq_queries_analysis --github_ds $bq_ds_repos --results_ds $bq_ds_analysis_results")
+	run_cmmd("$python3 $script_run_bq_queries_analysis " .
+	"--proj $bq_proj_gh_bioinf " .
+	"--github_ds $bq_ds_repos " .
+	"--results_ds $bq_ds_analysis_results " .
+	"--tb_commits $bq_tb_commits " .
+	"--tb_files $bq_tb_files " .
+	"--tb_languages $bq_tb_languages " .
+	"--tb_loc_file $bq_tb_loc_by_file " .
+	"--tb_loc_repo $bq_tb_loc_by_repo " .
+	"--tb_bytes_by_language $bq_tb_bytes_by_language " .
+	"--tb_lang_list_by_repo $bq_tb_lang_list_by_repo " .
+	"--tb_num_langs_by_repo $bq_tb_num_langs_by_repo " .
+	"--tb_num_repos_by_lang $bq_tb_num_repos_by_lang " .
+	"--tb_test_cases $bq_tb_test_cases " .
+	"--tb_test_cases_by_repo $bq_tb_test_cases_by_repo " .
+	"--tb_commit_types $bq_tb_commit_types " .
+	"--tb_project_duration $bq_tb_project_duration " .
+	"--tb_num_devs_by_repo $bq_tb_num_devs_by_repo ")
 } else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
 	"save results to tables\n")}
 
 # Count lines of code and push to BigQuery table along with comment-stripped versions of source files
 if($run_cloc) {
 	my $out_log_cloc = "$out_results_dir_cloc/run.out";
-	my $cmmd_cloc = "$python3 $script_cloc --in_ds $bq_ds_repos " .
+	my $cmmd_cloc = "$python3 $script_cloc " .
+	"--bucket $gcs_bucket " .
+	"--regex_csv $gcs_regex_csv " .
+	"--proj $bq_proj_gh_bioinf " .
 	"--out_ds $bq_ds_analysis_results " .
-	"--table_loc $bq_tb_loc_by_file " .
-	"--table_sc $bq_tb_contents_comments_stripped " .
-	"--outfile $out_log_cloc --cloc $cloc_exec";
+	"--tb_loc $bq_tb_loc_by_file " .
+	"--tb_sc $bq_tb_contents_comments_stripped " .
+	"--outfile $out_log_cloc " .
+	"--cloc $cloc_exec ";
 	run_cmmd($cmmd_cloc, $out_log_cloc)
 } else {print("\nSkipping step: count lines of code\n")}
 

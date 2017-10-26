@@ -1,13 +1,15 @@
 import argparse
+import csv
 import os
+import re
 import subprocess
+import sys
 
 from bigquery import get_client
 
-from google.cloud import bigquery
+from google.cloud import bigquery, storage
 from google.cloud.bigquery import SchemaField
-from local_params import json_key
-from structure.bq_proj_structure
+from local_params import json_key_final_dataset
 from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
 from util import rec_contents_comments_stripped
 
@@ -17,17 +19,17 @@ from util import rec_contents_comments_stripped
 # Also strip comments and push the stripped file contents to a new BigQuery table
 # Command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--proj-bioinf', action = 'store', dest = 'project_bioinf', required = True,
+parser.add_argument('--bucket', action = 'store', dest = 'bucket', required = True,
+                    help = 'Google Cloud Storage bucket containing file contents CSV files')
+parser.add_argument('--regex_csv', action = 'store', dest = 'regex_csv', required = True,
+                    help = 'Regex uniquely identifying contents CSV file names in the Google Cloud Storage bucket')
+parser.add_argument('--proj', action = 'store', dest = 'proj', required = True,
                     help = 'BigQuery GitHub bioinformatics project')
-parser.add_argument('--in_ds', action = 'store', dest = 'in_ds', required = True, 
-                    help = 'BigQuery dataset to read from')
-parser.add_argument('--tb_files', action = 'store', dest = 'table_contents', required = True,
-                    help = 'BigQuery files table')
 parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, 
                     help = 'BigQuery dataset to write to')
-parser.add_argument('--table_loc', action = 'store', dest = 'tab_loc', required = True, 
+parser.add_argument('--tb_loc', action = 'store', dest = 'tb_loc', required = True, 
                     help = 'BigQuery table to write language and LOC results to')
-parser.add_argument('--table_sc', action = 'store', dest = 'tab_sc', required = True, 
+parser.add_argument('--tb_sc', action = 'store', dest = 'tb_sc', required = True, 
                     help = 'BigQuery table to write comment-stripped versions of source file contents to')
 parser.add_argument('--cloc', action = 'store', dest = 'cloc', required = True, 
                     help = 'Full path to CLOC executable')
@@ -40,156 +42,131 @@ outfile = args.out
 os.makedirs(os.path.split(outfile)[0], exist_ok = True)
 w = open(outfile, mode = 'x', buffering = 1)
 
+# Google Cloud Storage parameters
+bucket_name = args.bucket
+regex_csv = re.compile(args.regex_csv)
+
 # BigQuery parameters
-project_bioinf = args.project_bioinf
-in_ds = args.in_ds
+proj = args.proj
 out_ds = args.out_ds
-table_contents = args.table_contents
 table_loc_ungrouped = "tmp_loc_ungrouped"
 table_sc_ungrouped = "tmp_sc_ungrouped"
-table_loc = args.tab_loc
-table_sc = args.tab_sc
-table_files = args.tb_Files
+table_loc = args.tb_loc
+table_sc = args.tb_sc
 
 # CLOC executable
 cloc_exec = args.cloc
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key, readonly=False)
+bq_client = get_client(json_key_file=json_key_final_dataset, readonly=False)
 
 # Delete the output tables if they exist
-delete_bq_table(client, out_ds, table_loc)
-delete_bq_table(client, out_ds, table_sc)
+delete_bq_table(bq_client, out_ds, table_loc)
+delete_bq_table(bq_client, out_ds, table_sc)
+delete_bq_table(bq_client, out_ds, table_loc_ungrouped)
+delete_bq_table(bq_client, out_ds, table_sc_ungrouped)
 
 # Create the ungrouped lines of code table with schema corresponding to CLOC output
 schema_loc = [
-    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'sha', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'language', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'blank', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'comment', 'type': 'INTEGER', 'mode': 'NULLABLE'},
     {'name': 'code', 'type': 'INTEGER', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, out_ds, table_loc, schema_loc)
-create_bq_table(client, out_ds, table_loc_ungrouped, schema_loc)
+create_bq_table(bq_client, out_ds, table_loc, schema_loc)
+create_bq_table(bq_client, out_ds, table_loc_ungrouped, schema_loc)
 
 # Create the ungrouped comment-stripped contents table
 schema_sc = [
-    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'sha', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'contents_comments_stripped', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
-create_bq_table(client, out_ds, table_sc, schema_sc)
-create_bq_table(client, out_ds, table_sc_ungrouped, schema_sc)
+create_bq_table(bq_client, out_ds, table_sc, schema_sc)
+create_bq_table(bq_client, out_ds, table_sc_ungrouped, schema_sc)
 
-# Regex identifying file paths that can be skipped
-skip_re = '/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
+# File extensions that can be skipped
+skip_re = re.compile('/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
 '|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$' + \
 '|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$' + \
-'|\.mat$|\.md$'
+'|\.mat$|\.md$')
 
-# Construct query to get file metadata and contents
-query = """
-SELECT
-  id,
-  repo_name,
-  path,
-  contents.contents_content AS content
-FROM
-  [%s:%s.%s] AS files
-INNER JOIN
-  [%s:%s.%s] AS contents
-ON
-  files.id = contents.files_id
-WHERE
-  NOT (REGEXP_MATCH(path,r'%s'))
-GROUP BY
-  id,
-  repo_name,
-  path,
-  content
-""" % (project_bioinf, in_ds, table_files, project_bioinf, in_ds, table_contents, skip_re)
-
-# Run query to get file metadata
-# Write results to a temporary table
-tmp_table = 'tmp_query_res_cloc'
-create_bq_table(client, out_ds, tmp_table, [
-    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'repo_name', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'path', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'content', 'type': 'STRING', 'mode': 'NULLABLE'}
-])
-
-print('Getting file metadata and contents\n')
-run_query_and_save_results(client, query, out_ds, tmp_table, 300)
-
-# Set up connection using google cloud API because bigquery-python package does not support iterating through records
-# Must have environment variable GOOGLE_APPLICATION_CREDENTIALS set to json key
-# https://developers.google.com/identity/protocols/application-default-credentials
-gcclient = bigquery.Client()
-dataset = gcclient.dataset(out_ds)
-gcschema = [
-          SchemaField('id', 'STRING', mode = 'required'),
-          SchemaField('repo_name', 'STRING', mode = 'required'),
-          SchemaField('path', 'STRING', mode = 'required'),
-          SchemaField('content', 'STRING', mode = 'required')
-]
-gctable = dataset.table(tmp_table, gcschema)
-
-# Get iterator over table records
-it = gctable.fetch_data() # https://googlecloudplatform.github.io/google-cloud-python/stable/bigquery-table.html
+# Identify contents file names in GCS bucket
+print("\nIdentifying contents CSV files on Google Cloud Storage")
+gcs_client = storage.Client()
+bucket = gcs_client.get_bucket(bucket_name)
+blobs = bucket.list_blobs()
+contents_blobs = [blob for blob in blobs if regex_csv.match(blob.name)]
+print("Found %s blobs matching regex: %s" %(len(contents_blobs), regex_csv.pattern))
+# Increase CSV field size limit
+csv.field_size_limit(sys.maxsize)
 
 # Run CLOC on each file and add results to database tables
-print('Running CLOC on each file...\n\n')
-recs_to_add_loc = []
-recs_to_add_sc = []
-num_done = 0
-
-for rec in it:
+for contents_blob in contents_blobs:
+    contents_csv = "/tmp/%s" % contents_blob.name
+    print("Downloading GCS blob %s to local file %s due to record size issues" % (contents_blob.name, contents_csv))
+    contents_blob.download_to_filename(contents_csv)
     
-    if num_done % 1000 == 0:
-        print('Finished %s files.' % num_done)
-    
-    # Push batch of records; try to keep pipe small
-    if num_done % 10 == 0 and len(recs_to_add_loc) > 0:
-        push_bq_records(client, out_ds, table_loc_ungrouped, recs_to_add_loc)
-        push_bq_records(client, out_ds, table_sc_ungrouped, recs_to_add_sc)
-        recs_to_add_loc.clear()
-        recs_to_add_sc.clear()
+    print("Reading file contents and running CLOC on each file...\n\n")
+    with open(contents_csv) as csvfile:
+        
+        reader = csv.DictReader(csvfile)
+        recs_to_add_loc = []
+        recs_to_add_sc = []
+        num_done = 0
+          
+        for rec in reader:
+              
+            if num_done % 1000 == 0:
+                print('Finished %s files.' % num_done)
+              
+            # Push batch of records; try to keep pipe small
+            if num_done % 10 == 0 and len(recs_to_add_loc) > 0:
+                push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
+                push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
+                recs_to_add_loc.clear()
+                recs_to_add_sc.clear()
+          
+            num_done = num_done + 1
+          
+            repo = rec["repo_name"]
+            filename = rec["file_name"]
+            path = rec["path"]
+            sha = rec["sha"]
+            content_str = rec["contents"]
+          
+            # Process the record
+            if content_str is not None and not skip_re.search(filename):
+                # Write the file contents to disk
+                destfile_content = '/tmp/%s' % path.replace('/', '_')
+                ext_sc = 'comments_stripped'
+                destfile_sc = '%s.%s' % (destfile_content, ext_sc)
+                content = write_file(content_str, destfile_content)
+                # Run CLOC
+                cloc_result = subprocess.check_output([cloc_exec, '--strip-comments=%s' % ext_sc, '--original-dir', content]).decode('utf-8')
+                os.remove(content)
+                cloc_data = parse_cloc_response(cloc_result)
+                if cloc_data is not None:
+                    cloc_data['sha'] = sha
+                    recs_to_add_loc.append(cloc_data)
+                    recs_to_add_sc.append(rec_contents_comments_stripped(sha, destfile_sc))
+                    os.remove(destfile_sc)
+                    w.write('%s. %s/%s - success\n' % (num_done, repo, path))
+                else:
+                    w.write('%s. %s/%s - no CLOC result\n' % (num_done, repo, path))
+            else:
+                w.write('%s. %s/%s - content is empty\n' % (num_done, repo, path))
+          
+        # Push final batch of records
+        if len(recs_to_add_loc) > 0:
+            push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
+            push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
+                
+        # Delete the temporary CSV file
+        print("Deleting temporary file %s" % contents_csv)
+        os.remove(contents_csv)
 
-    num_done = num_done + 1
-
-    repo = rec[1]
-    path = rec[2]
-    file_id = rec[0]
-    content_str = rec[3]
-
-    # Process the record
-    if content_str is not None:
-        # Write the file contents to disk
-        destfile_content = '/tmp/%s' % path.replace('/', '_')
-        ext_sc = 'comments_stripped'
-        destfile_sc = '%s.%s' % (destfile_content, ext_sc)
-        content = write_file(content_str, destfile_content)
-        # Run CLOC
-        cloc_result = subprocess.check_output([cloc_exec, '--strip-comments=%s' % ext_sc, '--original-dir', content]).decode('utf-8')
-        os.remove(content)
-        cloc_data = parse_cloc_response(cloc_result)
-        if cloc_data is not None:
-            cloc_data['id'] = file_id
-            recs_to_add_loc.append(cloc_data)
-            recs_to_add_sc.append(rec_contents_comments_stripped(file_id, destfile_sc))
-            os.remove(destfile_sc)
-            w.write('%s. %s/%s - success\n' % (num_done, repo, path))
-        else:
-            w.write('%s. %s/%s - no CLOC result\n' % (num_done, repo, path))
-    else:
-        w.write('%s. %s/%s - content is empty\n' % (num_done, repo, path))
-
-# Push final batch of records
-if len(recs_to_add_loc) > 0:
-    push_bq_records(client, out_ds, table_loc_ungrouped, recs_to_add_loc)
-    push_bq_records(client, out_ds, table_sc_ungrouped, recs_to_add_sc)
-    
 # Group the tables to dedup records and write to final tables
 query_group_loc = """
 SELECT
@@ -197,34 +174,32 @@ SELECT
 FROM
   [%s:%s.%s]
 GROUP BY
-  id,
+  sha,
   language,
   blank,
   comment,
   code
-""" % (project_bioinf, out_ds, table_loc_ungrouped)
-
+""" % (proj, out_ds, table_loc_ungrouped)
+  
 query_group_sc = """
 SELECT
   *
 FROM
   [%s:%s.%s]
 GROUP BY
-  id,
+  sha,
   contents_comments_stripped
-""" % (project_bioinf, out_ds, table_sc_ungrouped)
-
-run_query_and_save_results(client, query_group_loc, out_ds, table_loc, 300)
-run_query_and_save_results(client, query_group_sc, out_ds, table_sc, 300)
-    
+""" % (proj, out_ds, table_sc_ungrouped)
+  
+run_query_and_save_results(bq_client, query_group_loc, out_ds, table_loc, 300)
+run_query_and_save_results(bq_client, query_group_sc, out_ds, table_sc, 300)
+      
 # Delete the temporary tables
-delete_bq_table(client, out_ds, tmp_table)
-delete_bq_table(client, out_ds, table_loc_ungrouped)
-delete_bq_table(client, out_ds, table_sc_ungrouped)
+delete_bq_table(bq_client, out_ds, table_loc_ungrouped)
+delete_bq_table(bq_client, out_ds, table_sc_ungrouped)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 w.close()
-
 
 
 

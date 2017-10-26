@@ -35,20 +35,20 @@ def parse_cloc_response(response):
             raise ValueError('Malformed CLOC response: %s' % response)
 
 
-def rec_contents_comments_stripped(file_id, path):
+def rec_contents_comments_stripped(sha, path):
     """ Reads the contents of a source file and returns a dict object to be pushed as a record to BigQuery
     
     Args:
-        file_id: File ID
+        sha: File SHA
         path: Path to source file with comments stripped
         
     Returns:
-        A dict object with keys 'id', 'contents_comments_stripped'
+        A dict object with keys 'sha', 'contents_comments_stripped'
     
     """
     with open(path, 'r') as file:
         contents = file.read()
-    return {'id': file_id, 'contents_comments_stripped': contents}
+    return {'sha': sha, 'contents_comments_stripped': contents}
 
     
     
