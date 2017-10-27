@@ -103,9 +103,9 @@ if not bq_client.check_table(out_ds, table_sc_ungrouped):
 skip_re = re.compile('/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
 '|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$' + \
 '|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$' + \
-'|\.mat$|\.md$|\.zip$|\.ZIP$|\.gif$|\.svg$|\.fastq$|\.jar$|\.mp3$|\.mp4$|\.class$' + \
-'|\.json$|\.JSON$|\.bwt$|\.bz2$|\.cram$|\.crai$|\.PNG$|\.ppt$|\.pptx$|\.RData$' + \
-'|\.Rhistory$|\.xml$|\.XML$')
+'|\.mat$|\.md$|\.zip$|\.gif$|\.svg$|\.fastq$|\.jar$|\.mp3$|\.mp4$|\.class$' + \
+'|\.json$|\.bwt$|\.bz2$|\.cram$|\.crai$|\.ppt$|\.pptx$|\.RData$' + \
+'|\.Rhistory$|\.xml$', re.IGNORECASE)
 
 # Identify contents file names in GCS bucket
 print("\nIdentifying contents CSV files on Google Cloud Storage")
