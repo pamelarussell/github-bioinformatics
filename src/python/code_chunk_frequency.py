@@ -8,7 +8,6 @@ from dry import add_chunks, make_records, split_into_lines
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
 from local_params import json_key_final_dataset
-from structure.bq_proj_structure
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 

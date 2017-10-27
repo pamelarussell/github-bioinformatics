@@ -11,8 +11,6 @@ from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 
-# Count lines of code in source files and store this information in a new table in BigQuery
-# Use the program CLOC to count lines of code
 # Command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--proj_bioinf', action = 'store', dest = 'project_bioinf', required = True,
