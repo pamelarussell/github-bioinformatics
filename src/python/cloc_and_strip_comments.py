@@ -108,7 +108,7 @@ skip_re = re.compile('/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so
 
 # Identify contents file names in GCS bucket
 print("\nIdentifying contents CSV files on Google Cloud Storage")
-gcs_client = storage.Client()
+gcs_client = storage.Client.from_service_account_json(json_key_final_dataset)
 bucket = gcs_client.get_bucket(bucket_name)
 blobs = bucket.list_blobs()
 contents_blobs = [blob for blob in blobs if regex_csv.match(blob.name)]
