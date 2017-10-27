@@ -104,7 +104,7 @@ if not bq_client.check_table(out_ds, table_sc_ungrouped):
 skip_re = re.compile('/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
 '|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$' + \
 '|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$' + \
-'|\.mat$|\.md$|\.zip$|\.ZIP$|\.gif$|\.svg$')
+'|\.mat$|\.md$|\.zip$|\.ZIP$|\.gif$|\.svg$|\.fastq$|\.jar$|\.mp3$|\.mp4$')
 
 # Identify contents file names in GCS bucket
 print("\nIdentifying contents CSV files on Google Cloud Storage")
@@ -145,7 +145,7 @@ for contents_blob in contents_blobs:
                       % (num_done, num_success, num_skipped_already_done, num_skipped_empty_content, num_skipped_file_extension, num_skipped_no_result))
               
             # Push batch of records
-            if num_done % 100 == 0 and len(recs_to_add_loc) > 0:
+            if num_done % 10 == 0 and len(recs_to_add_loc) > 0:
                 push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
                 push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
                 recs_to_add_loc.clear()
