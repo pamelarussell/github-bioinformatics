@@ -166,7 +166,7 @@ for contents_blob in contents_blobs:
                     push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
                     push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
                 if len(skipped_sha) > 0:
-                    push_bq_records(bq_client, out_ds, table_skip, {'sha': sha for sha in skipped_sha})
+                    push_bq_records(bq_client, out_ds, table_skip, [{'sha': sha} for sha in skipped_sha])
                 recs_to_add_loc.clear()
                 recs_to_add_sc.clear()
                 skipped_sha.clear()
