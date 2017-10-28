@@ -89,6 +89,7 @@ my $bq_tb_num_repos_by_lang = "num_repos_by_lang"; # Number of repos using each 
 my $bq_tb_repo_article = "repo_and_article"; # Repo names and articles they're mentioned in, including non-bioinformatics
 my $bq_tb_eutils = "article_info_eutils"; # Article metadata from Eutils
 my $bq_tb_loc_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
+my $bq_tb_loc_by_file_skipped = "lines_of_code_by_file_skipped"; # Files skipped in lines of code analysis
 my $bq_tb_loc_by_repo = "lines_of_code_by_repo"; # Computed table with total lines of code by repo
 my $bq_tb_contents_comments_stripped = "contents_comments_stripped"; # Computed table with language and lines of code per source file
 my $bq_tb_comments = "comments"; # Computed table with comments extracted from source files
@@ -267,6 +268,7 @@ if($run_cloc) {
 	"--out_ds $bq_ds_analysis_results " .
 	"--tb_loc $bq_tb_loc_by_file " .
 	"--tb_sc $bq_tb_contents_comments_stripped " .
+	"--tb_skip $bq_tb_loc_by_file_skipped " .
 	"--outfile $out_log_cloc " .
 	"--cloc $cloc_exec ";
 	run_cmmd($cmmd_cloc, $out_log_cloc)
