@@ -161,10 +161,12 @@ for contents_blob in contents_blobs:
                          num_skipped_empty_content, num_skipped_file_extension, num_skipped_no_result))
               
             # Push batch of records
-            if num_done % 10 == 0 and len(recs_to_add_loc) > 0:
-                push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
-                push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
-                push_bq_records(bq_client, out_ds, table_skip, {'sha': sha for sha in skipped_sha})
+            if num_done % 10 == 0:
+                if len(recs_to_add_loc) > 0:
+                    push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
+                    push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
+                if len(skipped_sha) > 0:
+                    push_bq_records(bq_client, out_ds, table_skip, {'sha': sha for sha in skipped_sha})
                 recs_to_add_loc.clear()
                 recs_to_add_sc.clear()
                 skipped_sha.clear()
