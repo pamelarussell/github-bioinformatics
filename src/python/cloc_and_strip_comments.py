@@ -156,9 +156,7 @@ for contents_blob in contents_blobs:
         for rec in reader:
               
             if num_done % 1000 == 0:
-                print('Finished %s files. Got results for %s. ' + \
-                      'Skipped %s already done, %s previously skipped, %s with empty content, ' + \
-                      '%s with invalid file extension, and %s with no CLOC result.' 
+                print('Finished %s files. Got results for %s. Skipped %s already done, %s previously skipped, %s with empty content, %s with invalid file extension, and %s with no CLOC result.' 
                       % (num_done, num_success, num_skipped_already_done, num_skipped_skipped, 
                          num_skipped_empty_content, num_skipped_file_extension, num_skipped_no_result))
               
