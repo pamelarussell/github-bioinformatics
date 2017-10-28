@@ -224,6 +224,7 @@ for contents_blob in contents_blobs:
         if len(recs_to_add_loc) > 0:
             push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
             push_bq_records(bq_client, out_ds, table_sc_ungrouped, recs_to_add_sc)
+        if len(skipped_sha) > 0:
             push_bq_records(bq_client, out_ds, table_skip, {'sha': sha for sha in skipped_sha})
 
         # Delete the temporary CSV file
