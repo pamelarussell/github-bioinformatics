@@ -100,12 +100,14 @@ if not bq_client.check_table(out_ds, table_sc_ungrouped):
     create_bq_table(bq_client, out_ds, table_sc_ungrouped, schema_sc)
 
 # File extensions that can be skipped
-skip_re = re.compile('/[^.]+$|\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$|\.so$' + \
-'|\.fasta$|\.fa$|\.gff3$|\.csv$|\.vcf$|\.rst$|\.dat$|\.png$|\.gz$|\.so\.[0-9]$' + \
-'|\.gitignore$|\.[0-9]+$|\.fai$|\.bed$|\.out$|\.stderr$|\.la$|\.db$|\.sty$' + \
-'|\.mat$|\.md$|\.zip$|\.gif$|\.svg$|\.fastq$|\.jar$|\.mp3$|\.mp4$|\.class$' + \
-'|\.json$|\.bwt$|\.bz2$|\.cram$|\.crai$|\.ppt$|\.pptx$|\.RData$' + \
-'|\.Rhistory$|\.xml$', re.IGNORECASE)
+skip_re = re.compile(
+                     '\.jpg$|\.pdf$|\.eps$|\.fa$|\.fq$|\.ps$|\.sam$' + \
+                     '|\.fasta$|\.gff3$|\.vcf$|\.dat$|\.png$|\.gz$' + \
+                     '|\.gitignore$|\.fai$|\.bed$' + \
+                     '|\.mat$|\.zip$|\.gif$|\.svg$|\.fastq$|\.jar$|\.mp3$' + \
+                     '|\.mp4$|\.class$|\.bwt$|\.bz2$|\.cram$|\.crai$|\.ppt$' + \
+                     '|\.pptx$|\.RData$|\.Rhistory$|\.tgz$|\.gtf$', 
+                     re.IGNORECASE)
 
 # Identify contents file names in GCS bucket
 print("\nIdentifying contents CSV files on Google Cloud Storage")
@@ -128,10 +130,10 @@ num_success = 0
 for contents_blob in contents_blobs:
     
     contents_csv = "/tmp/%s" % contents_blob.name
-    print("Downloading GCS blob %s to local file %s due to record size issues" % (contents_blob.name, contents_csv))
+    print("\nDownloading GCS blob %s to local file %s due to record size issues" % (contents_blob.name, contents_csv))
     contents_blob.download_to_filename(contents_csv)
     
-    print("Reading file contents and running CLOC on each file...\n\n")
+    print("Reading file contents and running CLOC on each file...")
     
     with open(contents_csv) as csvfile:
         
