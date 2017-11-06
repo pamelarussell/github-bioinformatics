@@ -186,7 +186,6 @@ for contents_blob in contents_blobs:
                 continue
             if sha in existing_sha_loc:
                 num_skipped_already_done = num_skipped_already_done + 1
-                skipped_sha.append(sha)
                 w.write('%s. %s/%s - skipping - already done\n' % (num_done, repo, path))
                 continue
             if content_str is None:
