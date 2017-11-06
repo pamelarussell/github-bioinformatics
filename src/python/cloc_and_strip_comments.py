@@ -259,8 +259,8 @@ run_query_and_save_results(bq_client, query_group_loc, out_ds, table_loc, 300)
 run_query_and_save_results(bq_client, query_group_sc, out_ds, table_sc, 300)
       
 # Delete the temporary tables
-delete_bq_table(bq_client, out_ds, table_loc_ungrouped)
-delete_bq_table(bq_client, out_ds, table_sc_ungrouped)
+#delete_bq_table(bq_client, out_ds, table_loc_ungrouped)
+#delete_bq_table(bq_client, out_ds, table_sc_ungrouped)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 w.close()
