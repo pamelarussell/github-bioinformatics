@@ -199,7 +199,7 @@ for contents_blob in contents_blobs:
                 w.write('%s. %s/%s - skipping - file extension\n' % (num_done, repo, path))
                 continue
             # Write the file contents to disk
-            destfile_content = '/tmp/%s' % re.sub(r'\W', '_', path)
+            destfile_content = '/tmp/%s' % re.sub(r'[^a-zA-z0-9.]', '_', path)
             ext_sc = 'comments_stripped'
             destfile_sc = '%s.%s' % (destfile_content, ext_sc)
             content = write_file(content_str, destfile_content)
