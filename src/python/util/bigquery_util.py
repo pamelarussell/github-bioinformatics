@@ -88,7 +88,7 @@ def delete_bq_table(client, dataset, table):
             raise RuntimeError('Table deletion failed: %s.%s' % (dataset, table))
 
     
-def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100, print_failed_records = True):
+def push_bq_records(client, dataset, table, records, sleep = 300, max_batch = 100, print_failed_records = True, retry_on_fail = True):
     """ Push records to a BigQuery table
     
     Args:
@@ -98,8 +98,11 @@ def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100
         table: Table name
         records: List of records to add
                  Each record is a dictionary with keys matching the schema    
-        sleep: Time to sleep if first attempt raises BrokenPipeError, then keep trying
+        sleep: Time to sleep if first attempt raises BrokenPipeError, then keep trying. Also,
+                time to sleep if push is unsuccessful; in that case, only try one more time
         max_batch: Max number of records to push at one time
+        print_failed_records: Print examples of failed records on failed push
+        retry_on_fail: Wait and try one more time on failed push
     """
     if len(records) == 0:
         return
@@ -111,13 +114,18 @@ def push_bq_records(client, dataset, table, records, sleep = 30, max_batch = 100
         try:
             succ = client.push_rows(dataset, table, records)
             if not succ:
-                if print_failed_records:
-                    print("\nRecord 0:")
-                    print(records[0])
-                    if len(records) > 1:
-                        print("\nRecord %s:" % (len(records) - 1))
-                        print(records[len(records)-1])
-                raise RuntimeError('Push to BigQuery table was unsuccessful. See above for sample record(s) if requested.')
+                if retry_on_fail:
+                    print("Push to BigQuery table was unsuccessful. Waiting %s seconds and trying one more time." % sleep)
+                    time.sleep(sleep)
+                    push_bq_records(client, dataset, table, records, sleep, max_batch, print_failed_records, False)
+                else:
+                    if print_failed_records:
+                        print("\nRecord 0:")
+                        print(records[0])
+                        if len(records) > 1:
+                            print("\nRecord %s:" % (len(records) - 1))
+                            print(records[len(records)-1])
+                    raise RuntimeError('Push to BigQuery table was unsuccessful. See above for sample record(s) if requested.')
         except BrokenPipeError:
             print("BrokenPipeError while pushing %s records. Waiting %s seconds and trying again." % (len(records), sleep)) 
             time.sleep(sleep)
