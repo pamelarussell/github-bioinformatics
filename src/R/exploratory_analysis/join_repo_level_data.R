@@ -3,7 +3,7 @@ suppressPackageStartupMessages(library(dplyr))
 
 # Join all repo-level data
 # Load all the repo-level data from BigQuery and do a full join by repo name
-table_list <- c("language_list_by_repo", "num_languages_by_repo", "lines_of_code_by_repo",
+table_list <- c("language_list_by_repo", "num_langs_by_repo", "lines_of_code_by_repo",
                 "project_duration_by_repo", "num_devs_by_repo", "commit_types_by_repo", "test_cases_by_repo")
 repo_level_data <- data.frame(repo_name = character())
 for(table in table_list) {
