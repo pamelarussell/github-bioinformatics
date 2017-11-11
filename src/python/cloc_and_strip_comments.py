@@ -46,6 +46,9 @@ outfile = args.out
 os.makedirs(os.path.split(outfile)[0], exist_ok = True)
 w = open(outfile, mode = 'x', buffering = 1)
 
+# Temp directory to save source files in
+outdir = os.path.dirname(outfile)
+
 # Google Cloud Storage parameters
 bucket_name = args.bucket
 regex_csv = re.compile(args.regex_csv)
@@ -140,7 +143,7 @@ num_success = 0
 # Run CLOC on each file and add results to database tables
 for contents_blob in contents_blobs:
     
-    contents_csv = "/tmp/%s" % contents_blob.name
+    contents_csv = "/%s/%s" % (outdir, contents_blob.name)
     print("\nDownloading GCS blob %s to local file %s due to record size issues" % (contents_blob.name, contents_csv))
     contents_blob.download_to_filename(contents_csv)
     
@@ -199,7 +202,7 @@ for contents_blob in contents_blobs:
                 w.write('%s. %s/%s - skipping - file extension\n' % (num_done, repo, path))
                 continue
             # Write the file contents to disk
-            destfile_content = '/tmp/%s' % re.sub(r'[^a-zA-z0-9.]+', '_', path)
+            destfile_content = '/%s/%s' % (outdir, re.sub(r'[\^\-\]\\`~!@#$%&*()=+[{}|;:,<>/?]', '_', path))
             ext_sc = 'comments_stripped'
             destfile_sc = '%s.%s' % (destfile_content, ext_sc)
             content = write_file(content_str, destfile_content)
@@ -218,7 +221,7 @@ for contents_blob in contents_blobs:
                 num_skipped_no_result = num_skipped_no_result + 1
                 skipped_sha.append(sha)
                 w.write('%s. %s/%s - no CLOC result\n' % (num_done, repo, path))
-          
+
         # Push final batch of records
         if len(recs_to_add_loc) > 0:
             push_bq_records(bq_client, out_ds, table_loc_ungrouped, recs_to_add_loc)
