@@ -237,14 +237,32 @@ for contents_blob in contents_blobs:
 query_group_loc = """
 SELECT
   *
-FROM
-  [%s:%s.%s]
+FROM (
+  SELECT
+    *
+  FROM
+    [%s:%s.%s]
+  GROUP BY
+    sha,
+    language,
+    blank,
+    comment,
+    code)
 WHERE
   sha IN (
   SELECT
     sha
-  FROM
-    [%s:%s.%s]
+  FROM (
+    SELECT
+      *
+    FROM
+      [%s:%s.%s]
+    GROUP BY
+      sha,
+      language,
+      blank,
+      comment,
+      code)
   GROUP BY
     sha
   HAVING
@@ -254,14 +272,26 @@ WHERE
 query_group_sc = """
 SELECT
   *
-FROM
-  [%s:%s.%s]
+FROM (
+  SELECT
+    *
+  FROM
+    [github-bioinformatics-171721:analysis.tmp_sc_ungrouped]
+  GROUP BY
+    sha,
+    contents_comments_stripped)
 WHERE
   sha IN (
   SELECT
     sha
-  FROM
-    [%s:%s.%s]
+  FROM (
+    SELECT
+      *
+    FROM
+      [github-bioinformatics-171721:analysis.tmp_sc_ungrouped]
+    GROUP BY
+      sha,
+      contents_comments_stripped)
   GROUP BY
     sha
   HAVING
