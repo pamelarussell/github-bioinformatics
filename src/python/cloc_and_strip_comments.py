@@ -239,23 +239,34 @@ SELECT
   *
 FROM
   [%s:%s.%s]
-GROUP BY
-  sha,
-  language,
-  blank,
-  comment,
-  code
-""" % (proj, out_ds, table_loc_ungrouped)
+WHERE
+  sha IN (
+  SELECT
+    sha
+  FROM
+    [%s:%s.%s]
+  GROUP BY
+    sha
+  HAVING
+    COUNT(sha) = 1)
+""" % (proj, out_ds, table_loc_ungrouped, proj, out_ds, table_loc_ungrouped)
   
 query_group_sc = """
 SELECT
   *
 FROM
   [%s:%s.%s]
-GROUP BY
-  sha,
-  contents_comments_stripped
-""" % (proj, out_ds, table_sc_ungrouped)
+WHERE
+  sha IN (
+  SELECT
+    sha
+  FROM
+    [%s:%s.%s]
+  GROUP BY
+    sha
+  HAVING
+    COUNT(sha) = 1)
+""" % (proj, out_ds, table_sc_ungrouped, proj, out_ds, table_sc_ungrouped)
   
 run_query_and_save_results(bq_client, query_group_loc, out_ds, table_loc, 300)
 run_query_and_save_results(bq_client, query_group_sc, out_ds, table_sc, 300)
