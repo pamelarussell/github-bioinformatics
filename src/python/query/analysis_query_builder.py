@@ -93,7 +93,7 @@ def build_query_test_cases(proj, ds_files, table_files, ds_loc, table_loc):
     return """
     SELECT
       files.repo_name as repo_name,
-      files.id as id,
+      files.sha as sha,
       loc.language as language,
       files.path as path,
       loc.code as lines
@@ -102,7 +102,7 @@ def build_query_test_cases(proj, ds_files, table_files, ds_loc, table_loc):
     INNER JOIN
       [%s:%s.%s] AS loc
     ON
-      files.id = loc.id
+      files.sha = loc.sha
     WHERE
       LOWER(files.path) CONTAINS 'test'
     """ % (proj, ds_files, table_files, proj, ds_loc, table_loc)
@@ -135,7 +135,7 @@ SELECT
 FROM (
   SELECT
     repo_name,
-    COUNT(DISTINCT(commit_sha)) AS num_commits
+    COUNT(commit_sha) AS num_commits
   FROM
     [%s:%s.%s]
   GROUP BY
@@ -143,7 +143,7 @@ FROM (
 LEFT OUTER JOIN (
   SELECT
     repo_name,
-    COUNT(DISTINCT(commit_sha)) AS num_bug_fix_commits
+    COUNT(commit_sha) AS num_bug_fix_commits
   FROM
     [%s:%s.%s]
   WHERE
@@ -195,17 +195,17 @@ def build_query_lines_of_code_by_repo(proj, ds_files, table_files, ds_loc, table
     FROM (
       SELECT
         repo_name,
-        id
+        sha
       FROM
         [%s:%s.%s]) AS files
     INNER JOIN (
       SELECT
-        id,
+        sha,
         code
       FROM
         [%s:%s.%s]) AS loc
     ON
-      files.id = loc.id
+      files.sha = loc.sha
     GROUP BY
       repo_name
     ORDER BY

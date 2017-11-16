@@ -30,10 +30,10 @@ my $generate_repo_metrics = 0;
 my $generate_pr_data = 0;
 
 # Count lines of code and push to BigQuery table along with comment-stripped versions of source files
-my $run_cloc = 1;
+my $run_cloc = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
-my $run_bq_analysis_queries = 0;
+my $run_bq_analysis_queries = 1;
 
 # Extract comments from source files and push to BigQuery table
 my $run_extract_comments = 0;

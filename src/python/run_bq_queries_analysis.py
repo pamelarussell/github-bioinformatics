@@ -106,7 +106,7 @@ run_query_and_save_results(client, build_query_test_cases(proj, dataset, table_f
  
 # NOT TESTED
 # Number of test cases and lines of code in test cases by repo
-run_query_and_save_results(client, build_query_test_cases_by_repo(res_dataset, table_test_cases),
+run_query_and_save_results(client, build_query_test_cases_by_repo(proj, res_dataset, table_test_cases),
                            res_dataset, table_test_cases_by_repo)
  
 # Number of bug fix commits and total commits by repo
