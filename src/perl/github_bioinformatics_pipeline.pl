@@ -78,10 +78,11 @@ my $bq_tb_repo_metrics = "repo_metrics";
 my $bq_tb_commits = "commits";
 my $bq_tb_contents = "contents";
 my $bq_tb_files = "file_info";
-my $bq_tb_languages = "languages";
+my $bq_tb_languages_gh_api = "languages_gh_api";
 my $bq_tb_licenses = "licenses";
 my $bq_tb_prs = "pull_requests";
 # Analysis tables
+my $bq_tb_lang_bytes_by_repo = "language_bytes_by_repo"; # Total bytes of code per language per repo
 my $bq_tb_bytes_by_language = "bytes_by_language"; # Total bytes of code per language across all repos
 my $bq_tb_lang_list_by_repo = "language_list_by_repo"; # List of languages used by repo
 my $bq_tb_num_langs_by_repo = "num_langs_by_repo"; # Number of languages used by repo
@@ -201,7 +202,7 @@ if($generate_repo_metrics) {
 
 # Get language info from GitHub API
 if($generate_language_bytes) {
-	run_cmmd("$python3 $script_gh_api_languages --ds $bq_ds_repos --table $bq_tb_languages ".
+	run_cmmd("$python3 $script_gh_api_languages --ds $bq_ds_repos --table $bq_tb_languages_gh_api ".
 	"--sheet $gsheet_repos_curated")
 } else {print("\nSkipping step: get language info from GitHub API\n")}
 
@@ -239,11 +240,12 @@ if($generate_pr_data) {
 if($run_bq_analysis_queries) {
 	run_cmmd("$python3 $script_run_bq_queries_analysis " .
 	"--proj $bq_proj_gh_bioinf " .
-	"--github_ds $bq_ds_repos " .
+	"--github_api_ds $bq_ds_repos " .
+	"--analysis_ds $bq_ds_analysis_results " .
 	"--results_ds $bq_ds_analysis_results " .
 	"--tb_commits $bq_tb_commits " .
 	"--tb_files $bq_tb_files " .
-	"--tb_languages $bq_tb_languages " .
+	"--tb_languages $bq_tb_lang_bytes_by_repo " .
 	"--tb_loc_file $bq_tb_loc_by_file " .
 	"--tb_loc_repo $bq_tb_loc_by_repo " .
 	"--tb_bytes_by_language $bq_tb_bytes_by_language " .

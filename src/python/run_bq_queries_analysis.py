@@ -16,7 +16,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--proj', action = 'store', dest = 'proj', required = True, help = 'BigQuery project')
 
 # Datasets
-parser.add_argument('--github_ds', action = 'store', dest = 'dataset', required = True, help = 'BigQuery dataset containing GitHub data')
+parser.add_argument('--github_api_ds', action = 'store', dest = 'gh_api_dataset', required = True, help = 'BigQuery dataset containing GitHub API data')
+parser.add_argument('--analysis_ds', action = 'store', dest = 'analysis_dataset', required = True, help = 'BigQuery dataset containing analysis resuls')
 parser.add_argument('--results_ds', action = 'store', dest = 'res_dataset', required = True, help = 'BigQuery dataset to store tables of results in')
 
 # Tables
@@ -55,7 +56,8 @@ args = parser.parse_args()
 # Project
 proj = args.proj
 # Datasets
-dataset = args.dataset
+gh_api_dataset = args.gh_api_dataset
+analysis_dataset = args.analysis_dataset
 res_dataset = args.res_dataset
 # Tables
 table_commits = args.table_commits
@@ -80,20 +82,24 @@ client = get_client(json_key_file=json_key_final_dataset, readonly=False)
     
 # Run the queries
  
+# Bytes of code by language and repo
+run_query_and_save_results(client, build_query_bytes_by_lang_and_repo(proj, analysis_dataset, table_lines_of_code_file, gh_api_dataset, table_files), 
+                           res_dataset, table_languages)
+ 
 # Bytes of code by language
-run_query_and_save_results(client, build_query_bytes_by_language(proj, dataset, table_languages), 
+run_query_and_save_results(client, build_query_bytes_by_language(proj, analysis_dataset, table_languages), 
                            res_dataset, table_bytes_by_language)
   
 # Number of repos with code in each language
-run_query_and_save_results(client, build_query_repo_count_by_language(proj, dataset, table_languages), 
+run_query_and_save_results(client, build_query_repo_count_by_language(proj, analysis_dataset, table_languages), 
                            res_dataset, table_num_repos_by_language)
   
 # List of languages by repo
-run_query_and_save_results(client, build_query_language_list_by_repo(proj, dataset, table_languages), 
+run_query_and_save_results(client, build_query_language_list_by_repo(proj, analysis_dataset, table_languages), 
                            res_dataset, table_language_list_by_repo)
   
 # Number of languages by repo
-run_query_and_save_results(client, build_query_num_languages_by_repo(proj, dataset, table_languages), 
+run_query_and_save_results(client, build_query_num_languages_by_repo(proj, analysis_dataset, table_languages), 
                            res_dataset, table_num_languages_by_repo)
   
 # NOT TESTED
@@ -101,7 +107,7 @@ run_query_and_save_results(client, build_query_num_languages_by_repo(proj, datas
 # Similar to heuristic used in "An Empirical Study of Adoption of Software Testing in Open Source Projects"
 # Kochhar PS, Bissyandé TF, Lo D, Jiang L. An Empirical Study of Adoption of Software Testing in Open Source Projects. 2013 13th International Conference on Quality Software. 2013. pp. 103–112. doi:10.1109/QSIC.2013.57
 # Only include files that have a language identified in lines_of_code table
-run_query_and_save_results(client, build_query_test_cases(proj, dataset, table_files, res_dataset, table_lines_of_code_file), 
+run_query_and_save_results(client, build_query_test_cases(proj, gh_api_dataset, table_files, res_dataset, table_lines_of_code_file), 
                            res_dataset, table_test_cases)
  
 # NOT TESTED
@@ -112,23 +118,23 @@ run_query_and_save_results(client, build_query_test_cases_by_repo(proj, res_data
 # Number of bug fix commits and total commits by repo
 # Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages and Code Quality in Github"
 # Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
-run_query_and_save_results(client, build_query_commit_types(proj, dataset, table_commits), 
+run_query_and_save_results(client, build_query_commit_types(proj, gh_api_dataset, table_commits), 
                            res_dataset, table_commit_types)
  
 # Project duration
-run_query_and_save_results(client, build_query_project_duration(proj, dataset, table_commits), 
+run_query_and_save_results(client, build_query_project_duration(proj, gh_api_dataset, table_commits), 
                            res_dataset, table_project_duration)
  
 # NOT TESTED
 # Total number of lines of code by repo
 # Only include files that have a language identified in lines_of_code table
-run_query_and_save_results(client, build_query_lines_of_code_by_repo(proj, dataset, table_files, res_dataset, table_lines_of_code_file), 
+run_query_and_save_results(client, build_query_lines_of_code_by_repo(proj, gh_api_dataset, table_files, res_dataset, table_lines_of_code_file), 
                            res_dataset, table_lines_of_code_repo)
 
 # Number of developers by repo
 # This is the number of commit *authors*.
 # Authors are identified by their login.
-run_query_and_save_results(client, build_query_num_devs_by_repo(proj, dataset, table_commits), 
+run_query_and_save_results(client, build_query_num_devs_by_repo(proj, gh_api_dataset, table_commits), 
                            res_dataset, table_num_devs_by_repo)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))

@@ -31,22 +31,49 @@ def build_query_num_actors_by_repo(proj, dataset, table):
 def build_query_bytes_by_language(proj, dataset, table_languages):
     return """
     SELECT
-      language_name,
-      sum (language_bytes) as total_bytes
+      language,
+      sum (total_bytes) as total_bytes
     FROM
       [%s:%s.%s]
     GROUP BY
-      language_name
+      language
     ORDER BY
       total_bytes DESC
     """ % (proj, dataset, table_languages)
 
+# Number of bytes of code by language and repo
+def build_query_bytes_by_lang_and_repo(proj, ds_loc, table_loc, ds_files, table_files):
+    return """
+    SELECT
+      files.repo_name AS repo_name,
+      loc.language AS language,
+      SUM(files.size) AS total_bytes
+    FROM (
+      SELECT
+        files.repo_name,
+        loc.language,
+        files.size
+      FROM (
+        SELECT
+          *
+        FROM
+          [%s:%s.%s] AS loc
+        INNER JOIN
+          [%s:%s.%s] AS files
+        ON
+          loc.sha = files.sha ))
+    GROUP BY
+      repo_name,
+      language
+    ORDER BY
+      repo_name    
+  """ % (proj, ds_loc, table_loc, proj, ds_files, table_files)
 
 # Number of repos with code in each language
 def build_query_repo_count_by_language(proj, dataset, table_languages):
     return """
     SELECT
-      language_name,
+      language,
       COUNT(*) AS num_repos
     FROM
       [%s:%s.%s]
@@ -62,7 +89,7 @@ def build_query_language_list_by_repo(proj, dataset, table_languages):
     return """
     SELECT
       repo_name,
-      GROUP_CONCAT(language_name) languages
+      GROUP_CONCAT(language) languages
     FROM
       [%s:%s.%s]
     GROUP BY
@@ -227,6 +254,8 @@ FROM (
     author_login
   FROM
     [%s:%s.%s]
+  WHERE
+    author_login IS NOT NULL
   GROUP BY
     repo_name,
     author_login)
