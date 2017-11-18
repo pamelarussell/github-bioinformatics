@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F, warning = F, message = F)
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
 ```
 
 ```{r}
@@ -57,8 +57,8 @@ ggplot(data = repo_level_data, aes(x = first_commit, y = last_commit)) +
   scale_color_gradientn(colors = c("red", "green", "blue"), 
                         name = "Commit span (years)",
                         labels = function(x) round(x / 365)) +
-  coord_cartesian(xlim = c(min_date, max_date),
-                  ylim = c(min_date, max_date)) +
+  # coord_cartesian(xlim = c(min_date, max_date),
+  #                 ylim = c(min_date, max_date)) +
   labs(title = "Project time spans",
        x = "First commit",
        y = "Latest commit") +

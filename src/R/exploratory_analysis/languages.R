@@ -8,17 +8,17 @@ source("project_info.R")
 source("join_repo_level_data.R")
 
 # Load the data from BigQuery
-repos_by_lang <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_repos_by_language") %>%
-  mutate(language_name = tolower(language_name)) %>% 
+repos_by_lang <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_repos_by_lang") %>%
+  mutate(language = tolower(language)) %>% 
   arrange(desc(num_repos))
 lang_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = "language_list_by_repo") %>%
   mutate(languages = tolower(languages))
 lang_bytes <- list_tabledata(project = proj, dataset = ds_analysis, table = "bytes_by_language") %>% 
-  mutate(language_name = tolower(language_name)) %>%
-  group_by(language_name) %>%
+  mutate(language = tolower(language)) %>%
+  group_by(language) %>%
   summarize(total_bytes = sum(total_bytes))
-lang_bytes_by_repo <- list_tabledata(project = proj, dataset = ds_gh, table = "languages") %>%
-  mutate(language_name = tolower(language_name))
+lang_bytes_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = "language_bytes_by_repo") %>%
+  mutate(language = tolower(language))
 
 # Languages of interest
 top_languages <- c("Python", "Shell", "Cpp", "R", "C", "Perl", "JavaScript", "Java",
@@ -44,12 +44,12 @@ lang_type_system <- gs_read(gs_title("Type system"), ws = "Type system", col_nam
 # Number of repos by language
 # Get the top languages
 top_langs <- arrange(repos_by_lang[1:30,], num_repos)
-top_langs$language_name <- factor(top_langs$language_name, levels = top_langs$language_name)
+top_langs$language <- factor(top_langs$language, levels = top_langs$language)
 
 
 # Number of repos by language pair
 # Identify languages
-lang <- sort(lang_bytes$language_name)
+lang <- sort(lang_bytes$language)
 nlang <- length(lang)
 npair <- nlang * (nlang - 1) / 2
 
@@ -102,7 +102,7 @@ top_pairs$languages <- factor(top_pairs$languages, levels = top_pairs$languages)
 # Use BigQuery's built-in "languages" table, not our CLOC results
 
 # Construct a vector of number of bytes per language
-language <- lang_bytes$language_name
+language <- lang_bytes$language
 bytes <- lang_bytes$total_bytes
 names(bytes) <- language
 bytes <- bytes[order(-bytes)]
@@ -198,9 +198,9 @@ num_repos_both_paradigms <- function(paradigm1, paradigm2) {
 
 # Join language features to repo-level language data
 lang_features_by_repo <- lang_bytes_by_repo %>%
-  left_join(lang_type_system, by = c("language_name" = "language")) %>%
-  left_join(lang_exec_method, by = c("language_name" = "language")) %>%
-  left_join(lang_paradigm, by = c("language_name" = "language"))
+  left_join(lang_type_system, by = "language") %>%
+  left_join(lang_exec_method, by = "language") %>%
+  left_join(lang_paradigm, by = "language")
 
 lang_features_by_repo <- lang_features_by_repo %>%
   mutate(exec_method = apply(lang_features_by_repo[, c("interpreted", "compiled")], 1, function(row) exec_method(row[1], row[2]))) %>%
@@ -210,18 +210,18 @@ lang_features_by_repo <- lang_features_by_repo %>%
                           1, function(row) paradigm(row[1], row[2], row[3], row[4], row[5],
                                                     row[6], row[7], row[8], row[9]))) %>%
   mutate(paradigm = paradigm_abbrev(paradigm)) %>%
-  select(repo_name, language_name, language_bytes, exec_method, paradigm, system, strength, safety)
+  select(repo_name, language, total_bytes, exec_method, paradigm, system, strength, safety)
 
 # Number of bytes by type system
 bytes_by_type_system <- lang_features_by_repo %>% 
   group_by(system) %>% 
-  summarise(total_bytes = sum(language_bytes)) %>%
+  summarise(total_bytes = sum(total_bytes)) %>%
   filter(system != "NA")
 
 # Number of bytes by type system and strength
 bytes_by_type_system_and_strength <- lang_features_by_repo %>% 
   group_by(system, strength) %>% 
-  summarise(total_bytes = sum(language_bytes)) %>%
+  summarise(total_bytes = sum(total_bytes)) %>%
   filter(system != "NA") %>%
   mutate(desc = paste(strength, system))
 
@@ -229,14 +229,14 @@ bytes_by_type_system_and_strength <- lang_features_by_repo %>%
 
 bytes_by_exec_method <- lang_features_by_repo %>%
   group_by(exec_method) %>% 
-  summarise(total_bytes = sum(language_bytes)) %>%
+  summarise(total_bytes = sum(total_bytes)) %>%
   filter(exec_method != "NA")
 
 # Number of bytes by paradigm
 
 bytes_by_paradigm <- lang_features_by_repo %>% 
   group_by(paradigm) %>% 
-  summarise(total_bytes = sum(language_bytes)) %>%
+  summarise(total_bytes = sum(total_bytes)) %>%
   filter(paradigm != "NA")
 
 
