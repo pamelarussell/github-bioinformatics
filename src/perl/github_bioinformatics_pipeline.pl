@@ -33,10 +33,10 @@ my $generate_pr_data = 0;
 my $run_cloc = 0;
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
-my $run_bq_analysis_queries = 1;
+my $run_bq_analysis_queries = 0;
 
 # Extract comments from source files and push to BigQuery table
-my $run_extract_comments = 0;
+my $run_extract_comments = 1;
 
 # Analyze frequency of code chunks
 my $run_code_chunk_frequency = 0;
@@ -278,7 +278,8 @@ if($run_cloc) {
 
 # Extract comments from source files and push to BigQuery table
 if($run_extract_comments) {
-	my $cmmd_extract_comments = "$python3 $script_extract_comments --ds_gh $bq_ds_repos --ds_loc " .
+	my $cmmd_extract_comments = "$python3 $script_extract_comments --proj_bioinf $bq_proj_gh_bioinf --tb_contents $bq_tb_contents " .
+	"--tb_loc $bq_tb_loc_by_file --ds_gh $bq_ds_repos --ds_loc " .
 	"$bq_ds_analysis_results --out_ds $bq_ds_analysis_results --table $bq_tb_comments";
 	run_cmmd($cmmd_extract_comments)
 } else {print("\nSkipping step: extract comments\n")}

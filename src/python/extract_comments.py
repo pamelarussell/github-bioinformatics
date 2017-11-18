@@ -46,10 +46,11 @@ client = get_client(json_key_file=json_key_final_dataset, readonly=False)
 
 # Delete the comments table if it exists
 delete_bq_table(client, out_ds, table)
+delete_bq_table(client, out_ds, table_ungrouped)
 
 # Create the comments table and intermediate ungrouped version
 schema = [
-    {'name': 'id', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'sha', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'comments', 'type': 'STRING', 'mode': 'NULLABLE'}
 ]
 create_bq_table(client, out_ds, table_ungrouped, schema)
@@ -58,19 +59,23 @@ create_bq_table(client, out_ds, table, schema)
 # Construct query to get file metadata and contents
 query = """
 SELECT
-  files_id,
-  language,
-  contents_content
-FROM
-  [%s:%s.%s] AS contents
-INNER JOIN
-  [%s:%s.%s] AS lines_of_code
+  contents.sha as sha,
+  loc.language as language,
+  contents.contents as contents
+FROM (
+  SELECT
+    sha,
+    contents
+  FROM
+    [%s:%s.%s]) AS contents
+INNER JOIN (
+  SELECT
+    sha,
+    LANGUAGE
+  FROM
+    [%s:%s.%s]) AS loc
 ON
-  contents.files_id = lines_of_code.id
-GROUP BY
-  files_id,
-  language,
-  contents_content""" % (project_bioinf, ds_gh, table_contents, project_bioinf, ds_loc, table_lines_of_code_file)
+  contents.sha = loc.sha""" % (project_bioinf, ds_gh, table_contents, project_bioinf, ds_loc, table_lines_of_code_file)
 print('\nGetting file metadata and contents')
 print('\nRunning query: %s\n\n' %query)
 
@@ -78,9 +83,9 @@ print('\nRunning query: %s\n\n' %query)
 # Write results to a temporary table
 tmp_table = 'tmp_query_result'
 create_bq_table(client, out_ds, tmp_table, [
-    {'name': 'files_id', 'type': 'STRING', 'mode': 'NULLABLE'},
+    {'name': 'sha', 'type': 'STRING', 'mode': 'NULLABLE'},
     {'name': 'language', 'type': 'STRING', 'mode': 'NULLABLE'},
-    {'name': 'contents_content', 'type': 'STRING', 'mode': 'NULLABLE'}
+    {'name': 'contents', 'type': 'STRING', 'mode': 'NULLABLE'}
 ])
 run_query_and_save_results(client, query, out_ds, tmp_table, 300)
 
@@ -90,9 +95,9 @@ run_query_and_save_results(client, query, out_ds, tmp_table, 300)
 gcclient = bigquery.Client()
 dataset = gcclient.dataset(out_ds)
 gcschema = [
-          SchemaField('files_id', 'STRING', mode = 'required'),
+          SchemaField('sha', 'STRING', mode = 'required'),
           SchemaField('language', 'STRING', mode = 'required'),
-          SchemaField('contents_content', 'STRING', mode = 'required')
+          SchemaField('contents', 'STRING', mode = 'required')
 ]
 gctable = dataset.table(tmp_table, gcschema)
 
@@ -115,7 +120,7 @@ for rec in it:
 
     num_done = num_done + 1
 
-    file_id = rec[0]
+    file_sha = rec[0]
     language = rec[1]
     content = rec[2]
 
@@ -130,7 +135,7 @@ for rec in it:
     # Write the file contents to disk
     # Extract comments
     comments = '\n'.join(extract_comments_string(language, content))
-    rec_to_add = {'id': file_id, 'comments': comments}
+    rec_to_add = {'sha': file_sha, 'comments': comments}
     recs_to_add.append(rec_to_add)
     api_rate_limit_ok = True
     
@@ -145,7 +150,7 @@ SELECT
 FROM
   [%s:%s.%s]
 GROUP BY
-  id,
+  sha,
   comments
 """ % (project_bioinf, out_ds, table_ungrouped)
 run_query_and_save_results(client, query_group, out_ds, table, 300)
