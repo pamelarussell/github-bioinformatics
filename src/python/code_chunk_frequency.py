@@ -26,8 +26,8 @@ parser.add_argument('--table_sc', action = 'store', dest = 'tab_sc', required = 
                     help = 'BigQuery table of comment-stripped versions of source file contents')
 parser.add_argument('--table_loc', action = 'store', dest = 'tab_loc', required = True,
                     help = 'BigQuery table of lines of code by file')
-parser.add_argument('--langs', action = 'store', dest = "langs_str", required = True,
-                    help = 'Comma-separated list of languages to include (case insensitive)')
+# parser.add_argument('--langs', action = 'store', dest = "langs_str", required = True,
+#                     help = 'Comma-separated list of languages to include (case insensitive)')
 parser.add_argument('--table_out', action = 'store', dest = 'tab_out', required = True,
                     help = 'Prefix of BigQuery table to write code chunk frequencies to')
 args = parser.parse_args()
@@ -52,7 +52,7 @@ table_out_2 = "%s_%s_%s" % (args.tab_out, chunk_size_2, min_line_len_2)
 
 
 # Languages to use
-languages = set([s.lower() for s in args.langs_str.split(",")])
+# languages = set([s.lower() for s in args.langs_str.split(",")])
 
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
@@ -80,10 +80,13 @@ create_bq_table(client, ds_res, table_out_2, schema)
 # due to "resources exceeded" errors
 tmp_table_ungrouped = 'tmp_query_res_cfreq_ungrouped'
 tmp_table_grouped = 'tmp_query_res_cfreq_grouped'
+delete_bq_table(client, ds_res, tmp_table_ungrouped)
+delete_bq_table(client, ds_res, tmp_table_grouped)
+
 
 query_ungrouped = """
 SELECT
-  files.id as id,
+  files.sha as sha,
   repo_name,
   path,
   loc.language as language,
@@ -93,11 +96,11 @@ FROM
 INNER JOIN
   [%s:%s.%s] AS files
 ON
-  contents.id = files.id
+  contents.sha = files.sha
 INNER JOIN
   [%s:%s.%s] AS loc
 ON
-  contents.id = loc.id
+  contents.sha = loc.sha
 """ % (project_bioinf, ds_res, table_sc, project_bioinf, ds_gh, table_files, project_bioinf, ds_res, table_loc)
 
 query_group = """
@@ -106,17 +109,17 @@ SELECT
 FROM
   [%s:%s.%s]
 GROUP BY
-  repo_name, id, path, language, contents_comments_stripped
+  repo_name, sha, path, language, contents_comments_stripped
 """ % (project_bioinf, ds_res, tmp_table_ungrouped)
 
 
 # Run queries to get file metadata and contents
 
 print('Getting file metadata and comment-stripped contents\n')
-run_query_and_save_results(client, query_ungrouped, ds_res, tmp_table_ungrouped)
+run_query_and_save_results(client, query_ungrouped, ds_res, tmp_table_ungrouped, timeout=300)
 
 print('Grouping results by repo name\n')
-run_query_and_save_results(client, query_group, ds_res, tmp_table_grouped)
+run_query_and_save_results(client, query_group, ds_res, tmp_table_grouped, timeout=300)
 
 
 # Delete the ungrouped table
@@ -155,7 +158,7 @@ chunks_2 = {}
 num_repos_done = 0
 repo_nums_printed = set()
 langs_skipped = set()
-num_skipped_lang = 0
+# num_skipped_lang = 0
 num_done = 0
 PAGE_SIZE = 1000
 
@@ -165,7 +168,8 @@ def process_repos(first_letter):
     
     print("Processing repos starting with: %s" %(first_letter))
     
-    global repos_done, curr_repo, chunks_1, chunks_2, num_repos_done, repo_nums_printed, langs_skipped, num_skipped_lang, num_done
+    global repos_done, curr_repo, chunks_1, chunks_2, num_repos_done, repo_nums_printed, langs_skipped, num_done
+#     global repos_done, curr_repo, chunks_1, chunks_2, num_repos_done, repo_nums_printed, langs_skipped, num_skipped_lang, num_done
         
     # Query to get the records in order by repo name
     sql_order = """
@@ -194,15 +198,15 @@ def process_repos(first_letter):
             num_done = num_done + 1
             if num_done % 1000 == 0:
                 print("Finished %s records" % num_done)
-            if num_done % 10000 == 0:
-                if num_skipped_lang > 0:
-                    print("Skipped %s files in languages: %s" %(num_skipped_lang, ", ".join(langs_skipped)))
+#             if num_done % 10000 == 0:
+#                 if num_skipped_lang > 0:
+#                     print("Skipped %s files in languages: %s" %(num_skipped_lang, ", ".join(langs_skipped)))
             if num_repos_done % 10 == 0 and num_repos_done > 1 and num_repos_done not in repo_nums_printed:
                 print("Finished %s repos" % num_repos_done)
                 repo_nums_printed.add(num_repos_done)
             
             repo = rec[1]
-            language = rec[3]
+#             language = rec[3]
             content_str = rec[4]
         
             if repo != curr_repo:
@@ -219,11 +223,11 @@ def process_repos(first_letter):
                     repos_done.add(repo)
                     num_repos_done = num_repos_done + 1
         
-            # Check the language
-            if language.lower() not in languages:
-                langs_skipped.add(language)
-                num_skipped_lang = num_skipped_lang + 1
-                continue
+#             # Check the language
+#             if language.lower() not in languages:
+#                 langs_skipped.add(language)
+#                 num_skipped_lang = num_skipped_lang + 1
+#                 continue
         
             # Process the record
             lines = split_into_lines(content_str)
