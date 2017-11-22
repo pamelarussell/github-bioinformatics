@@ -11,5 +11,6 @@ from .requests import get_file_info
 from .requests import get_file_contents
 from .requests import get_commits
 from .requests import validate_response_found
+from .requests import get_initial_commit
 
 

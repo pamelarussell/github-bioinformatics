@@ -3,8 +3,10 @@ from io import BytesIO
 import json
 from json.decoder import JSONDecodeError
 
-from util import gh_userpwd
+import dateutil.parser
+
 import pycurl
+from util import gh_userpwd
 from util import sleep_gh_rate_limit
 
 
@@ -93,9 +95,12 @@ def curr_commit_master(repo_name):
     except KeyError:
         return None
 
-def get_commits_url(repo_name):
+def get_commits_url(repo_name, path = None):
     """ Get GitHub API URL for commits to default branch """
-    return "%s/%s/commits" % (url_repos, repo_name)
+    rtrn = "%s/%s/commits" % (url_repos, repo_name)
+    if path is not None:
+        rtrn = "%s?path=%s" % (rtrn, path)
+    return rtrn
 
 def get_commits_master_url(repo_name):
     """ Get GitHub API URL for latest commit to master """
@@ -200,6 +205,15 @@ def get_commits(repo_name):
         return []
     else:
         return response
+
+def get_initial_commit(repo_name, path):
+    """ Returns date of first commit for a path as a datetime object """
+    response = gh_curl_response(get_commits_url(repo_name, path))
+    if not response:
+        raise ValueError("No commits for repo %s and path %s" % (repo_name, path))
+    else:
+        timestamps = [dateutil.parser.parse(commit["commit"]["committer"]["date"]) for commit in response]
+        return min(timestamps)
 
 def get_pull_requests(repo_name, state = "all"):
     """ Returns list of pull requests.

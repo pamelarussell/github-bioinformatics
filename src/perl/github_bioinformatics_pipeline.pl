@@ -26,6 +26,7 @@ my $generate_licenses = 0;
 my $generate_commits = 0;
 my $generate_file_info = 0;
 my $generate_file_contents = 0;
+my $generate_file_init_commits = 1;
 my $generate_repo_metrics = 0;
 my $generate_pr_data = 0;
 
@@ -39,7 +40,7 @@ my $run_bq_analysis_queries = 0;
 my $run_extract_comments = 0;
 
 # Analyze frequency of code chunks
-my $run_code_chunk_frequency = 1;
+my $run_code_chunk_frequency = 0;
 
 
 
@@ -78,6 +79,7 @@ my $bq_tb_repo_metrics = "repo_metrics";
 my $bq_tb_commits = "commits";
 my $bq_tb_contents = "contents";
 my $bq_tb_files = "file_info";
+my $bq_tb_file_init_commit = "file_init_commit";
 my $bq_tb_languages_gh_api = "languages_gh_api";
 my $bq_tb_licenses = "licenses";
 my $bq_tb_prs = "pull_requests";
@@ -141,6 +143,7 @@ my $script_cloc = "$src_dir_python/cloc_and_strip_comments.py";
 my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py";
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
 my $script_code_chunk_frequency = "$src_dir_python/code_chunk_frequency.py";
+my $script_gh_api_file_init_commit = "$src_dir_python/gh_api_file_init_commit.py";
 
 # Output directories
 my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
@@ -227,6 +230,12 @@ if($generate_file_contents) {
 	run_cmmd("$python3 $script_gh_api_file_contents --ds $bq_ds_repos --table_file_contents $bq_tb_contents ".
 	"--table_file_info $bq_tb_files --proj $bq_proj_gh_bioinf")
 } else {print("\nSkipping step: get file contents from GitHub API\n")}
+
+# Get file initial commit times from GitHub API
+if($generate_file_init_commits) {
+	run_cmmd("$python3 $script_gh_api_file_init_commit --ds $bq_ds_repos --table_init_commit $bq_tb_file_init_commit ".
+	"--table_file_info $bq_tb_files --proj $bq_proj_gh_bioinf")
+} else {print("\nSkipping step: get file initial commits from GitHub API\n")}
 
 # Get pull request info from GitHub API
 if($generate_pr_data) {
