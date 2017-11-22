@@ -20,12 +20,6 @@ lang_bytes <- list_tabledata(project = proj, dataset = ds_analysis, table = "byt
 lang_bytes_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = "language_bytes_by_repo") %>%
   mutate(language = tolower(language))
 
-# Languages of interest
-top_languages <- c("Python", "Shell", "Cpp", "R", "C", "Perl", "JavaScript", "Java",
-                              "Objective-C", "Matlab", "Ruby", "PHP", "Haskell", "Go", "Lua",
-                              "Roff", "Scala", "M", "Tcl")
-
-
 
 # Load language features from Google Sheet
 lang_exec_method <- gs_read(gs_title("Execution style"), ws = "Execution style", col_names = c("language", "interpreted", "compiled")) %>%
