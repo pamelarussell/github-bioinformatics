@@ -163,7 +163,7 @@ my $cloc_exec = "/Users/prussell/Software/cloc-1.72.pl";
 #                        Other parameters
 # -----------------------------------------------------------------
 
-
+my $languages_to_skip = "XML,HTML,JSON,YAML";
 
 
 # ********************************************************************************************************
@@ -286,7 +286,7 @@ if($run_extract_comments) {
 if($run_code_chunk_frequency) {
 	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --proj_bioinf $bq_proj_gh_bioinf --ds_gh $bq_ds_repos " .
 	"--ds_res $bq_ds_analysis_results --table_files $bq_tb_files --table_sc $bq_tb_contents_comments_stripped " .
-	"--table_out $bq_tb_code_chunk_freq --table_loc $bq_tb_loc_by_file";
+	"--table_out $bq_tb_code_chunk_freq --table_loc $bq_tb_loc_by_file --langs_skip $languages_to_skip";
 	run_cmmd($cmmd_code_chunk_freq);
 } else {print("\nSkipping step: analyze code chunk frequency\n")}
 

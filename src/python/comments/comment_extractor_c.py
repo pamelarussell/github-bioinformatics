@@ -15,7 +15,7 @@ class CommentExtractorC(CommentExtractor):
         Returns:
             String version of the match with comment character removed
         """
-        return re.sub(r'^//', '', match.group(0)).strip()
+        return re.sub(r'^//+', '', match.group(0)).strip()
     
     def __process_multi_line_match(self, match):
         """ Process a regular expression match object for a multi-line comment and
