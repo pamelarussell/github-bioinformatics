@@ -79,7 +79,10 @@ for record in file_info_records:
     if (record["repo_name"], record["path"], record["sha"]) in existing_records:
         num_skipped_already_done = num_skipped_already_done + 1
         continue
-    recs_to_push.append(get_init_commit(record))
+    try:
+        recs_to_push.append(get_init_commit(record))
+    except ValueError:
+        print("Caught ValueError; skipping repo %s and path %s" % (record["repo_name"], record["path"]))
     num_done = num_done + 1
     if num_done % 100 == 0:
         print("%s\tFinished %s/%s records. Pushing %s records to BigQuery."
