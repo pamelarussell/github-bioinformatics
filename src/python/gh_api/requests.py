@@ -212,8 +212,12 @@ def get_initial_commit(repo_name, path):
     if not response:
         raise ValueError("No commits for repo %s and path %s" % (repo_name, path))
     else:
-        timestamps = [dateutil.parser.parse(commit["commit"]["committer"]["date"]) for commit in response]
-        return min(timestamps)
+        try:
+            timestamps = [dateutil.parser.parse(commit["commit"]["committer"]["date"]) for commit in response]
+            return min(timestamps)
+        except TypeError:
+            print(response)
+        raise ValueError("Caught TypeError for repo %s and path %s" % (repo_name, path))
 
 def get_pull_requests(repo_name, state = "all"):
     """ Returns list of pull requests.
