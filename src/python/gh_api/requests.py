@@ -58,7 +58,11 @@ def gh_curl_response(url):
         c.setopt(c.USERPWD, gh_userpwd)
         c.setopt(c.WRITEDATA, buffer)
         sleep_gh_rate_limit()
-        c.perform()
+        try:
+            c.perform()
+        except pycurl.error as e:
+            print(url)
+            raise e
         c.close()
         body = buffer.getvalue()
         try:

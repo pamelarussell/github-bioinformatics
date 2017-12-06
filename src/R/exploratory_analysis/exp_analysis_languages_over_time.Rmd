@@ -1,0 +1,94 @@
+---
+title: "Language use over time"
+author: "Pamela Russell"
+date: "12/2/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = TRUE,
+                      fig.width = 11,
+                      fig.height = 8)
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(parsedate))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(bigrquery))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+rm(list=ls())
+source("project_info.R")
+top_langs <- c("C/C++ Header",
+               "JavaScript",
+               "Java",
+               "Python",
+               "C++",
+               "C",
+               "Perl",
+               "R",
+               "Bourne Shell",
+               "PHP",
+               "D",
+               "MATLAB")
+```
+
+```{r load_data, cache = TRUE}
+query <- "
+SELECT
+  commit.repo_name AS repo_name,
+  commit.file_name AS file_name,
+  commit.path AS path,
+  commit.sha AS sha,
+  commit.init_commit_timestamp AS init_commit,
+  loc.language AS language
+FROM
+  [github-bioinformatics-171721:repos.file_init_commit] AS commit
+LEFT JOIN
+  [github-bioinformatics-171721:analysis.lines_of_code_by_file] AS loc
+ON
+  commit.sha = loc.sha
+WHERE
+  loc.language IS NOT NULL
+"
+data_all_lang <- query_exec(query, project = proj, max_pages = Inf) %>% 
+  select(language, init_commit) %>%
+  mutate(init_commit = parse_iso_8601(init_commit)) %>%
+  mutate(year = cut(as.Date(init_commit), breaks = "year")) %>%
+  select(year, language) %>%
+  mutate(year = as.numeric(substr(year, 1, 4)))
+
+total_files_per_year <- data_all_lang %>% 
+  select(year) %>% 
+  group_by(year) %>% 
+  summarize(total_files_year = n())
+
+data <- data_all_lang %>%
+  filter(language %in% top_langs) %>%
+  group_by(year, language) %>%
+  summarise(num_files = n()) %>%
+  arrange(year) %>%
+  left_join(total_files_per_year, by = "year") %>%
+  mutate(pct_total_files_year = num_files / total_files_year) %>%
+  mutate(year_fmt = substr(year, 1, 4))
+```
+
+```{r make_plot}
+ggplot(data %>% filter(year_fmt > 2005),
+       aes(x = year_fmt,
+           y = pct_total_files_year,
+           colour = language,
+           group = language)) + 
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        plot.title = element_text(size = 24)) +
+  xlab("Year") +
+  ylab("Percentage of total files created") + 
+  ggtitle("Language use over time") +
+  scale_color_discrete("Language")
+```
+
+
+
