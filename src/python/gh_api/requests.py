@@ -13,6 +13,18 @@ from util import sleep_gh_rate_limit
 # The 'repos' endpoint
 url_repos = "https://api.github.com/repos"
 
+def replace_special_chars(s):
+    """ Replace special characters with their HTML URL encodings.
+    Don't call on a complete URL because this function replaces the question mark.
+    """
+    rtrn = s
+    rtrn = rtrn.replace("%", "%25")
+    rtrn = rtrn.replace(" ", "%20")
+    rtrn = rtrn.replace("#", "%23")
+    rtrn = rtrn.replace("?", "%3F")
+    return rtrn
+
+
 def add_page_num(url, page_num):
     """Add page number to GitHub API request"""
     if "?" in url:
@@ -48,10 +60,6 @@ def gh_curl_response(url):
     page_num = 1
     results = []
     prev_response = None
-    url = url.replace("%", "%25")
-    url = url.replace(" ", "%20")
-    url = url.replace("#", "%23")
-    url = url.replace("?", "%3F")
     while True:
         buffer = BytesIO()
         c = pycurl.Curl()
@@ -93,7 +101,7 @@ def gh_curl_response(url):
 def curr_commit_master(repo_name):
     """ Returns the sha for the current commit on the master branch """
     try:
-        response = gh_curl_response(get_commits_master_url(repo_name))
+        response = gh_curl_response(get_commits_master_url(replace_special_chars(repo_name)))
         return response["sha"]
     except ValueError:
         return None
@@ -102,26 +110,26 @@ def curr_commit_master(repo_name):
 
 def get_commits_url(repo_name, path = None):
     """ Get GitHub API URL for commits to default branch """
-    rtrn = "%s/%s/commits" % (url_repos, repo_name)
+    rtrn = "%s/%s/commits" % (url_repos, replace_special_chars(repo_name))
     if path is not None:
         rtrn = "%s?path=%s" % (rtrn, path)
     return rtrn
 
 def get_commits_master_url(repo_name):
     """ Get GitHub API URL for latest commit to master """
-    return "%s/master" % get_commits_url(repo_name)
+    return "%s/master" % get_commits_url(replace_special_chars(repo_name))
 
 def get_pulls_url(repo_name, state = "all"):
     """ Get GitHub API pull requests URL for given repo name """
-    return "%s/%s/pulls?per_page=100&state=%s" % (url_repos, repo_name, state)
+    return "%s/%s/pulls?per_page=100&state=%s" % (url_repos, replace_special_chars(repo_name), state)
 
 def get_languages_url(repo_name):
     """ Get GitHub API languages URL for a given repo name """
-    return "%s/%s/languages" % (url_repos, repo_name)
+    return "%s/%s/languages" % (url_repos, replace_special_chars(repo_name))
 
 def get_license_url(repo_name):
     """ Get GitHub licenses API URL for a given repo name """
-    return "%s/%s/license" % (url_repos, repo_name)
+    return "%s/%s/license" % (url_repos, replace_special_chars(repo_name))
 
 def get_contents_url(repo_name, path = None):
     """ Git GitHub contents URL for a given repo name and optional file path
@@ -131,9 +139,9 @@ def get_contents_url(repo_name, path = None):
         path: Optional path within repo
     """
     if path is not None:
-        return "%s/%s" % (get_contents_url(repo_name, None), path)
+        return "%s/%s" % (get_contents_url(replace_special_chars(repo_name), None), path)
     else:
-        return "%s/%s/contents" % (url_repos, repo_name)
+        return "%s/%s/contents" % (url_repos, replace_special_chars(repo_name))
     
 def get_file_info(repo_name, path = None):
     """ Returns list of dicts, one dict containing info for each file in repo
@@ -144,7 +152,7 @@ def get_file_info(repo_name, path = None):
         repo_name: Repo name
         path: Optional path within repo    
     """
-    response = gh_curl_response(get_contents_url(repo_name, path))
+    response = gh_curl_response(get_contents_url(replace_special_chars(repo_name), replace_special_chars(path)))
     rtrn = []
     for file in response:
         try:
@@ -152,7 +160,8 @@ def get_file_info(repo_name, path = None):
             if tp == "dir":
                 # Recursively get files in subdirectories
                 existing_paths = set([rec["path"] for rec in rtrn])
-                rtrn = rtrn + [rec for rec in get_file_info(repo_name, file["path"]) if rec["path"] not in existing_paths]
+                rtrn = rtrn + [rec for rec in get_file_info(replace_special_chars(repo_name), 
+                                                            file["path"]) if rec["path"] not in existing_paths]
             else:
                 if tp == "file" or tp == "symlink":
                     rtrn.append(file)
@@ -190,7 +199,7 @@ def get_language_bytes(repo_name):
     Params:
         repo_name: Repo name
     """
-    response = gh_curl_response(get_languages_url(repo_name))
+    response = gh_curl_response(get_languages_url(replace_special_chars(repo_name)))
     if not response:
         return {}
     return response
@@ -198,14 +207,14 @@ def get_language_bytes(repo_name):
 def get_license(repo_name):
     """ Returns name of repo license as a string, or None if GitHub API could not detect a license """
     try:
-        response = gh_curl_response(get_license_url(repo_name))
+        response = gh_curl_response(get_license_url(replace_special_chars(repo_name)))
         return response["license"]["key"]
     except ValueError:
         return None
 
 def get_commits(repo_name):
     """ Returns list of dicts; each dict is info for one commit to default branch """
-    response = gh_curl_response(get_commits_url(repo_name))
+    response = gh_curl_response(get_commits_url(replace_special_chars(repo_name)))
     if not response:
         return []
     else:
@@ -213,9 +222,10 @@ def get_commits(repo_name):
 
 def get_initial_commit(repo_name, path):
     """ Returns date of first commit for a path as a datetime object """
-    response = gh_curl_response(get_commits_url(repo_name, path))
+    response = gh_curl_response(get_commits_url(replace_special_chars(repo_name), replace_special_chars(path)))
     if not response:
-        raise ValueError("No commits for repo %s and path %s" % (repo_name, path))
+        raise ValueError("No commits for repo %s and path %s" % (replace_special_chars(repo_name), 
+                                                                 replace_special_chars(path)))
     else:
         try:
             timestamps = [dateutil.parser.parse(commit["commit"]["committer"]["date"]) for commit in response]
@@ -232,7 +242,7 @@ def get_pull_requests(repo_name, state = "all"):
         repo_name
         state: "all", "open", or "closed"
     """
-    rtrn = gh_curl_response(get_pulls_url(repo_name, state))
+    rtrn = gh_curl_response(get_pulls_url(replace_special_chars(repo_name), state))
     if not rtrn:
         return []
     else:
