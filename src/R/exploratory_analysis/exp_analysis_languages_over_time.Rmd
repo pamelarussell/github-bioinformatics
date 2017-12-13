@@ -33,7 +33,7 @@ top_langs <- c("C/C++ Header",
                "MATLAB")
 ```
 
-```{r load_data, cache = TRUE}
+```{r load_data}
 query <- "
 SELECT
   commit.repo_name AS repo_name,
@@ -74,7 +74,7 @@ data <- data_all_lang %>%
 ```
 
 ```{r make_plot}
-ggplot(data %>% filter(year_fmt > 2005),
+ggplot(data %>% filter(year_fmt >= 2010),
        aes(x = year_fmt,
            y = pct_total_files_year,
            colour = language,
@@ -88,6 +88,44 @@ ggplot(data %>% filter(year_fmt > 2005),
   ylab("Percentage of total files created") + 
   ggtitle("Language use over time") +
   scale_color_discrete("Language")
+```
+
+
+```{r make_plot_ind_langs}
+plot_lang_pct <- function(lang) {
+  ggplot(data %>% filter(year_fmt >= 2010 & language == lang),
+         aes(x = year_fmt,
+             y = pct_total_files_year,
+             group = language)) + 
+    geom_line() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          axis.title.x = element_text(size = 18),
+          axis.title.y = element_text(size = 18),
+          plot.title = element_text(size = 24)) +
+    xlab("Year") +
+    ylab("Percentage of total files created") + 
+    ggtitle(paste("Percentage of total files created:", lang))
+}
+
+plot_lang_total <- function(lang) {
+  ggplot(data %>% filter(year_fmt >= 2010 & language == lang),
+         aes(x = year_fmt,
+             y = num_files,
+             group = language)) + 
+    geom_line() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          axis.title.x = element_text(size = 18),
+          axis.title.y = element_text(size = 18),
+          plot.title = element_text(size = 24)) +
+    xlab("Year") +
+    ylab("Total files created") + 
+    ggtitle(paste("Number of files created:", lang))
+}
+
+for(lang in top_langs) {
+  print(plot_lang_total(lang))
+  print(plot_lang_pct(lang))
+}
 ```
 
 

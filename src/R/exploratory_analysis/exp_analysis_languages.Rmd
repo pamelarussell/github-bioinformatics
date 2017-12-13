@@ -62,16 +62,19 @@ ggplot(top_pairs, aes(x = languages, y = num_repos)) +
 ```{r}
 
 # Plot bytes per language
-par(mar=c(5,12,4,2))
-barplot(
-  t(as.matrix(top_languages)),
-  horiz = T,
-  col = "darkorchid4",
-  las=1,
-  main="Total size of source files",
-  axes=F
-)
-axis(1, at=c(0, 100000000, 200000000, 300000000), labels=c("0", "100Mb", "200Mb", "300Mb"))
+ggplot(lang_bytes %>% top_n(30, total_bytes), aes(
+  x = reorder(language, -total_bytes), 
+  y = total_bytes)
+) + geom_bar(stat = "identity") +
+  labs(y = paste("Total bytes"),
+       x = "Language",
+       title = "Number of bytes of code by language") +
+  scale_y_continuous(labels = comma) +
+  theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text = element_text(size = 12),
+        axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 

@@ -93,7 +93,6 @@ top_pairs <- arrange(top_pairs, num_repos)
 top_pairs$languages <- factor(top_pairs$languages, levels = top_pairs$languages)
 
 # Total size of source files by language
-# Use BigQuery's built-in "languages" table, not our CLOC results
 
 # Construct a vector of number of bytes per language
 language <- lang_bytes$language
@@ -127,36 +126,36 @@ exec_method <- function(interpreted, compiled) {
 
 paradigm <- function(array, declarative, functional_impure, functional_pure, imperative, logic,
                      object_oriented, procedural, reflective) {
-  if(is.na(array)) paradigm(F, declarative, functional_impure, functional_pure, 
+  if (is.na(array)) paradigm(F, declarative, functional_impure, functional_pure, 
                             imperative, logic, object_oriented, procedural, reflective)
-  else if(is.na(declarative)) paradigm(array, F, functional_impure, functional_pure, 
+  else if (is.na(declarative)) paradigm(array, F, functional_impure, functional_pure, 
                                        imperative, logic, object_oriented, procedural, reflective)
-  else if(is.na(functional_impure)) paradigm(array, declarative, F, functional_pure, 
+  else if (is.na(functional_impure)) paradigm(array, declarative, F, functional_pure, 
                                              imperative, logic, object_oriented, procedural, reflective)
-  else if(is.na(functional_pure)) paradigm(array, declarative, functional_impure, F, 
+  else if (is.na(functional_pure)) paradigm(array, declarative, functional_impure, F, 
                                            imperative, logic, object_oriented, procedural, reflective)
-  else if(is.na(imperative)) paradigm(array, declarative, functional_impure, functional_pure, 
+  else if (is.na(imperative)) paradigm(array, declarative, functional_impure, functional_pure, 
                                       F, logic, object_oriented, procedural, reflective)
-  else if(is.na(logic)) paradigm(array, declarative, functional_impure, functional_pure, 
+  else if (is.na(logic)) paradigm(array, declarative, functional_impure, functional_pure, 
                                  imperative, F, object_oriented, procedural, reflective)
-  else if(is.na(object_oriented)) paradigm(array, declarative, functional_impure, functional_pure, 
+  else if (is.na(object_oriented)) paradigm(array, declarative, functional_impure, functional_pure, 
                                            imperative, logic, F, procedural, reflective)
-  else if(is.na(procedural)) paradigm(array, declarative, functional_impure, functional_pure, 
+  else if (is.na(procedural)) paradigm(array, declarative, functional_impure, functional_pure, 
                                       imperative, logic, object_oriented, F, reflective)
-  else if(is.na(reflective)) paradigm(array, declarative, functional_impure, functional_pure, 
+  else if (is.na(reflective)) paradigm(array, declarative, functional_impure, functional_pure, 
                                       imperative, logic, object_oriented, procedural, F)
   else {
     rtrn <- NULL
-    if(array) rtrn <- c(rtrn, "array")
-    if(declarative) rtrn <- c(rtrn, "declarative")
-    if(functional_impure) rtrn <- c(rtrn, "functional_impure")
-    if(functional_pure) rtrn <- c(rtrn, "functional_pure")
-    if(imperative) rtrn <- c(rtrn, "imperative")
-    if(logic) rtrn <- c(rtrn, "logic")
-    if(object_oriented) rtrn <- c(rtrn, "object_oriented")
-    if(procedural) rtrn <- c(rtrn, "procedural")
-    if(reflective) rtrn <- c(rtrn, "reflective")
-    if(is.null(rtrn)) NA
+    if (array) rtrn <- c(rtrn, "array")
+    if (declarative) rtrn <- c(rtrn, "declarative")
+    if (functional_impure) rtrn <- c(rtrn, "functional_impure")
+    if (functional_pure) rtrn <- c(rtrn, "functional_pure")
+    if (imperative) rtrn <- c(rtrn, "imperative")
+    if (logic) rtrn <- c(rtrn, "logic")
+    if (object_oriented) rtrn <- c(rtrn, "object_oriented")
+    if (procedural) rtrn <- c(rtrn, "procedural")
+    if (reflective) rtrn <- c(rtrn, "reflective")
+    if (is.null(rtrn)) NA
     else paste(rtrn, collapse = ", ")
   }
 }
@@ -176,7 +175,7 @@ paradigm_abbrev <- function(paradigm) {
 
 # List repos with languages of both paradigms
 repos_both_paradigms <- function(paradigm1, paradigm2) {
-  if(paradigm1 == paradigm2) {
+  if (paradigm1 == paradigm2) {
     stop("Can't pass two identical paradigms")
   }
   lang_features_by_repo %>% 
@@ -191,6 +190,7 @@ num_repos_both_paradigms <- function(paradigm1, paradigm2) {
 }
 
 # Join language features to repo-level language data
+# TODO !!!
 lang_features_by_repo <- lang_bytes_by_repo %>%
   left_join(lang_type_system, by = "language") %>%
   left_join(lang_exec_method, by = "language") %>%
