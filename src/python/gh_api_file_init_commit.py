@@ -4,6 +4,7 @@ from bigquery import get_client
 
 from gh_api import get_initial_commit
 from local_params import json_key_final_dataset
+import pycurl
 from util import create_bq_table, push_bq_records
 from util import curr_time_utc
 from util import run_bq_query
@@ -81,8 +82,10 @@ for record in file_info_records:
         continue
     try:
         recs_to_push.append(get_init_commit(record))
-    except ValueError:
-        print("Caught ValueError; skipping repo %s and path %s" % (record["repo_name"], record["path"]))
+    except ValueError as e:
+        print("Caught ValueError; skipping repo %s and path %s. Error:\n%s" % (record["repo_name"], record["path"], e))
+    except pycurl.error as e:
+        print("Caught pycurl.error; skipping repo %s and path %s. Error:\n%s" % (record["repo_name"], record["path"], e))
     num_done = num_done + 1
     if num_done % 100 == 0:
         print("%s\tFinished %s/%s records. Pushing %s records to BigQuery."

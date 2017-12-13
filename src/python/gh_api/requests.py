@@ -22,6 +22,7 @@ def replace_special_chars(s):
     rtrn = rtrn.replace(" ", "%20")
     rtrn = rtrn.replace("#", "%23")
     rtrn = rtrn.replace("?", "%3F")
+    rtrn = rtrn.replace("+", "%2B")
     return rtrn
 
 
