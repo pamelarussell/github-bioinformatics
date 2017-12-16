@@ -27,12 +27,12 @@ lang_exec_method <- gs_read(gs_title("Execution style"), ws = "Execution style",
 
 lang_paradigm <- gs_read(gs_title("Paradigm"), ws = "Paradigm", col_names = c("language", "array", "declarative", "functional_impure",
                                                                               "functional_pure", "imperative", "logic", "object_oriented",
-                                                                              "procedural", "reflective")) %>%
+                                                                              "procedural")) %>%
   mutate(array = as.logical(array), declarative = as.logical(declarative), functional_impure = as.logical(functional_impure),
          functional_pure = as.logical(functional_pure), imperative = as.logical(imperative), logic = as.logical(logic),
-         object_oriented = as.logical(object_oriented), procedural = as.logical(procedural), reflective = as.logical(reflective))
+         object_oriented = as.logical(object_oriented), procedural = as.logical(procedural))
 
-lang_type_system <- gs_read(gs_title("Type system"), ws = "Type system", col_names = c("language", "system", "strength", "safety"))
+lang_type_system <- gs_read(gs_title("Type system"), ws = "Type system", col_names = c("language", "system", "strength", "safety", "compatibility"))
 
 
 # Number of repos by language
@@ -125,25 +125,23 @@ exec_method <- function(interpreted, compiled) {
 }
 
 paradigm <- function(array, declarative, functional_impure, functional_pure, imperative, logic,
-                     object_oriented, procedural, reflective) {
+                     object_oriented, procedural) {
   if (is.na(array)) paradigm(F, declarative, functional_impure, functional_pure, 
-                            imperative, logic, object_oriented, procedural, reflective)
+                             imperative, logic, object_oriented, procedural)
   else if (is.na(declarative)) paradigm(array, F, functional_impure, functional_pure, 
-                                       imperative, logic, object_oriented, procedural, reflective)
+                                        imperative, logic, object_oriented, procedural)
   else if (is.na(functional_impure)) paradigm(array, declarative, F, functional_pure, 
-                                             imperative, logic, object_oriented, procedural, reflective)
+                                              imperative, logic, object_oriented, procedural)
   else if (is.na(functional_pure)) paradigm(array, declarative, functional_impure, F, 
-                                           imperative, logic, object_oriented, procedural, reflective)
+                                            imperative, logic, object_oriented, procedural)
   else if (is.na(imperative)) paradigm(array, declarative, functional_impure, functional_pure, 
-                                      F, logic, object_oriented, procedural, reflective)
+                                       F, logic, object_oriented, procedural)
   else if (is.na(logic)) paradigm(array, declarative, functional_impure, functional_pure, 
-                                 imperative, F, object_oriented, procedural, reflective)
+                                  imperative, F, object_oriented, procedural)
   else if (is.na(object_oriented)) paradigm(array, declarative, functional_impure, functional_pure, 
-                                           imperative, logic, F, procedural, reflective)
+                                            imperative, logic, F, procedural)
   else if (is.na(procedural)) paradigm(array, declarative, functional_impure, functional_pure, 
-                                      imperative, logic, object_oriented, F, reflective)
-  else if (is.na(reflective)) paradigm(array, declarative, functional_impure, functional_pure, 
-                                      imperative, logic, object_oriented, procedural, F)
+                                       imperative, logic, object_oriented, F)
   else {
     rtrn <- NULL
     if (array) rtrn <- c(rtrn, "array")
@@ -154,7 +152,6 @@ paradigm <- function(array, declarative, functional_impure, functional_pure, imp
     if (logic) rtrn <- c(rtrn, "logic")
     if (object_oriented) rtrn <- c(rtrn, "object_oriented")
     if (procedural) rtrn <- c(rtrn, "procedural")
-    if (reflective) rtrn <- c(rtrn, "reflective")
     if (is.null(rtrn)) NA
     else paste(rtrn, collapse = ", ")
   }
@@ -169,8 +166,7 @@ paradigm_abbrev <- function(paradigm) {
                            gsub("logic", "LOG",
                                 gsub("object_oriented", "OOP",
                                      gsub("procedural", "PRC",
-                                          gsub("reflective", "RFL",
-                                               gsub(", ", "-", paradigm))))))))))
+                                          gsub(", ", "-", paradigm)))))))))
 }
 
 # List repos with languages of both paradigms
@@ -200,9 +196,9 @@ lang_features_by_repo <- lang_features_by_repo %>%
   mutate(exec_method = apply(lang_features_by_repo[, c("interpreted", "compiled")], 1, function(row) exec_method(row[1], row[2]))) %>%
   mutate(paradigm = apply(lang_features_by_repo[, c("array", "declarative", "functional_impure",
                                                     "functional_pure", "imperative", "logic",
-                                                    "object_oriented", "procedural", "reflective")], 
+                                                    "object_oriented", "procedural")], 
                           1, function(row) paradigm(row[1], row[2], row[3], row[4], row[5],
-                                                    row[6], row[7], row[8], row[9]))) %>%
+                                                    row[6], row[7], row[8]))) %>%
   mutate(paradigm = paradigm_abbrev(paradigm)) %>%
   select(repo_name, language, total_bytes, exec_method, paradigm, system, strength, safety)
 
