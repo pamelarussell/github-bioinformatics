@@ -1,0 +1,63 @@
+---
+title: "Repo-level associations"
+author: "Pamela Russell"
+date: "12/19/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r env_setup}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+source("project_info.R")
+```
+
+```{r util}
+# Helpful functions / utilities
+
+# Get formatted table ID e.g. "[github-bioinformatics-171721:analysis.lines_of_code_by_file]"
+table_str <- function(dataset, table) {paste("[", proj, ":", dataset, ".", table, "]", sep="")}
+
+# Get query result from BigQuery
+fetch_query_res <- function(query) {query_exec(query, project = proj, max_pages = Inf)}
+
+# Join a table to repo_data
+join_tbl <- function(data) {
+  repo_data <<- full_join(repo_data, data, by = "repo_name")
+}
+
+# Change NA to 0
+na_to_zero <- function(x) {
+  if(is.na(x)) 0
+  else x
+}
+```
+
+```{r init_df}
+# Initialize table for all repo-level data
+repo_data <- data.frame(repo_name = character(0))
+```
+
+```{r lines_of_code_by_repo}
+# Add data from lines of code by repo table
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_analysis, table = table_loc_by_repo) %>%
+    rename(total_lines_of_code = lines_of_code))
+```
+
+
+```{r commit_types}
+# Add data from commit types table
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_analysis, table = table_commit_types) %>%
+    mutate(num_bug_fix_commits = na_to_zero(num_bug_fix_commits)) %>%
+    mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits))
+```
+
+

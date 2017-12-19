@@ -14,6 +14,8 @@ table_lang <- "languages"
 table_pr <- "pull_requests"
 table_repo_info <- "repo_metrics"
 table_init_commit <- "file_init_commit"
+table_commit_types <- "commit_types"
+
 
 
 
