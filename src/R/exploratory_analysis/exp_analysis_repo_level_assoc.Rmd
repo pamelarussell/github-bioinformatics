@@ -95,11 +95,13 @@ join_tbl(
 ```
 
 ```{r repo_and_article}
-query <- paste("SELECT repo_name, journal, year FROM [", 
+query <- paste("SELECT repo_name, journal, year, use_repo FROM [", 
                proj, ":", ds_lit_search, ".", table_repo_and_article, "]", 
                sep="")
 join_tbl(
-  query_exec(query, project = proj)
+  query_exec(query, project = proj) %>%
+    filter(use_repo == T) %>%
+    select(repo_name, journal, year_published = year)
 )
 ```
 
@@ -120,6 +122,54 @@ join_tbl(
 )
 
 rm(file_sizes)
+```
+
+```{r code_chunk_freq}
+# Function to process one version of code chunk frequency table
+process_code_chunk_freq <- function(table_name, col_suffix) {
+  
+  query <- paste("SELECT repo_name, num_occurrences FROM [", 
+                 proj, ":", ds_analysis, ".", table_name, "]", 
+                 sep = "")
+  
+  code_chunk_freq <- query_exec(query, project = proj, max_pages = Inf)
+  
+  total_code_chunks <- code_chunk_freq %>% 
+    group_by(repo_name) %>% 
+    summarize(total_code_chunks = n())
+  
+  repeated_code_chunks <- code_chunk_freq %>% 
+    filter(num_occurrences > 1) %>%
+    group_by(repo_name) %>% 
+    summarize(repeated_code_chunks = n())
+  
+  max_code_chunk_occurrence <- code_chunk_freq %>%
+    group_by(repo_name) %>%
+    summarise(max_code_chunk_occurrence = max(num_occurrences))
+  
+  mean_code_chunk_occurrence <- code_chunk_freq %>%
+    group_by(repo_name) %>%
+    summarise(mean_code_chunk_occurrence = mean(num_occurrences))
+  
+  join_data <- total_code_chunks %>%
+    full_join(repeated_code_chunks, by = "repo_name") %>%
+    full_join(max_code_chunk_occurrence, by = "repo_name") %>%
+    full_join(mean_code_chunk_occurrence, by = "repo_name")
+  
+  colnames(join_data) <- sapply(colnames(join_data), function(x) {
+    if(x == "repo_name") x
+    else paste(x, "_", col_suffix, sep="")
+  })
+  
+  # Join tables
+  join_tbl(join_data)
+
+}
+
+# Do the work
+process_code_chunk_freq(table_code_chunk_freq_10_50, "10_50")
+process_code_chunk_freq(table_code_chunk_freq_5_80, "5_80")
+
 ```
 
 
