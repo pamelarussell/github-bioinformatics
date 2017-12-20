@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r env_setup}
@@ -51,13 +51,76 @@ join_tbl(
     rename(total_lines_of_code = lines_of_code))
 ```
 
-
 ```{r commit_types}
 # Add data from commit types table
-join_tbl(
-  list_tabledata(project = proj, dataset = ds_analysis, table = table_commit_types) %>%
-    mutate(num_bug_fix_commits = na_to_zero(num_bug_fix_commits)) %>%
-    mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits))
+commit_types <- list_tabledata(project = proj, dataset = ds_analysis, table = table_commit_types) 
+commit_types <- commit_types %>%
+  mutate(num_bug_fix_commits = sapply(commit_types$num_bug_fix_commits, na_to_zero)) %>%
+  mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits)
+join_tbl(commit_types)
+rm(commit_types)
 ```
+
+```{r licenses}
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_gh, table = table_licenses) %>%
+    select(repo_name, license)
+)
+```
+
+```{r proj_duration}
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_analysis, table = table_proj_duration)
+)
+```
+
+
+```{r num_langs}
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_analysis, table = table_num_langs_by_repo)
+)
+```
+
+```{r num_devs}
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_analysis, table = table_num_devs_by_repo)
+)
+```
+
+```{r repo_metrics}
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_gh, table = table_repo_metrics) %>%
+    select(repo_name, is_fork, stargazers_count, watchers_count, forks_count, subscribers_count)
+)
+```
+
+```{r repo_and_article}
+query <- paste("SELECT repo_name, journal, year FROM [", 
+               proj, ":", ds_lit_search, ".", table_repo_and_article, "]", 
+               sep="")
+join_tbl(
+  query_exec(query, project = proj)
+)
+```
+
+```{r file_info}
+query <- paste("SELECT repo_name, size FROM [", 
+               proj, ":", ds_gh, ".", table_file_info, "]", 
+               sep="")
+file_sizes <- query_exec(query, project = proj, max_pages = Inf)
+
+join_tbl(
+  file_sizes %>% 
+    group_by(repo_name) %>% 
+    summarize(
+      total_files = n(), 
+      total_file_size = sum(as.numeric(size)), 
+      largest_file_size = max(as.numeric(size)), 
+      mean_file_size = mean(as.numeric(size)))
+)
+
+rm(file_sizes)
+```
+
 
 
