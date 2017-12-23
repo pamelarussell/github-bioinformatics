@@ -39,26 +39,44 @@ na_to_zero <- function(x) {
 }
 ```
 
+```{r langs_to_use}
+# Top languages to include as covariates
+# Languages included in at least 50 repos
+top_langs <- c("Python",
+               "Bourne Shell",
+               "R",
+               "C/C++ Header",
+               "Perl",
+               "C++",
+               "JavaScript",
+               "C",
+               "Java",
+               "Bourne Again Shell",
+               "MATLAB",
+               "m4",
+               "SQL",
+               "Ruby",
+               "PHP")
+
+# "Languages" that are actually data file types or web pages
+non_lang_file_types <- c("HTML",
+                         "JSON",
+                         "XML",
+                         "CSS",
+                         "YAML",
+                         "Markdown",
+                         "XSD",
+                         "DTD",
+                         "XSLT",
+                         "XMI",
+                         "Haml",
+                         "XHTML",
+                         "XAML")
+```
+
 ```{r init_df}
 # Initialize table for all repo-level data
 repo_data <- data.frame(repo_name = character(0))
-```
-
-```{r lines_of_code_by_repo}
-# Add data from lines of code by repo table
-join_tbl(
-  list_tabledata(project = proj, dataset = ds_analysis, table = table_loc_by_repo) %>%
-    rename(total_lines_of_code = lines_of_code))
-```
-
-```{r commit_types}
-# Add data from commit types table
-commit_types <- list_tabledata(project = proj, dataset = ds_analysis, table = table_commit_types) 
-commit_types <- commit_types %>%
-  mutate(num_bug_fix_commits = sapply(commit_types$num_bug_fix_commits, na_to_zero)) %>%
-  mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits)
-join_tbl(commit_types)
-rm(commit_types)
 ```
 
 ```{r licenses}
@@ -74,6 +92,12 @@ join_tbl(
 )
 ```
 
+```{r lines_of_code_by_repo}
+# Add data from lines of code by repo table
+join_tbl(
+  list_tabledata(project = proj, dataset = ds_analysis, table = table_loc_by_repo) %>%
+    rename(total_lines_of_code = lines_of_code))
+```
 
 ```{r num_langs}
 join_tbl(
@@ -124,6 +148,16 @@ join_tbl(
 rm(file_sizes)
 ```
 
+```{r commit_types}
+# Add data from commit types table
+commit_types <- list_tabledata(project = proj, dataset = ds_analysis, table = table_commit_types) 
+commit_types <- commit_types %>%
+  mutate(num_bug_fix_commits = sapply(commit_types$num_bug_fix_commits, na_to_zero)) %>%
+  mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits)
+join_tbl(commit_types)
+rm(commit_types)
+```
+
 ```{r code_chunk_freq}
 # Function to process one version of code chunk frequency table
 process_code_chunk_freq <- function(table_name, col_suffix) {
@@ -163,7 +197,7 @@ process_code_chunk_freq <- function(table_name, col_suffix) {
   
   # Join tables
   join_tbl(join_data)
-
+  
 }
 
 # Do the work
@@ -171,6 +205,58 @@ process_code_chunk_freq(table_code_chunk_freq_10_50, "10_50")
 process_code_chunk_freq(table_code_chunk_freq_5_80, "5_80")
 
 ```
+
+```{r lang_bytes_by_repo}
+# Import table of language bytes by repo
+lang_bytes_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = table_lang_bytes_by_repo) 
+
+# Calculate total bytes per repo not including data file types
+total_bytes_by_repo_no_data <- lang_bytes_by_repo %>% 
+  filter(!language %in% non_lang_file_types) %>%
+  group_by(repo_name) %>%
+  summarise(total_bytes_no_data = sum(total_bytes))
+
+# Add analysis for each top language
+for (lang in top_langs) {
+  
+  # Column names to add to repo data
+  colname_exists <- paste("includes_", lang, sep = "")
+  colname_bytes <- paste("bytes_", lang, sep = "")
+  colname_pct <- paste("pct_bytes_no_data_", lang, sep = "")
+  
+  # Filter language bytes table for the language
+  bytes_this_lang <- lang_bytes_by_repo %>% group_by(repo_name) %>% filter(language == lang)
+  
+  # Whether the repo includes the language or not
+  repo_data[[colname_exists]] <- sapply(repo_data$repo_name, function(x) x %in% bytes_this_lang$repo_name)
+  
+  # Number of bytes of the language
+  repo_data[[colname_bytes]] <- 
+    sapply(repo_data$repo_name, 
+           function(x) {
+             a <- unlist(bytes_this_lang[which(bytes_this_lang$repo_name == x), "total_bytes"])
+             if(length(a) > 0) a 
+             else 0
+           })
+  
+  # Percentage of bytes in this language not including data file types
+  repo_data[[colname_pct]] <- 
+    sapply(repo_data$repo_name, 
+           function(x) {
+             a <- unlist(bytes_this_lang[which(bytes_this_lang$repo_name == x), "total_bytes"])
+             if(length(a) > 0) {
+               t <- unlist(total_bytes_by_repo_no_data[which(total_bytes_by_repo_no_data$repo_name == x), "total_bytes_no_data"])
+               a / t
+             }
+             else 0
+           })
+}
+
+rm(bytes_this_lang, colname_bytes, colname_exists, colname_pct, total_bytes_by_repo_no_data, lang_bytes_by_repo)
+```
+
+
+
 
 
 
