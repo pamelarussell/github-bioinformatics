@@ -92,19 +92,6 @@ join_tbl(
 )
 ```
 
-```{r lines_of_code_by_repo}
-# Add data from lines of code by repo table
-join_tbl(
-  list_tabledata(project = proj, dataset = ds_analysis, table = table_loc_by_repo) %>%
-    rename(total_lines_of_code = lines_of_code))
-```
-
-```{r num_langs}
-join_tbl(
-  list_tabledata(project = proj, dataset = ds_analysis, table = table_num_langs_by_repo)
-)
-```
-
 ```{r num_devs}
 join_tbl(
   list_tabledata(project = proj, dataset = ds_analysis, table = table_num_devs_by_repo)
@@ -130,22 +117,62 @@ join_tbl(
 ```
 
 ```{r file_info}
-query <- paste("SELECT repo_name, size FROM [", 
-               proj, ":", ds_gh, ".", table_file_info, "]", 
-               sep="")
-file_sizes <- query_exec(query, project = proj, max_pages = Inf)
+query <- paste("SELECT
+  file_info.repo_name AS repo_name,
+  loc.language AS language,
+  loc.code AS lines_of_code,
+  file_info.size AS size
+FROM (
+  SELECT
+    repo_name,
+    sha
+  FROM
+    ", table_str(ds_gh, table_file_info), "
+  GROUP BY
+    repo_name,
+    sha,
+    size) AS file_info
+INNER JOIN (
+  SELECT
+    sha,
+    language,
+    code
+  FROM
+    ", table_str(ds_analysis, table_loc), "
+  GROUP BY
+    sha,
+    language,
+    code) AS loc
+ON
+  file_info.sha = loc.sha", sep="")
+
+file_info <- query_exec(query, project = proj, max_pages = Inf)
+file_info_no_data <- file_info %>% filter(!language %in% non_lang_file_types)
 
 join_tbl(
-  file_sizes %>% 
+  file_info %>% 
     group_by(repo_name) %>% 
     summarize(
+      num_langs = length(unique(language)),
       total_files = n(), 
+      total_lines = sum(as.numeric(lines_of_code)),
       total_file_size = sum(as.numeric(size)), 
       largest_file_size = max(as.numeric(size)), 
       mean_file_size = mean(as.numeric(size)))
 )
 
-rm(file_sizes)
+join_tbl(
+  file_info_no_data %>% 
+    group_by(repo_name) %>% 
+    summarize(
+      num_langs_no_data = length(unique(language)),
+      total_files_no_data = n(), 
+      total_lines_no_data = sum(as.numeric(lines_of_code)),
+      total_file_size_no_data = sum(as.numeric(size)), 
+      largest_file_size_no_data = max(as.numeric(size)), 
+      mean_file_size_no_data = mean(as.numeric(size)))
+)
+
 ```
 
 ```{r commit_types}
@@ -255,7 +282,56 @@ for (lang in top_langs) {
 rm(bytes_this_lang, colname_bytes, colname_exists, colname_pct, total_bytes_by_repo_no_data, lang_bytes_by_repo)
 ```
 
+```{r test_cases}
+# Query to join file size to test case table
+query <- paste("SELECT
+  test_cases.repo_name AS repo_name,
+  test_cases.path AS path,
+  test_cases.language AS language,
+  test_cases.lines AS lines,
+  file_info.size AS size
+FROM (
+  SELECT
+    *
+  FROM ", table_str(ds_analysis, table_test_cases), ") AS test_cases
+INNER JOIN (
+  SELECT
+    sha,
+    size
+  FROM
+    ", table_str(ds_gh, table_file_info),
+"GROUP BY
+    sha,
+    size ) AS file_info
+ON
+  test_cases.sha = file_info.sha", sep="")
 
+# Get test cases
+test_cases_no_data <- fetch_query_res(query) %>% filter(!language %in% non_lang_file_types)
+rm(query)
+
+# Add basic summary of test cases
+join_tbl(test_cases_no_data %>% 
+           group_by(repo_name) %>% 
+           summarise(
+             num_test_cases_no_data = n(),
+             total_lines_test_cases_no_data = sum(lines),
+             total_size_test_cases_no_data = sum(size),
+             num_langs_test_cases_no_data = length(unique(language))))
+
+rm(test_cases_no_data)
+
+# Add percentages with respect to whole repo
+repo_data$pct_files_test_cases_no_data <- 
+  repo_data$num_test_cases_no_data / repo_data$total_files_no_data
+repo_data$pct_lang_with_test_cases_no_data <- 
+  repo_data$num_langs_test_cases_no_data / repo_data$num_langs_no_data
+repo_data$pct_lines_in_test_cases_no_data <-
+  repo_data$total_lines_test_cases_no_data / repo_data$total_lines_no_data
+repo_data$pct_bytes_in_test_cases_no_data <-
+  repo_data$total_size_test_cases_no_data / repo_data$total_file_size_no_data
+
+```
 
 
 

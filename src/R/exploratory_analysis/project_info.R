@@ -22,6 +22,7 @@ table_proj_duration <- "project_duration"
 table_num_langs_by_repo <- "num_langs_by_repo"
 table_num_devs_by_repo <- "num_devs_by_repo"
 table_lang_bytes_by_repo <- "language_bytes_by_repo"
+table_test_cases <- "test_cases"
 
 # Programming languages
 ds_lang <- "languages"
