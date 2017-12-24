@@ -14,7 +14,7 @@ rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+setwd("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis")
 source("project_info.R")
 ```
 
@@ -121,6 +121,7 @@ query <- paste("SELECT
   file_info.repo_name AS repo_name,
   loc.language AS language,
   loc.code AS lines_of_code,
+  loc.comment as lines_comment,
   file_info.size AS size
 FROM (
   SELECT
@@ -136,12 +137,14 @@ INNER JOIN (
   SELECT
     sha,
     language,
+    comment,
     code
   FROM
     ", table_str(ds_analysis, table_loc), "
   GROUP BY
     sha,
     language,
+    comment,
     code) AS loc
 ON
   file_info.sha = loc.sha", sep="")
@@ -154,8 +157,6 @@ join_tbl(
     group_by(repo_name) %>% 
     summarize(
       num_langs = length(unique(language)),
-      total_files = n(), 
-      total_lines = sum(as.numeric(lines_of_code)),
       total_file_size = sum(as.numeric(size)), 
       largest_file_size = max(as.numeric(size)), 
       mean_file_size = mean(as.numeric(size)))
@@ -166,8 +167,6 @@ join_tbl(
     group_by(repo_name) %>% 
     summarize(
       num_langs_no_data = length(unique(language)),
-      total_files_no_data = n(), 
-      total_lines_no_data = sum(as.numeric(lines_of_code)),
       total_file_size_no_data = sum(as.numeric(size)), 
       largest_file_size_no_data = max(as.numeric(size)), 
       mean_file_size_no_data = mean(as.numeric(size)))
@@ -282,6 +281,44 @@ for (lang in top_langs) {
 rm(bytes_this_lang, colname_bytes, colname_exists, colname_pct, total_bytes_by_repo_no_data, lang_bytes_by_repo)
 ```
 
+```{r lines_of_code_by_file}
+# Function to get various lines of code measurements
+loc_data <- function(file_info_df, suffix) {
+  data <- file_info_df %>% 
+    group_by(repo_name) %>% 
+    summarise(
+      num_files = n(),
+      total_lines_of_code = sum(lines_of_code), 
+      total_lines_comment = sum(lines_comment), 
+      total_lines_code_and_comment = sum(lines_of_code) + sum(lines_comment),
+      max_lines_code = max(lines_of_code),
+      max_lines_code_and_comment = max(lines_of_code + lines_comment),
+      mean_lines_code = mean(lines_of_code),
+      mean_lines_code_and_comment = mean(lines_of_code + lines_comment),
+      mean_bytes_per_line_code_and_comment = sum(size) / (sum(lines_of_code) + sum(lines_comment))
+    ) %>% 
+    mutate(pct_lines_comment = total_lines_comment / total_lines_code_and_comment)
+  
+  colnames(data) <- sapply(colnames(data), function(x) {
+    if(x == "repo_name") x
+    else paste(x, suffix, sep = "")
+  })
+  
+  data
+}
+
+join_tbl(loc_data(file_info, ""))
+join_tbl(loc_data(file_info_no_data, "_no_data"))
+
+for (lang in top_langs) {
+  join_tbl(
+    loc_data(
+      file_info %>% filter(language == lang), 
+      paste("_", lang, sep="")))
+}
+
+```
+
 ```{r test_cases}
 # Query to join file size to test case table
 query <- paste("SELECT
@@ -323,11 +360,11 @@ rm(test_cases_no_data)
 
 # Add percentages with respect to whole repo
 repo_data$pct_files_test_cases_no_data <- 
-  repo_data$num_test_cases_no_data / repo_data$total_files_no_data
+  repo_data$num_test_cases_no_data / repo_data$num_files_no_data
 repo_data$pct_lang_with_test_cases_no_data <- 
   repo_data$num_langs_test_cases_no_data / repo_data$num_langs_no_data
 repo_data$pct_lines_in_test_cases_no_data <-
-  repo_data$total_lines_test_cases_no_data / repo_data$total_lines_no_data
+  repo_data$total_lines_test_cases_no_data / repo_data$total_lines_of_code_no_data
 repo_data$pct_bytes_in_test_cases_no_data <-
   repo_data$total_size_test_cases_no_data / repo_data$total_file_size_no_data
 
