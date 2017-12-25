@@ -62,54 +62,6 @@ max_contiguous <- function(b) {
   if (curr > max) {max <- curr}
   max
 }
-
-# Zero-pad
-zero_pad <- function(s, l) {
-  str <- as.character(s)
-  if (nchar(s) > l) {
-    stop("string must be shorter than length")
-  }
-  rtrn <- str
-  if (nchar(str) == l) {
-    rtrn
-  } else {
-    for (i in seq(1, l - nchar(str))) {
-      rtrn <- paste("0", rtrn, sep = "")
-    }
-    rtrn
-  }
-}
-
-# Generate vector of YYYY-MM for a time interval
-ym_vec <- function(y1, m1, y2, m2) {
-  if (y2 < y1) {stop("years must be in order")}
-  if (y1 == y2 && m2 < m1) {stop("months must be in order")}
-  y1 <- as.numeric(y1)
-  y2 <- as.numeric(y2)
-  m1 <- as.numeric(m1)
-  m2 <- as.numeric(m2)
-  rtrn <- character(0)
-  if (y1 == y2) {
-    for (m in m1:m2) {
-      rtrn <- c(rtrn, paste(y1, zero_pad(m, 2), sep = "-"))
-    }
-  } else {
-    for (m in m1:12) {
-      rtrn <- c(rtrn, paste(y1, zero_pad(m, 2), sep = "-"))
-    }
-    if (y2 > y1 + 1) {
-      for (y in seq(y1 + 1, y2 - 1)) {
-        for (m in 1:12) {
-          rtrn <- c(rtrn, paste(y, zero_pad(m, 2), sep = "-"))
-        }
-      }
-    }
-    for (m in 1:m2) {
-      rtrn <- c(rtrn, paste(y2, zero_pad(m, 2), sep = "-"))
-    }
-  }
-  rtrn
-}
 ```
 
 ```{r langs_to_use}
@@ -336,16 +288,6 @@ join_tbl(
     summarize(mean_files_added_per_month = sum(num_files_same_commit_hour / repo_num_months))
 )
 
-# Month with the most new files added
-join_tbl(
-  init_commit %>% 
-    group_by(repo_name, file_commit_months_from_proj_start) %>% 
-    summarize(files_added_month = sum(num_files_same_commit_hour)) %>% 
-    filter(files_added_month == max(files_added_month)) %>% 
-    select(repo_name, file_commit_months_from_proj_start) %>% 
-    rename(month_with_most_new_files_added = file_commit_months_from_proj_start)
-)
-
 # Proportion of months with new files added
 join_tbl(
   init_commit %>% 
@@ -357,6 +299,8 @@ join_tbl(
     mutate(pct_months_new_files_added = months_with_new_files / repo_num_months) %>% 
     select(repo_name, pct_months_new_files_added)
 )
+
+rm(init_commit)
 
 ```
 
