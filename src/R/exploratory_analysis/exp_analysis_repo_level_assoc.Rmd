@@ -44,7 +44,7 @@ join_tbl <- function(data) {
 
 # Change NA to 0
 na_to_zero <- function(x) {
-  if(is.na(x)) 0
+  if (is.na(x)) 0
   else x
 }
 
@@ -312,6 +312,55 @@ commit_types <- commit_types %>%
   mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits)
 join_tbl(commit_types)
 rm(commit_types)
+```
+
+```{r commits}
+commits_table_str <- table_str(ds_gh, table_commits)
+
+# Percentage of commits with different author and committer
+query <- paste("
+SELECT
+  num_commits.repo_name AS repo_name,
+  num_commits_diff_author.num_commits / num_commits.num_commits as pct_commits_diff_author_committer
+FROM (
+  SELECT
+    repo_name,
+    COUNT(repo_name) AS num_commits
+  FROM
+    ", commits_table_str, "
+  GROUP BY
+    repo_name) AS num_commits
+INNER JOIN (
+  SELECT
+    repo_name,
+    COUNT(repo_name) AS num_commits
+  FROM
+    ", commits_table_str, "
+  WHERE
+    author_id != committer_id
+  GROUP BY
+    repo_name) AS num_commits_diff_author
+ON
+  num_commits.repo_name = num_commits_diff_author.repo_name
+", sep = "")
+
+join_tbl(fetch_query_res(query))
+repo_data$pct_commits_diff_author_committer <- sapply(repo_data$pct_commits_diff_author_committer, na_to_zero)
+
+# Median and mean commit message length
+query <- paste("
+SELECT
+  repo_name,
+  NTH(501, QUANTILES(LENGTH(commit_message), 1001)) AS median_commit_message_len,
+  AVG(LENGTH(commit_message)) AS mean_commit_message_len
+FROM
+  ", commits_table_str, "
+GROUP BY
+  repo_name
+", sep = "")
+join_tbl(fetch_query_res(query))
+
+rm(commits_table_str)
 ```
 
 ```{r code_chunk_freq}

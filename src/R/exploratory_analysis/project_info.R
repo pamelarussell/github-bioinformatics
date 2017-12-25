@@ -10,6 +10,7 @@ table_init_commit <- "file_init_commit"
 table_licenses <- "licenses"
 table_repo_metrics <- "repo_metrics"
 table_file_info <- "file_info"
+table_commits <- "commits"
 
 # Data from analysis results
 ds_analysis <- "analysis"
