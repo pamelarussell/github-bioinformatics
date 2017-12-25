@@ -14,6 +14,8 @@ rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(parsedate))
 setwd("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis")
 source("project_info.R")
 ```
@@ -21,8 +23,16 @@ source("project_info.R")
 ```{r util}
 # Helpful functions / utilities
 
+# Fetch table from BigQuery
+get_table <- function(ds, table) {
+  list_tabledata(project = proj, dataset = ds, table = table, max_pages = Inf)
+}
+
 # Get formatted table ID e.g. "[github-bioinformatics-171721:analysis.lines_of_code_by_file]"
-table_str <- function(dataset, table) {paste("[", proj, ":", dataset, ".", table, "]", sep="")}
+table_str <- function(dataset, table) {paste("[", proj, ":", dataset, ".", table, "]", sep = "")}
+
+# Get formatted table ID for standard SQL e.g. `github-bioinformatics-171721.repos.file_init_commit`
+table_str_std_sql <- function(dataset, table) {paste("`", proj, ".", dataset, ".", table, "`", sep = "")}
 
 # Get query result from BigQuery
 fetch_query_res <- function(query) {query_exec(query, project = proj, max_pages = Inf)}
@@ -36,6 +46,69 @@ join_tbl <- function(data) {
 na_to_zero <- function(x) {
   if(is.na(x)) 0
   else x
+}
+
+# Longest contiguous subsequence of true values in a boolean vector
+max_contiguous <- function(b) {
+  max <- 0
+  curr <- 0
+  for (i in 1:length(b)) {
+    if(b[i]) {curr <- curr + 1} 
+    else {
+      if (curr > max) {max <- curr}
+      curr <- 0
+    }
+  }
+  if (curr > max) {max <- curr}
+  max
+}
+
+# Zero-pad
+zero_pad <- function(s, l) {
+  str <- as.character(s)
+  if (nchar(s) > l) {
+    stop("string must be shorter than length")
+  }
+  rtrn <- str
+  if (nchar(str) == l) {
+    rtrn
+  } else {
+    for (i in seq(1, l - nchar(str))) {
+      rtrn <- paste("0", rtrn, sep = "")
+    }
+    rtrn
+  }
+}
+
+# Generate vector of YYYY-MM for a time interval
+ym_vec <- function(y1, m1, y2, m2) {
+  if (y2 < y1) {stop("years must be in order")}
+  if (y1 == y2 && m2 < m1) {stop("months must be in order")}
+  y1 <- as.numeric(y1)
+  y2 <- as.numeric(y2)
+  m1 <- as.numeric(m1)
+  m2 <- as.numeric(m2)
+  rtrn <- character(0)
+  if (y1 == y2) {
+    for (m in m1:m2) {
+      rtrn <- c(rtrn, paste(y1, zero_pad(m, 2), sep = "-"))
+    }
+  } else {
+    for (m in m1:12) {
+      rtrn <- c(rtrn, paste(y1, zero_pad(m, 2), sep = "-"))
+    }
+    if (y2 > y1 + 1) {
+      for (y in seq(y1 + 1, y2 - 1)) {
+        for (m in 1:12) {
+          rtrn <- c(rtrn, paste(y, zero_pad(m, 2), sep = "-"))
+        }
+      }
+    }
+    for (m in 1:m2) {
+      rtrn <- c(rtrn, paste(y2, zero_pad(m, 2), sep = "-"))
+    }
+  }
+  rtrn
 }
 ```
 
@@ -81,26 +154,26 @@ repo_data <- data.frame(repo_name = character(0))
 
 ```{r licenses}
 join_tbl(
-  list_tabledata(project = proj, dataset = ds_gh, table = table_licenses) %>%
+  get_table(ds_gh, table_licenses) %>%
     select(repo_name, license)
 )
 ```
 
 ```{r proj_duration}
 join_tbl(
-  list_tabledata(project = proj, dataset = ds_analysis, table = table_proj_duration)
+  get_table(ds_analysis, table_proj_duration)
 )
 ```
 
 ```{r num_devs}
 join_tbl(
-  list_tabledata(project = proj, dataset = ds_analysis, table = table_num_devs_by_repo)
+  get_table(ds_analysis, table_num_devs_by_repo)
 )
 ```
 
 ```{r repo_metrics}
 join_tbl(
-  list_tabledata(project = proj, dataset = ds_gh, table = table_repo_metrics) %>%
+  get_table(ds_gh, table_repo_metrics) %>%
     select(repo_name, is_fork, stargazers_count, watchers_count, forks_count, subscribers_count)
 )
 ```
@@ -174,9 +247,122 @@ join_tbl(
 
 ```
 
+```{r file_init_commit}
+# Query to get summary of times when files were first committed
+query <- paste("
+SELECT
+  COUNT(repo_name) AS num_files_same_commit_hour,
+  repo_name,
+  repo_duration_months + 1 as repo_num_months,
+  file_commit_months_from_proj_start,
+  file_commit_days_from_proj_start,
+  file_commit_hours_from_proj_start
+FROM (
+  SELECT
+    project_duration.repo_name AS repo_name,
+    project_duration.first_commit AS repo_first_commit,
+    project_duration.last_commit AS repo_last_commit,
+    DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
+      DATETIME(TIMESTAMP(project_duration.first_commit)),
+      HOUR) AS repo_duration_hours,
+    DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
+      DATETIME(TIMESTAMP(project_duration.first_commit)),
+      DAY) AS repo_duration_days,
+    DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
+      DATETIME(TIMESTAMP(project_duration.first_commit)),
+      MONTH) AS repo_duration_months,
+    init_commit.init_commit_timestamp AS file_commit,
+    DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
+      DATETIME(TIMESTAMP(project_duration.first_commit)),
+      HOUR) AS file_commit_hours_from_proj_start,
+    DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
+      DATETIME(TIMESTAMP(project_duration.first_commit)),
+      DAY) AS file_commit_days_from_proj_start,
+    DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
+      DATETIME(TIMESTAMP(project_duration.first_commit)),
+      MONTH) AS file_commit_months_from_proj_start
+  FROM (
+    SELECT
+      repo_name,
+      init_commit_timestamp
+    FROM
+      ", table_str_std_sql(ds_gh, table_init_commit), ") AS init_commit
+  INNER JOIN
+    ", table_str_std_sql(ds_analysis, table_proj_duration), " AS project_duration
+  ON
+    init_commit.repo_name = project_duration.repo_name)
+GROUP BY
+  repo_name,
+  repo_duration_hours,
+  repo_duration_days,
+  repo_duration_months,
+  file_commit_hours_from_proj_start,
+  file_commit_days_from_proj_start,
+  file_commit_months_from_proj_start
+ORDER BY
+  repo_name",
+sep = "")
+
+# Pull down query results
+init_commit <- query_exec(query, project = proj, max_pages = Inf, use_legacy_sql = F)
+
+# Number of different days when new files were added
+join_tbl(
+  init_commit %>% 
+    select(repo_name, file_commit_days_from_proj_start) %>% 
+    group_by(repo_name) %>% 
+    summarise(num_days_new_files_added = n_distinct(file_commit_days_from_proj_start))
+)
+
+# Mean number of files added per day when new files were added
+join_tbl(
+  init_commit %>% 
+    group_by(repo_name, file_commit_days_from_proj_start) %>% 
+    summarise(files_added = sum(num_files_same_commit_hour)) %>% 
+    summarise(mean_new_files_per_day_with_new_files = mean(files_added))
+)
+
+# Mean day since project initial commit that new files were added
+join_tbl(
+  init_commit %>% 
+    group_by(repo_name) %>% 
+    summarise(mean_day_new_files_added = sum(num_files_same_commit_hour * file_commit_days_from_proj_start) / sum(num_files_same_commit_hour))
+)
+
+# Mean number of files added per month including months with no new files
+join_tbl(
+  init_commit %>% 
+    group_by(repo_name) %>% 
+    summarize(mean_files_added_per_month = sum(num_files_same_commit_hour / repo_num_months))
+)
+
+# Month with the most new files added
+join_tbl(
+  init_commit %>% 
+    group_by(repo_name, file_commit_months_from_proj_start) %>% 
+    summarize(files_added_month = sum(num_files_same_commit_hour)) %>% 
+    filter(files_added_month == max(files_added_month)) %>% 
+    select(repo_name, file_commit_months_from_proj_start) %>% 
+    rename(month_with_most_new_files_added = file_commit_months_from_proj_start)
+)
+
+# Proportion of months with new files added
+join_tbl(
+  init_commit %>% 
+    group_by(repo_name) %>% 
+    summarise(months_with_new_files = n_distinct(file_commit_months_from_proj_start)) %>% 
+    inner_join(init_commit %>% 
+                 select(repo_name, repo_num_months) %>% 
+                 distinct(), by = "repo_name") %>% 
+    mutate(pct_months_new_files_added = months_with_new_files / repo_num_months) %>% 
+    select(repo_name, pct_months_new_files_added)
+)
+
+```
+
 ```{r commit_types}
 # Add data from commit types table
-commit_types <- list_tabledata(project = proj, dataset = ds_analysis, table = table_commit_types) 
+commit_types <- get_table(ds_analysis, table_commit_types) 
 commit_types <- commit_types %>%
   mutate(num_bug_fix_commits = sapply(commit_types$num_bug_fix_commits, na_to_zero)) %>%
   mutate(pct_bug_fix_commits = num_bug_fix_commits / num_commits)
@@ -234,7 +420,7 @@ process_code_chunk_freq(table_code_chunk_freq_5_80, "5_80")
 
 ```{r lang_bytes_by_repo}
 # Import table of language bytes by repo
-lang_bytes_by_repo <- list_tabledata(project = proj, dataset = ds_analysis, table = table_lang_bytes_by_repo) 
+lang_bytes_by_repo <- get_table(ds_analysis, table_lang_bytes_by_repo) 
 
 # Calculate total bytes per repo not including data file types
 total_bytes_by_repo_no_data <- lang_bytes_by_repo %>% 
