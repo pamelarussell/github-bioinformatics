@@ -659,6 +659,52 @@ repo_data$pct_bytes_in_test_cases_no_data <-
 
 ```
 
+```{r language_properties}
+# Import language properties
+lang_exec_method <- get_table(ds_lang, table_exec_method)
+lang_paradigm <- get_table(ds_lang, table_paradigm)
+lang_type_system <- get_table(ds_lang, table_type_system)
 
+# Join language properties to file info
+file_info_with_lang_no_data <- as.tbl(file_info_no_data) %>% 
+  mutate(language = tolower(language)) %>% 
+  select(repo_name, language, size) %>% 
+  left_join(lang_exec_method, by = "language") %>% 
+  left_join(lang_type_system, by = "language") %>% 
+  left_join(lang_paradigm, by = "language")
+
+# Function to count bytes and files for a boolean column in the file info
+add_file_counts_bool <- function(col) {
+  filtered <- file_info_with_lang_no_data[which(file_info_with_lang_no_data[[col]]), ]
+
+  # Total file size
+  bytes <- filtered %>% group_by(repo_name) %>% summarise(xxxxx = sum(size))
+  colname_bytes <- paste("total_bytes_", col, sep = "")
+  colnames(bytes) <- c("repo_name", colname_bytes)
+  join_tbl(bytes)
+  repo_data[[colname_bytes]] <<- sapply(repo_data[[colname_bytes]], na_to_zero)
+
+  # Total number of files
+  files <- filtered %>% group_by(repo_name) %>% summarise(xxxxx = n())
+  colname_files <- paste("total_files_", col, sep = "")
+  colnames(files) <- c("repo_name", colname_files)
+  join_tbl(files)
+  repo_data[[colname_files]] <<- sapply(repo_data[[colname_files]], na_to_zero)
+
+}
+
+add_file_counts_bool("interpreted")
+add_file_counts_bool("compiled")
+add_file_counts_bool("array")
+add_file_counts_bool("declarative")
+add_file_counts_bool("functional_impure")
+add_file_counts_bool("functional_pure")
+add_file_counts_bool("imperative")
+add_file_counts_bool("logic")
+add_file_counts_bool("object_oriented")
+add_file_counts_bool("procedural")
+add_file_counts_bool("reflective")
+
+```
 
 

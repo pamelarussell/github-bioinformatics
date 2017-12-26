@@ -27,6 +27,9 @@ table_test_cases <- "test_cases"
 
 # Programming languages
 ds_lang <- "languages"
+table_exec_method <- "execution_method"
+table_paradigm <- "paradigm"
+table_type_system <- "type_system"
 
 # Lit search
 ds_lit_search <- "lit_search"
