@@ -62,6 +62,27 @@ max_contiguous <- function(b) {
   if (curr > max) {max <- curr}
   max
 }
+
+# Max number of consecutive months with data in a specified column
+max_consecutive_months <- function(data, repo, month_col, count_true = T) {
+  data_repo <- data %>% filter(repo_name == repo)
+  total_months <- data_repo[1, "repo_num_months"]
+  month_has_data <- rep(F, total_months)
+  for (i in 1:nrow(data_repo)) {
+    m <- data_repo[i, month_col] + 1
+    if (m > length(month_has_data)) {
+      warning(paste("Month outside span given in data:", repo, "\n"))
+    } else {
+      month_has_data[m] <- T
+    }
+  }
+  if (count_true) {
+    max_contiguous(month_has_data)
+  } else {
+    max_contiguous(!month_has_data)
+  }
+}
+
 ```
 
 ```{r langs_to_use}
@@ -300,7 +321,17 @@ join_tbl(
     select(repo_name, pct_months_new_files_added)
 )
 
-rm(init_commit)
+# Longest number of months in a row with new files added
+new_file_consecutive_months <- init_commit %>% 
+  select(repo_name) %>% 
+  distinct()
+new_file_consecutive_months$consecutive_months_with_new_files_added <- 
+  sapply(new_file_consecutive_months$repo_name, function(repo) max_consecutive_months(init_commit, repo, "file_commit_months_from_proj_start"))
+new_file_consecutive_months$consecutive_months_no_new_files_added <- 
+  sapply(new_file_consecutive_months$repo_name, function(repo) max_consecutive_months(init_commit, repo, "file_commit_months_from_proj_start", F))
+join_tbl(new_file_consecutive_months)
+
+rm(init_commit, new_file_consecutive_months)
 
 ```
 
@@ -429,8 +460,17 @@ join_tbl(
     select(repo_name, pct_months_with_commits)
 )
 
+# Longest number of months in a row with commits
+commit_consecutive_months <- commit_months %>% 
+  select(repo_name) %>% 
+  distinct()
+commit_consecutive_months$consecutive_months_with_commits <- 
+  sapply(commit_consecutive_months$repo_name, function(repo) max_consecutive_months(commit_months, repo, "commit_months_from_proj_start"))
+commit_consecutive_months$consecutive_months_no_commits <- 
+  sapply(commit_consecutive_months$repo_name, function(repo) max_consecutive_months(commit_months, repo, "commit_months_from_proj_start", F))
+join_tbl(commit_consecutive_months)
 
-rm(commits_table_str, commit_months)
+rm(commits_table_str, commit_months, commit_consecutive_months)
 ```
 
 ```{r code_chunk_freq}
