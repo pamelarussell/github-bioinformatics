@@ -360,7 +360,77 @@ GROUP BY
 ", sep = "")
 join_tbl(fetch_query_res(query))
 
-rm(commits_table_str)
+# Commit timing by month
+query <- paste("
+SELECT
+  COUNT(repo_name) AS num_commits_same_month,
+  repo_name,
+  DATETIME_DIFF(DATETIME(TIMESTAMP(repo_last_commit)),
+    DATETIME(TIMESTAMP(repo_first_commit)),
+    MONTH) + 1 AS repo_num_months,
+  DATETIME_DIFF(DATETIME(TIMESTAMP(commit_timestamp)),
+    DATETIME(TIMESTAMP(repo_first_commit)),
+    MONTH) AS commit_months_from_proj_start
+FROM (
+  SELECT
+    first_last.repo_name AS repo_name,
+    first_last.first_commit AS repo_first_commit,
+    first_last.last_commit AS repo_last_commit,
+    commits.author_commit_date AS commit_timestamp
+  FROM (
+    SELECT
+      repo_name,
+      author_commit_date
+    FROM
+      ", table_str_std_sql(ds_gh, table_commits), ") AS commits
+  INNER JOIN (
+    SELECT
+      repo_name,
+      first_commit,
+      last_commit
+    FROM (
+      SELECT
+        repo_name,
+        MIN(author_commit_date) AS first_commit,
+        MAX(author_commit_date) AS last_commit
+      FROM
+        ", table_str_std_sql(ds_gh, table_commits), "
+      GROUP BY
+        repo_name ) ) AS first_last
+  ON
+    commits.repo_name = first_last.repo_name )
+GROUP BY
+  repo_name,
+  repo_num_months,
+  commit_months_from_proj_start
+ORDER BY
+  repo_name,
+  commit_months_from_proj_start
+", sep = "")
+
+commit_months <- query_exec(query, project = proj, max_pages = Inf, use_legacy_sql = F)
+
+# Mean commits per month including months with no commits
+join_tbl(
+  commit_months %>% 
+    group_by(repo_name) %>% 
+    summarize(mean_commits_per_month = sum(num_commits_same_month / repo_num_months))
+)
+
+# Percentage of months with at least one commit
+join_tbl(
+  commit_months %>% 
+    group_by(repo_name) %>% 
+    summarise(months_with_commits = n_distinct(commit_months_from_proj_start)) %>% 
+    inner_join(commit_months %>% 
+                 select(repo_name, repo_num_months) %>% 
+                 distinct(), by = "repo_name") %>% 
+    mutate(pct_months_with_commits = months_with_commits / repo_num_months) %>% 
+    select(repo_name, pct_months_with_commits)
+)
+
+
+rm(commits_table_str, commit_months)
 ```
 
 ```{r code_chunk_freq}
