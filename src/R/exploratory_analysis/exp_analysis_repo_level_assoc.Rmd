@@ -48,6 +48,12 @@ na_to_zero <- function(x) {
   else x
 }
 
+# Change NA to false
+na_to_false <- function(x) {
+  if (is.na(x)) FALSE
+  else x
+}
+
 # Longest contiguous subsequence of true values in a boolean vector
 max_contiguous <- function(b) {
   max <- 0
@@ -678,18 +684,37 @@ add_file_counts_bool <- function(col) {
   filtered <- file_info_with_lang_no_data[which(file_info_with_lang_no_data[[col]]), ]
 
   # Total file size
-  bytes <- filtered %>% group_by(repo_name) %>% summarise(xxxxx = sum(size))
+  bytes <- filtered %>% 
+    group_by(repo_name) %>% 
+    summarise(xxxxx = sum(size)) %>% 
+    left_join(repo_data %>% 
+                select(repo_name, total_file_size_no_data), by = "repo_name") %>% 
+    mutate(yyyyy = xxxxx / total_file_size_no_data) %>% 
+    mutate(zzzzz = xxxxx > 0) %>%
+    select(repo_name, xxxxx, yyyyy, zzzzz)
   colname_bytes <- paste("total_bytes_", col, sep = "")
-  colnames(bytes) <- c("repo_name", colname_bytes)
+  colname_pct <- paste("pct_bytes_no_data_", col, sep = "")
+  colname_bool <- paste("has_", col, sep = "")
+  colnames(bytes) <- c("repo_name", colname_bytes, colname_pct, colname_bool)
   join_tbl(bytes)
   repo_data[[colname_bytes]] <<- sapply(repo_data[[colname_bytes]], na_to_zero)
+  repo_data[[colname_pct]] <<- sapply(repo_data[[colname_pct]], na_to_zero)
+  repo_data[[colname_bool]] <<- sapply(repo_data[[colname_bool]], na_to_false)
 
   # Total number of files
-  files <- filtered %>% group_by(repo_name) %>% summarise(xxxxx = n())
+  files <- filtered %>% 
+    group_by(repo_name) %>% 
+    summarise(xxxxx = n()) %>%
+    left_join(repo_data %>%
+                select(repo_name, num_files_no_data), by = "repo_name") %>%
+    mutate(yyyyy = xxxxx / num_files_no_data) %>%
+    select(repo_name, xxxxx, yyyyy)
   colname_files <- paste("total_files_", col, sep = "")
-  colnames(files) <- c("repo_name", colname_files)
+  colname_pct <- paste("pct_files_no_data_", col, sep = "")
+  colnames(files) <- c("repo_name", colname_files, colname_pct)
   join_tbl(files)
   repo_data[[colname_files]] <<- sapply(repo_data[[colname_files]], na_to_zero)
+  repo_data[[colname_pct]] <<- sapply(repo_data[[colname_pct]], na_to_zero)
 
 }
 
