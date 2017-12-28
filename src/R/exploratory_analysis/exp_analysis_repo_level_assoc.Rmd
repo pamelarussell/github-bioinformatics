@@ -89,6 +89,11 @@ max_consecutive_months <- function(data, repo, month_col, count_true = T) {
   }
 }
 
+# Column names of repo_data matching pattern
+cols <- function(p) {
+  names(repo_data)[grepl(p, names(repo_data))] 
+}
+
 ```
 
 ```{r langs_to_use}
@@ -651,8 +656,6 @@ join_tbl(test_cases_no_data %>%
              total_size_test_cases_no_data = sum(size),
              num_langs_test_cases_no_data = length(unique(language))))
 
-rm(test_cases_no_data)
-
 # Add percentages with respect to whole repo
 repo_data$pct_files_test_cases_no_data <- 
   repo_data$num_test_cases_no_data / repo_data$num_files_no_data
@@ -682,7 +685,7 @@ file_info_with_lang_no_data <- as.tbl(file_info_no_data) %>%
 # Function to count bytes and files for a boolean column in the file info
 add_file_counts_bool <- function(col) {
   filtered <- file_info_with_lang_no_data[which(file_info_with_lang_no_data[[col]]), ]
-
+  
   # Total file size
   bytes <- filtered %>% 
     group_by(repo_name) %>% 
@@ -692,7 +695,7 @@ add_file_counts_bool <- function(col) {
     mutate(yyyyy = xxxxx / total_file_size_no_data) %>% 
     mutate(zzzzz = xxxxx > 0) %>%
     select(repo_name, xxxxx, yyyyy, zzzzz)
-  colname_bytes <- paste("total_bytes_", col, sep = "")
+  colname_bytes <- paste("total_bytes_no_data_", col, sep = "")
   colname_pct <- paste("pct_bytes_no_data_", col, sep = "")
   colname_bool <- paste("has_", col, sep = "")
   colnames(bytes) <- c("repo_name", colname_bytes, colname_pct, colname_bool)
@@ -700,7 +703,7 @@ add_file_counts_bool <- function(col) {
   repo_data[[colname_bytes]] <<- sapply(repo_data[[colname_bytes]], na_to_zero)
   repo_data[[colname_pct]] <<- sapply(repo_data[[colname_pct]], na_to_zero)
   repo_data[[colname_bool]] <<- sapply(repo_data[[colname_bool]], na_to_false)
-
+  
   # Total number of files
   files <- filtered %>% 
     group_by(repo_name) %>% 
@@ -715,7 +718,7 @@ add_file_counts_bool <- function(col) {
   join_tbl(files)
   repo_data[[colname_files]] <<- sapply(repo_data[[colname_files]], na_to_zero)
   repo_data[[colname_pct]] <<- sapply(repo_data[[colname_pct]], na_to_zero)
-
+  
 }
 
 add_file_counts_bool("interpreted")
@@ -729,6 +732,34 @@ add_file_counts_bool("logic")
 add_file_counts_bool("object_oriented")
 add_file_counts_bool("procedural")
 add_file_counts_bool("reflective")
+
+# Amount of code in test cases for interpreted vs compiled languages
+test_cases_by_exec_method <- as.tbl(test_cases_no_data) %>% 
+  mutate(language = tolower(language)) %>% 
+  left_join(lang_exec_method, by = "language")
+join_tbl(
+  test_cases_by_exec_method %>% 
+    filter(interpreted) %>% 
+    group_by(repo_name) %>% 
+    summarize(total_bytes_test_cases_interpreted = sum(size))
+)
+repo_data$total_bytes_test_cases_interpreted <- sapply(repo_data$total_bytes_test_cases_interpreted, na_to_zero)
+repo_data <- repo_data %>% 
+  mutate(pct_bytes_in_test_cases_interpreted_no_data = 
+           total_bytes_test_cases_interpreted / total_bytes_no_data_interpreted) 
+
+join_tbl(
+  test_cases_by_exec_method %>% 
+    filter(compiled) %>% 
+    group_by(repo_name) %>% 
+    summarize(total_bytes_test_cases_compiled = sum(size))
+)
+repo_data$total_bytes_test_cases_compiled <- sapply(repo_data$total_bytes_test_cases_compiled, na_to_zero)
+repo_data <- repo_data %>% 
+  mutate(pct_bytes_in_test_cases_compiled_no_data = 
+           total_bytes_test_cases_compiled / total_bytes_no_data_compiled) 
+
+
 
 ```
 
