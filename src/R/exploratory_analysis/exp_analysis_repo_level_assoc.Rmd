@@ -680,7 +680,14 @@ file_info_with_lang_no_data <- as.tbl(file_info_no_data) %>%
   select(repo_name, language, size) %>% 
   left_join(lang_exec_method, by = "language") %>% 
   left_join(lang_type_system, by = "language") %>% 
-  left_join(lang_paradigm, by = "language")
+  left_join(lang_paradigm, by = "language") %>%
+  mutate(type_system_static = system == "static") %>%
+  mutate(type_system_dynamic = system == "dynamic") %>%
+  mutate(type_system_safe = safety == "safe") %>%
+  mutate(type_system_unsafe = safety == "unsafe") %>%
+  mutate(compatibility_nominative = compatibility == "nominative") %>%
+  mutate(compatibility_structural = compatibility == "structural") %>%
+  mutate(compatibility_duck = compatibility == "duck")
 
 # Function to count bytes and files for a boolean column in the file info
 add_file_counts_bool <- function(col) {
@@ -723,6 +730,10 @@ add_file_counts_bool <- function(col) {
 
 add_file_counts_bool("interpreted")
 add_file_counts_bool("compiled")
+add_file_counts_bool("type_system_static")
+add_file_counts_bool("type_system_dynamic")
+add_file_counts_bool("type_system_safe")
+add_file_counts_bool("type_system_unsafe")
 add_file_counts_bool("array")
 add_file_counts_bool("declarative")
 add_file_counts_bool("functional_impure")
@@ -732,11 +743,15 @@ add_file_counts_bool("logic")
 add_file_counts_bool("object_oriented")
 add_file_counts_bool("procedural")
 add_file_counts_bool("reflective")
+add_file_counts_bool("compatibility_nominative")
+add_file_counts_bool("compatibility_structural")
+add_file_counts_bool("compatibility_duck")
 
 # Amount of code in test cases for interpreted vs compiled languages
 test_cases_by_exec_method <- as.tbl(test_cases_no_data) %>% 
   mutate(language = tolower(language)) %>% 
   left_join(lang_exec_method, by = "language")
+
 join_tbl(
   test_cases_by_exec_method %>% 
     filter(interpreted) %>% 
