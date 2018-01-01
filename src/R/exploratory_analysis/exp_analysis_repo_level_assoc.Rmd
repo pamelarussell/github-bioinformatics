@@ -39,6 +39,11 @@ fetch_query_res <- function(query) {query_exec(query, project = proj, max_pages 
 
 # Join a table to repo_data
 join_tbl <- function(data) {
+  for (colname in colnames(data)) {
+    if (colname != "repo_name" && colname %in% colnames(repo_data)) {
+      stop(paste("repo_data already contains column", colname))
+    }
+  }
   repo_data <<- full_join(repo_data, data, by = "repo_name")
 }
 
@@ -655,6 +660,9 @@ join_tbl(test_cases_no_data %>%
              total_lines_test_cases_no_data = sum(lines),
              total_size_test_cases_no_data = sum(size),
              num_langs_test_cases_no_data = length(unique(language))))
+repo_data$total_lines_test_cases_no_data <- sapply(repo_data$total_lines_test_cases_no_data, na_to_zero)
+repo_data$total_size_test_cases_no_data <- sapply(repo_data$total_size_test_cases_no_data, na_to_zero)
+repo_data$num_langs_test_cases_no_data <- sapply(repo_data$num_langs_test_cases_no_data, na_to_zero)
 
 # Add percentages with respect to whole repo
 repo_data$pct_files_test_cases_no_data <- 
@@ -673,6 +681,14 @@ repo_data$pct_bytes_in_test_cases_no_data <-
 lang_exec_method <- get_table(ds_lang, table_exec_method)
 lang_paradigm <- get_table(ds_lang, table_paradigm)
 lang_type_system <- get_table(ds_lang, table_type_system)
+lang_type_system_bool <- as.tbl(lang_type_system) %>% 
+  mutate(type_system_static = system == "static", 
+         type_system_dynamic = system == "dynamic", 
+         type_system_safe = safety == "safe", 
+         type_system_unsafe = safety == "unsafe", 
+         compatibility_nominative = compatibility == "nominative", 
+         compatibility_structural = compatibility == "structural", 
+         compatibility_duck = compatibility == "duck")
 
 # Join language properties to file info
 file_info_with_lang_no_data <- as.tbl(file_info_no_data) %>% 
@@ -747,35 +763,75 @@ add_file_counts_bool("compatibility_nominative")
 add_file_counts_bool("compatibility_structural")
 add_file_counts_bool("compatibility_duck")
 
-# Amount of code in test cases for interpreted vs compiled languages
-test_cases_by_exec_method <- as.tbl(test_cases_no_data) %>% 
+
+# Amount of code in test cases for various language properties
+test_cases_by_lang_property <- as.tbl(test_cases_no_data) %>% 
   mutate(language = tolower(language)) %>% 
-  left_join(lang_exec_method, by = "language")
+  left_join(lang_exec_method, by = "language") %>%
+  left_join(lang_paradigm, by = "language") %>%
+  left_join(lang_type_system_bool, by = "language")
 
-join_tbl(
-  test_cases_by_exec_method %>% 
-    filter(interpreted) %>% 
+# Function to count amount of code in test cases for files with a boolean property
+add_test_case_code_amt_bool <- function(colnm) {
+  filtered <- test_cases_by_lang_property[which(test_cases_by_lang_property[[colnm]]),]
+  summarized <- filtered %>% 
     group_by(repo_name) %>% 
-    summarize(total_bytes_test_cases_interpreted = sum(size))
-)
-repo_data$total_bytes_test_cases_interpreted <- sapply(repo_data$total_bytes_test_cases_interpreted, na_to_zero)
-repo_data <- repo_data %>% 
-  mutate(pct_bytes_in_test_cases_interpreted_no_data = 
-           total_bytes_test_cases_interpreted / total_bytes_no_data_interpreted) 
+    summarize(total_bytes_test_cases_category = sum(size))
+  joined <- repo_data[, c("repo_name", paste("total_bytes_no_data_", colnm, sep = ""))] %>% 
+    left_join(summarized, by = "repo_name")
+  joined$total_bytes_test_cases_category <- sapply(joined$total_bytes_test_cases_category, na_to_zero)
+  colnames(joined) <- c("repo_name", "total_bytes_no_data_category", "total_bytes_test_cases_category")
+  joined <- joined %>% 
+    mutate(pct_bytes_test_cases_category = total_bytes_test_cases_category / total_bytes_no_data_category) %>%
+    select(repo_name, total_bytes_test_cases_category, pct_bytes_test_cases_category)
+  colnames(joined) <- sapply(colnames(joined), function(x) sub("category", colnm, x))
+  join_tbl(joined)
+}
 
-join_tbl(
-  test_cases_by_exec_method %>% 
-    filter(compiled) %>% 
-    group_by(repo_name) %>% 
-    summarize(total_bytes_test_cases_compiled = sum(size))
-)
-repo_data$total_bytes_test_cases_compiled <- sapply(repo_data$total_bytes_test_cases_compiled, na_to_zero)
-repo_data <- repo_data %>% 
-  mutate(pct_bytes_in_test_cases_compiled_no_data = 
-           total_bytes_test_cases_compiled / total_bytes_no_data_compiled) 
-
-
+add_test_case_code_amt_bool("interpreted")
+add_test_case_code_amt_bool("compiled")
+add_test_case_code_amt_bool("type_system_static")
+add_test_case_code_amt_bool("type_system_dynamic")
+add_test_case_code_amt_bool("type_system_safe")
+add_test_case_code_amt_bool("type_system_unsafe")
+add_test_case_code_amt_bool("array")
+add_test_case_code_amt_bool("declarative")
+add_test_case_code_amt_bool("functional_impure")
+add_test_case_code_amt_bool("functional_pure")
+add_test_case_code_amt_bool("imperative")
+add_test_case_code_amt_bool("logic")
+add_test_case_code_amt_bool("object_oriented")
+add_test_case_code_amt_bool("procedural")
+add_test_case_code_amt_bool("reflective")
+add_test_case_code_amt_bool("compatibility_nominative")
+add_test_case_code_amt_bool("compatibility_structural")
+add_test_case_code_amt_bool("compatibility_duck")
 
 ```
 
+```{r non_committer_contributions}
+commits <- fetch_query_res(paste("
+SELECT
+  repo_name,
+  committer_id,
+  author_id
+FROM
+  ", table_str(ds_gh, table_commits), "
+GROUP BY
+  repo_name,
+  committer_id,
+  author_id"))
+
+# Number of commit authors who are never committers
+join_tbl(
+  as.tbl(commits) %>% 
+    select(repo_name, author_id) %>% 
+    anti_join(commits %>% select(repo_name, committer_id), by = c("repo_name", "author_id" = "committer_id")) %>% 
+    group_by(repo_name) %>% 
+    summarise(num_non_committing_authors = n())
+)
+
+repo_data$num_non_committing_authors <- sapply(repo_data$num_non_committing_authors, na_to_zero)
+rm(commits)
+```
 
