@@ -59,6 +59,15 @@ na_to_false <- function(x) {
   else x
 }
 
+# Change NA to zero in repo_data for a bunch of columns
+columns_na_to_zero <- function(colnms) {
+  for (col in colnms) {
+    if (col != "repo_name") {
+      repo_data[[col]] <<- sapply(repo_data[[col]], na_to_zero)
+    }
+  }
+}
+
 # Longest contiguous subsequence of true values in a boolean vector
 max_contiguous <- function(b) {
   max <- 0
@@ -605,21 +614,30 @@ loc_data <- function(file_info_df, suffix) {
     mutate(pct_lines_comment = total_lines_comment / total_lines_code_and_comment)
   
   colnames(data) <- sapply(colnames(data), function(x) {
-    if(x == "repo_name") x
+    if (x == "repo_name") x
     else paste(x, suffix, sep = "")
   })
   
   data
 }
 
-join_tbl(loc_data(file_info, ""))
-join_tbl(loc_data(file_info_no_data, "_no_data"))
+loc_data_file_info <- loc_data(file_info, "")
+join_tbl(loc_data_file_info)
+columns_na_to_zero(colnames(loc_data_file_info))
+rm(loc_data_file_info)
+
+loc_data_file_info_no_data <- loc_data(file_info_no_data, "_no_data")
+join_tbl(loc_data_file_info_no_data)
+columns_na_to_zero(colnames(loc_data_file_info_no_data))
+rm(loc_data_file_info_no_data)
 
 for (lang in top_langs) {
-  join_tbl(
-    loc_data(
-      file_info %>% filter(language == lang), 
-      paste("_", lang, sep="")))
+  data <- loc_data(
+    file_info %>% filter(language == lang), 
+    paste("_", lang, sep = ""))
+  join_tbl(data)
+  columns_na_to_zero(colnames(data))
+  rm(data)
 }
 
 ```
@@ -758,7 +776,6 @@ add_file_counts_bool("imperative")
 add_file_counts_bool("logic")
 add_file_counts_bool("object_oriented")
 add_file_counts_bool("procedural")
-add_file_counts_bool("reflective")
 add_file_counts_bool("compatibility_nominative")
 add_file_counts_bool("compatibility_structural")
 add_file_counts_bool("compatibility_duck")
@@ -802,10 +819,11 @@ add_test_case_code_amt_bool("imperative")
 add_test_case_code_amt_bool("logic")
 add_test_case_code_amt_bool("object_oriented")
 add_test_case_code_amt_bool("procedural")
-add_test_case_code_amt_bool("reflective")
 add_test_case_code_amt_bool("compatibility_nominative")
 add_test_case_code_amt_bool("compatibility_structural")
 add_test_case_code_amt_bool("compatibility_duck")
+
+rm(test_cases_no_data, test_cases_by_lang_property)
 
 ```
 
@@ -833,5 +851,73 @@ join_tbl(
 
 repo_data$num_non_committing_authors <- sapply(repo_data$num_non_committing_authors, na_to_zero)
 rm(commits)
+```
+
+```{r associations}
+k <- ncol(repo_data)
+n_comparisons <- k * (k - 1)
+pval_cutoff <- 0.0001 / n_comparisons
+
+assoc.numeric <- data.frame(var1 = character(), var2 = character(), corr = numeric(), pval = numeric())
+assoc.mannwhitney <- data.frame(var1 = character(), var2 = character(), pval = numeric())
+assoc.sets <- data.frame(var1 = character(), var2 = character(), similarity = numeric())
+
+add_mw <- function(data_numeric, data_logical, name_numeric, name_logical) {
+  x <- tryCatch({
+    data_yes <- data_numeric[which(data_logical)]
+    data_no <- data_numeric[which(!data_logical)]
+    res <- wilcox.test(data_yes, data_no, alternative = "two.sided", paired = F)
+    if(res$p.value < pval_cutoff) {
+      record <- data.frame(var1 = name_numeric, var2 = name_logical, pval = res$p.value)
+      assoc.mannwhitney <<- rbind(assoc.mannwhitney, record)
+    }
+  }, error = function(e) {
+    message(paste("CAUGHT ERROR on", name_numeric, "and", name_logical))
+  })
+}
+
+for (i in 1:k) {
+  data1 <- repo_data[[i]]
+  name1 <- names(repo_data)[i]
+  if(!is.numeric(data1) && !is.logical(data1)) {
+    message(paste("Skipping", name1))
+  }
+  for (j in 1:k) {
+    data2 <- repo_data[[j]]
+    name2 <- names(repo_data)[j]
+    
+    # Only compare each pair of columns once
+    if (i < j) {
+      
+      if (is.numeric(data1) && is.numeric(data2)) {
+        # Both numeric
+        x <- tryCatch({
+          res <- cor.test(data1, data2)
+          if (res$estimate > 0.5 && res$p.value < pval_cutoff) {
+            record <- data.frame(var1 = name1, var2 = name2, corr = res$estimate, pval = res$p.value)
+            assoc.numeric <- rbind(assoc.numeric, record)
+          }
+        }, error = function(e) {
+          message(paste("CAUGHT ERROR on", name1, "and", name2))
+        })
+      } else if (is.numeric(data1) && is.logical(data2)) {
+        # data1 numeric, data2 logical
+        add_mw(data1, data2, name1, name2)
+      } else if (is.logical(data1) && is.numeric(data2)) {
+        # data1 logical, data2 numeric
+        add_mw(data2, data1, name2, name1)
+      } else if (is.logical(data1) && is.logical(data2)) {
+        # both logical
+        repos1 <- repo_data[which(data1), "repo_name"]
+        repos2 <- repo_data[which(data2), "repo_name"]
+        jaccard <- length(intersect(repos1, repos2)) / length(union(repos1, repos2))
+        record <- data.frame(var1 = name1, var2 = name2, similarity = jaccard)
+        assoc.sets <- rbind(assoc.sets, record)
+      }
+    }
+  }
+}
+rm(data1, data2, i, j, k, n_comparisons, name1, name2, res, x, record,
+   pval_cutoff, jaccard, repos1, repos2)
 ```
 
