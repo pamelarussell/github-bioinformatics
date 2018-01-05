@@ -34,6 +34,8 @@ table_type_system <- "type_system"
 # Lit search
 ds_lit_search <- "lit_search"
 table_repo_and_article <- "repo_and_article_curated"
+table_article_metadata <- "article_metadata_eutils"
+
 
 
 
