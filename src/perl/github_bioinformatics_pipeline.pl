@@ -18,7 +18,7 @@ my $extract_repos_from_lit_search = 0;
 my $check_repo_existence = 0;
 
 # Query Eutils for article metadata
-my $query_eutils_article_metadata = 0;
+my $query_eutils_article_metadata = 1;
 
 # Use GitHub API to get repo data
 my $generate_language_bytes = 0;
@@ -26,7 +26,7 @@ my $generate_licenses = 0;
 my $generate_commits = 0;
 my $generate_file_info = 0;
 my $generate_file_contents = 0;
-my $generate_file_init_commits = 1;
+my $generate_file_init_commits = 0;
 my $generate_repo_metrics = 0;
 my $generate_pr_data = 0;
 
@@ -89,8 +89,9 @@ my $bq_tb_bytes_by_language = "bytes_by_language"; # Total bytes of code per lan
 my $bq_tb_lang_list_by_repo = "language_list_by_repo"; # List of languages used by repo
 my $bq_tb_num_langs_by_repo = "num_langs_by_repo"; # Number of languages used by repo
 my $bq_tb_num_repos_by_lang = "num_repos_by_lang"; # Number of repos using each language
-my $bq_tb_repo_article = "repo_and_article"; # Repo names and articles they're mentioned in, including non-bioinformatics
-my $bq_tb_eutils = "article_info_eutils"; # Article metadata from Eutils
+my $bq_tb_repo_article = "repo_and_article_incl_non_bioinf"; # Repo names and articles they're mentioned in, including non-bioinformatics
+my $bq_tb_repo_article_curated = "repo_and_article_curated"; # Repo names and articles they're mentioned in
+my $bq_tb_eutils = "article_metadata_eutils"; # Article metadata from Eutils
 my $bq_tb_loc_by_file = "lines_of_code_by_file"; # Computed table with language and lines of code per source file
 my $bq_tb_loc_by_file_skipped = "lines_of_code_by_file_skipped"; # Files skipped in lines of code analysis
 my $bq_tb_loc_by_repo = "lines_of_code_by_repo"; # Computed table with total lines of code by repo
@@ -124,7 +125,7 @@ my $gcs_regex_csv = "contents-[0-9]+\.csv";
 # -----------------------------------------------------------------
 
 # Source directories
-my $src_dir = "/Users/prussell/Documents/Github_mining/src/";
+my $src_dir = "~/Dropbox/Documents/Github_mining/src/";
 my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
@@ -191,8 +192,8 @@ if($check_repo_existence) {
 
 # Get article metadata from Eutils
 if($query_eutils_article_metadata) {
-	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj_gh_bioinf --dataset $bq_ds_lit_search --table-r " .
-	"$bq_tb_repo_article --table-w $bq_tb_eutils")
+	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj_gh_bioinf --dataset $bq_ds_lit_search --in_table " .
+	"$bq_tb_repo_article_curated --out_table $bq_tb_eutils")
 } else {print("\nSkipping step: get article metadata from Eutils\n")}
 
 # Get repo metrics from GitHub API

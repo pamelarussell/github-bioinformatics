@@ -11,22 +11,17 @@ suppressPackageStartupMessages(library(dplyr))
 
 message('Getting article metadata from Eutils and uploading to BigQuery table...')
 
-# option_list = list(
-#   make_option(c("-p", "--project"), action="store", type='character', help="BigQuery project"),
-#   make_option(c("-d", "--dataset"), action="store", type='character', help="BigQuery dataset"),
-#   make_option(c("-r", "--table-r"), action="store", type='character', help="BigQuery table to read from"),
-#   make_option(c("-w", "--table-w"), action="store", type='character', help="BigQuery table to write to"))
-# opt = parse_args(OptionParser(option_list=option_list))
-# 
-# bq_project <- opt$p
-# bq_ds <- opt$d
-# bq_table_r <- opt$r
-# bq_table_w <- opt$w
+option_list = list(
+  make_option(c("-p", "--project"), action = "store", type = 'character', help = "BigQuery project"),
+  make_option(c("-d", "--dataset"), action = "store", type = 'character', help = "BigQuery dataset"),
+  make_option(c("-i", "--in_table"), action = "store", type = 'character', help = "BigQuery table to read from"),
+  make_option(c("-o", "--out_table"), action = "store", type = 'character', help = "BigQuery table to write to"))
+opt = parse_args(OptionParser(option_list = option_list))
 
-bq_project <- "github-bioinformatics-157418"
-bq_ds <- "lit_search"
-bq_table_r <- "articles_mentioning_github"
-bq_table_w <- "eutils_metadata"
+bq_project <- opt$p
+bq_ds <- opt$d
+bq_table_r <- opt$i
+bq_table_w <- opt$o
 
 message(paste('BigQuery project:', bq_project))
 message(paste('BigQuery dataset:', bq_ds))
@@ -34,45 +29,47 @@ message(paste('BigQuery table to read:', bq_table_r))
 message(paste('BigQuery table to write:', bq_table_w))
 
 # Read repo name and minimal article info from BigQuery
-metadata_by_repo <- list_tabledata(project = bq_project, dataset = bq_ds, table = bq_table_r)
+metadata_by_repo <- list_tabledata(project = bq_project, dataset = bq_ds, table = bq_table_r) %>% filter(use_repo)
 
 # Table of article data to fill in for each repo
 article_data <- data.frame(num_res=NULL)
 
 # Iterate through the repos
 num_done <- 0
-for(i in 1:nrow(metadata_by_repo)) {
+for (i in 1:nrow(metadata_by_repo)) {
   # Print progress
-  num_done <<- num_done +1
-  if(num_done %% 100 == 0) {
+  num_done <<- num_done + 1
+  if (num_done %% 100 == 0) {
     message(paste('Completed', num_done, 'records.'))
   }
   
-  repo_name = metadata_by_repo[i, "repo_name"]
-  title = metadata_by_repo[i, "title"]
-  accession_num = metadata_by_repo[i, "accession_num"]
+  repo_name <- metadata_by_repo[i, "repo_name"]
+  title <- metadata_by_repo[i, "title"]
+  accession_num <- metadata_by_repo[i, "accession_num"]
   
   # Query EUtils
   # Number of results should be 1
   num_res <- 0
   # First search by uid
-  if(!is.na(accession_num)) {
+  if (!is.na(accession_num)) {
     query_txt <- paste(accession_num, "[uid]")
     search_query <- EUtilsSummary(query_txt)
     records <- EUtilsGet(search_query)
     num_res <- QueryCount(search_query)
   }
-  if(num_res != 1) {
+  if (num_res != 1) {
     # Try search by title
     query_txt <- paste(title, "[Title]")
     search_query <- EUtilsSummary(query_txt)
     records <- EUtilsGet(search_query)
     num_res <- QueryCount(search_query)
-    if(num_res != 1) {
-      message = paste('Skipping repo ', repo_name, '. Query returned ', num_res, ' results: ', query_txt, sep="")
-      message(message)
-      warning(message)
-      next
+    if (num_res != 1) {
+      if (num_res != 1) {
+        message = paste('Skipping repo ', repo_name, '. Query returned ', num_res, ' results: ', query_txt, sep = "")
+        message(message)
+        warning(message)
+        next
+      }
     }
   }
   
@@ -139,7 +136,7 @@ for(i in 1:nrow(metadata_by_repo)) {
 
 # Write the article data to a BigQuery table
 message(paste('Writing article data to table [', bq_project, ':', bq_ds, '.', bq_table_w, ']', sep = ''))
-if(exists_table(bq_project, bq_ds, bq_table_w)) {
+if (exists_table(bq_project, bq_ds, bq_table_w)) {
   warning(paste('Overwriting existing table: [', bq_project, ':', bq_ds, '.', bq_table_w, ']', sep = ''))
 }
 upload_job <- insert_upload_job(bq_project, bq_ds, bq_table_w, values = article_data, 
