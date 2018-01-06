@@ -121,6 +121,9 @@ for (i in 1:nrow(metadata_by_repo)) {
   lsdb <- unlist(xl[which(rownames(xl) == "LinkSetDb"), which(colnames(xl) == "LinkSet")])
   cited_by_pmc <- sum(names(lsdb) == "Link.Id")
   
+  # Today's date for citations
+  cited_by_pmc_date <- Sys.Date()
+  
   # Add the record to article data table
   article_data <- rbind(article_data, 
                         data.frame(repo_name, pmid, nlm_unique_id, article_id, journal, medline_ta,
@@ -129,7 +132,8 @@ for (i in 1:nrow(metadata_by_repo)) {
                                    pub_status, year_received, month_received, day_received,
                                    year_epublish, month_epublish, day_epublish, year_ppublish,
                                    month_ppublish, day_ppublish, year_pmc, month_pmc, day_pmc,
-                                   year_pubmed, month_pubmed, day_pubmed, cited_by_pmc, abstract))
+                                   year_pubmed, month_pubmed, day_pubmed, cited_by_pmc, 
+                                   cited_by_pmc_date, abstract))
   
 }
 
