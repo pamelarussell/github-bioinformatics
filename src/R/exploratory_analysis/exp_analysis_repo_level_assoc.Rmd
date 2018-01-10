@@ -882,6 +882,19 @@ repo_data$num_non_committing_authors <- sapply(repo_data$num_non_committing_auth
 rm(commits)
 ```
 
+```{r paper_topics}
+# Run topic modeling of article abstracts
+source("exp_analysis_topics.R")
+# Add each topic as a binary variable
+for(t in unique(abstract_top_topics$topic)) {
+  colname <- paste("topic_", t, sep = "")
+  df <- abstract_top_topics %>% filter(topic == t) %>% select(repo_name)
+  df[[colname]] <- TRUE
+  join_tbl(df)
+  repo_data[[colname]] <- sapply(repo_data[[colname]], na_to_false)
+}
+```
+
 ```{r associations}
 k <- ncol(repo_data)
 n_comparisons <- k * (k - 1)
@@ -949,4 +962,6 @@ for (i in 1:k) {
 rm(data1, data2, i, j, k, n_comparisons, name1, name2, res, x, record,
    pval_cutoff, jaccard, repos1, repos2)
 ```
+
+
 
