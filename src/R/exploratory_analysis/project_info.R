@@ -36,6 +36,9 @@ ds_lit_search <- "lit_search"
 table_repo_and_article <- "repo_and_article_curated"
 table_article_metadata <- "article_metadata_eutils"
 
+# Locally saved table of repo data
+repo_data_file <- "~/Dropbox/Documents/Github_mining/results/repo_data/repo_data.Rdata"
+
 
 
 

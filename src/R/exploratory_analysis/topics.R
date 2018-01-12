@@ -5,12 +5,32 @@ suppressPackageStartupMessages(library(tidytext))
 suppressPackageStartupMessages(library(tm))
 suppressPackageStartupMessages(library(topicmodels))
 suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(reshape2))
 source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/project_info.R")
 
 # Import article metadata
 article_data <- list_tabledata(project = proj, dataset = ds_lit_search, 
                                table = table_repo_and_article, max_pages = Inf) %>%
-  filter(use_repo)
+  filter(use_repo) %>% 
+  mutate(journal = gsub("\\.", "", tolower(journal)))
+
+# Map of journal to ISO abbreviation
+journal_to_iso_abbrev <- list_tabledata(project = proj, dataset = ds_lit_search, 
+                                        table = table_article_metadata, max_pages = Inf) %>%
+  select(journal, iso_abbrev) %>%
+  mutate(journal = gsub("\\.", "", tolower(journal)), iso_abbrev = gsub("\\.", "", tolower(iso_abbrev))) %>%
+  unique()
+
+# Also include the ISO abbreviation as a possible key
+iso_to_iso <- journal_to_iso_abbrev %>% 
+  mutate(x = iso_abbrev) %>% 
+  select(iso_abbrev, x) %>% 
+  rename(journal = iso_abbrev, iso_abbrev = x)
+
+journal_to_iso_abbrev <- unique(rbind(journal_to_iso_abbrev, iso_to_iso))
+
+# Add ISO abbrev to article_data
+article_data <- article_data %>% left_join(journal_to_iso_abbrev, by = "journal")
 
 # Make document term matrix
 dtm <- article_data %>% 
@@ -26,22 +46,6 @@ lda <- LDA(dtm, k = 10, control = list(seed = 1614))
 topics <- tidy(lda, matrix = "beta") %>%
   mutate(topic = paste0("topic", topic))
 
-# Function to plot top terms
-plot_top_terms <- function(topics) {
-  top_terms <- topics %>%
-    group_by(topic) %>%
-    top_n(10, beta) %>%
-    ungroup() %>%
-    arrange(topic, -beta)
-  
-  top_terms %>%
-    mutate(term = reorder(term, beta)) %>%
-    ggplot(aes(term, beta, fill = factor(topic))) +
-    geom_col(show.legend = FALSE) +
-    facet_wrap(~ topic, scales = "free") +
-    coord_flip()
-}
-
 # Terms that are highly associated with a single topic
 topics_specialized <- topics %>% 
   group_by(term) %>% 
@@ -49,18 +53,17 @@ topics_specialized <- topics %>%
   filter(beta == max_beta & log2(beta / second_beta) > 2) %>% 
   select(topic, term, beta)
 
-# Make plots
-plot_top_terms(topics)
-plot_top_terms(topics_specialized)
-
 # Classify abstracts
 abstract_top_topics <- tidy(lda, matrix = "gamma") %>% 
+  mutate(topic = paste0("topic", topic)) %>%
   rename(repo_name = document) %>%
   group_by(repo_name) %>%
   filter(gamma > 0.25)
 
-# Count number of repos associated with each topic
-num_repos_per_topic <- abstract_top_topics %>% 
-  group_by(topic) %>% 
-  summarize(total = n()) %>%
-  arrange(-total)
+
+
+
+
+
+
+

@@ -893,6 +893,9 @@ for(t in unique(abstract_top_topics$topic)) {
   join_tbl(df)
   repo_data[[colname]] <- sapply(repo_data[[colname]], na_to_false)
 }
+# Number of repos per topic
+num_repos_per_topic
+rm(abstract_top_topics, article_data, article_metadata, df, dtm, lda, num_repos_per_topic, topics, topics_specialized)
 ```
 
 ```{r associations}
@@ -963,5 +966,9 @@ rm(data1, data2, i, j, k, n_comparisons, name1, name2, res, x, record,
    pval_cutoff, jaccard, repos1, repos2)
 ```
 
-
+```{r save_data}
+# Save repo_data to a file
+repo_data_cached <- repo_data
+save(repo_data_cached, file = repo_data_file)
+```
 
