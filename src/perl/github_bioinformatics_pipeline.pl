@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-
+use File::Slurp;
 
 # ********************************************************************************************************
 # ********************************************   PARAMETERS   ********************************************
@@ -18,7 +18,7 @@ my $extract_repos_from_lit_search = 0;
 my $check_repo_existence = 0;
 
 # Query Eutils for article metadata
-my $query_eutils_article_metadata = 1;
+my $query_eutils_article_metadata = 0;
 
 # Use GitHub API to get repo data
 my $generate_language_bytes = 0;
@@ -42,6 +42,8 @@ my $run_extract_comments = 0;
 # Analyze frequency of code chunks
 my $run_code_chunk_frequency = 0;
 
+# Infer gender for project contributors
+my $infer_gender = 1;
 
 
 # -----------------------------------------------------------------
@@ -49,25 +51,6 @@ my $run_code_chunk_frequency = 0;
 # -----------------------------------------------------------------
 
 
-### BigQuery public data ###
-# Project
-my $bq_proj_public_data = "bigquery-public-data";
-# Datasets
-my $bq_ds_public_data_repos = "github_repos";
-# Tables
-my $bq_tb_public_data_commits = "commits";
-my $bq_tb_public_data_files = "files";
-my $bq_tb_public_data_contents = "contents";
-my $bq_tb_public_data_languages = "languages";
-my $bq_tb_public_data_licenses = "licenses";
-
-### GitHub archive ###
-# Project
-my $bq_proj_gh_archive = "githubarchive";
-# Datasets
-my $bq_ds_gh_archive_year = "year";
-
-### GitHub bioinformatics project ###
 # Project
 my $bq_proj_gh_bioinf = "github-bioinformatics-171721";
 # Datasets
@@ -103,6 +86,7 @@ my $bq_tb_test_cases_by_repo = "test_cases_by_repo"; # Test cases by repo
 my $bq_tb_commit_types = "commit_types"; # Commit types
 my $bq_tb_project_duration = "project_duration"; # Project duration
 my $bq_tb_num_devs_by_repo = "num_devs_by_repo"; # Number of commit authors by repo
+my $bq_tb_gender = "gender"; # Inferred gender of project contributors
 
 
 # -----------------------------------------------------------------
@@ -125,7 +109,7 @@ my $gcs_regex_csv = "contents-[0-9]+\.csv";
 # -----------------------------------------------------------------
 
 # Source directories
-my $src_dir = "~/Dropbox/Documents/Github_mining/src/";
+my $src_dir = "/Users/Pamela/Dropbox/Documents/Github_mining/src/";
 my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
@@ -145,22 +129,25 @@ my $script_run_bq_queries_analysis = "$src_dir_python/run_bq_queries_analysis.py
 my $script_extract_comments = "$src_dir_python/extract_comments.py";
 my $script_code_chunk_frequency = "$src_dir_python/code_chunk_frequency.py";
 my $script_gh_api_file_init_commit = "$src_dir_python/gh_api_file_init_commit.py";
+my $script_infer_gender = "$src_dir_R/gender/infer_gender.R";
 
 # Output directories
-my $out_results_dir = "/Users/prussell/Documents/Github_mining/results/";
+my $out_results_dir = "/Users/Pamela/Dropbox/Documents/Github_mining/results/";
 my $out_results_dir_cloc = "$out_results_dir/cloc/";
 
 # Literature search
-my $lit_search_metadata_dir = "/Users/prussell/Dropbox/github_mining/articles/article_metadata/";
-my $lit_search_pdf_dir = "/Users/prussell/Dropbox/github_mining/articles/pdfs/";
+my $lit_search_metadata_dir = "/Users/Pamela/Dropbox/github_mining/articles/article_metadata/";
+my $lit_search_pdf_dir = "/Users/Pamela/Dropbox/github_mining/articles/pdfs/";
 
+# Genderize.io API key
+my $genderize_key_file = "/Users/Pamela/Dropbox/Documents/Github_mining/key/genderize_api_key.txt"; # File containing single line with genderize.io API key
 
 # -----------------------------------------------------------------
 #                        External tools
 # -----------------------------------------------------------------
 
 my $python3 = "/Library/Frameworks/Python.framework/Versions/3.6/bin/python3";
-my $cloc_exec = "/Users/prussell/Software/cloc-1.72.pl";
+my $cloc_exec = "/Users/Pamela/Dropbox/Software/cloc-1.72.pl";
 
 
 # -----------------------------------------------------------------
@@ -300,6 +287,14 @@ if($run_code_chunk_frequency) {
 	run_cmmd($cmmd_code_chunk_freq);
 } else {print("\nSkipping step: analyze code chunk frequency\n")}
 
+# Analyze frequency of code chunks
+if($infer_gender) {
+	my $genderize_api_key = read_file($genderize_key_file);
+	my $cmmd_infer_gender = "Rscript $script_infer_gender --project $bq_proj_gh_bioinf --ds_gh $bq_ds_repos " .
+	"--commits $bq_tb_commits --out_ds $bq_ds_analysis_results --gender_table $bq_tb_gender --key $genderize_api_key";
+	run_cmmd($cmmd_infer_gender);
+} else {print("\nSkipping step: analyze code chunk frequency\n")}
+
 
 print("\n\nAll done: $0.\n\n");
 
@@ -325,15 +320,6 @@ sub run_cmmd {
 	system($cmmd);
 	if ( $? != 0 ) {die;}
 }
-
-
-
-
-
-
-
-
-
 
 
 

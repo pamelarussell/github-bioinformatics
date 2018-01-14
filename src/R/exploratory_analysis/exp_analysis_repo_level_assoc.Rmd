@@ -188,7 +188,7 @@ query <- paste("SELECT repo_name, journal, year, use_repo FROM [",
                proj, ":", ds_lit_search, ".", table_repo_and_article, "]", 
                sep="")
 join_tbl(
-  query_exec(query, project = proj) %>%
+  query_exec(query, project = proj, max_pages = Inf) %>%
     filter(use_repo == T) %>%
     select(repo_name, journal, year_published = year)
 )
