@@ -884,7 +884,7 @@ rm(commits)
 
 ```{r paper_topics}
 # Run topic modeling of article abstracts
-source("exp_analysis_topics.R")
+source("topics.R")
 # Add each topic as a binary variable
 for(t in unique(abstract_top_topics$topic)) {
   colname <- paste("topic_", t, sep = "")
