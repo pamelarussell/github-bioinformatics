@@ -1,9 +1,11 @@
 ---
-title: "gender"
+title: "Analysis of developer genders"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+## Environment setup
+
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
@@ -11,9 +13,13 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(RColorBrewer))
-setwd("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis")
-source("../project_info.R")
+setwd("~/Dropbox/Documents/Github_mining/paper/scripts/")
+source("../../src/R/project_info.R")
 ```
+
+## Load data from BigQuery
+
+Genders were inferred for each "valid" unique name of commit authors and committers.
 
 ```{r load_data}
 gender <- list_tabledata(project = proj, dataset = ds_analysis, table = table_gender)
@@ -38,6 +44,8 @@ commits <- commits %>%
   rename(committer_gender = gender)
 ```
 
+## Combine authors and committers into one table and look at gender breakdown
+
 ```{r people}
 authors <- commits %>% 
   select(author_name, author_gender) %>% 
@@ -55,6 +63,8 @@ people %>% group_by(gender) %>% summarize(num_people = n())
 # Gender breakdown of names we tried to call a gender on
 gender %>% group_by(gender) %>% summarize(num_people = n())
 ```
+
+## Gender breakdown of authors and committers by repo
 
 ```{r summaries}
 author_summary <- commits %>% 
@@ -76,6 +86,8 @@ commit_summary <- commits %>%
   ungroup %>% 
   data.frame()
 ```
+
+## Calculate Shannon index of diversity
 
 ```{r diversity}
 # Max proportion of no gender calls to analyze a repo
@@ -148,6 +160,8 @@ diversity_summary <- author_summary %>%
               rename(shannon_commits = shannon), by = "repo_name")
 ```
 
+## Summarize people and commits by gender
+
 ```{r people_summary_figure}
 gender_summary_people <- people %>% 
   group_by(gender) %>% 
@@ -185,6 +199,8 @@ ggplot(summary_tidy, aes(x = stat, y = p, fill = Gender)) +
   scale_fill_manual(values = c(pal[3], pal[4]))
 ```
 
+## Summarize number of repos by team composition
+
 ```{r plot_buckets}
 ggplot(author_summary %>% filter(!is.na(team_type)), aes(x = team_type)) + 
   geom_bar(fill = "red3") +
@@ -197,6 +213,8 @@ ggplot(author_summary %>% filter(!is.na(team_type)), aes(x = team_type)) +
         axis.text.x = element_text(size = 12, angle = 45, hjust = 1)) +
   ggtitle("Developer team composition")
 ```
+
+## Plot diversity of developers and commits
 
 ```{r diversity_plot_dev_commit}
 shannon_plt_data <- diversity_summary %>% 
@@ -223,6 +241,8 @@ ggplot(shannon_plt_data, aes(x = shannon_authors, y = shannon_commits, size = nu
   labs(size = "Number of repos") +
   scale_size(breaks = c(1, unname(unlist(shannon_plt_data[1,3]))))
 ```
+
+## Plot diversity of developers vs team size
 
 ```{r diversity_plot_team_size}
 team_size_plt_data <- author_summary %>% 
