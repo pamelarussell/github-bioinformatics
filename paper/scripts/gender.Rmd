@@ -168,7 +168,7 @@ gender_summary_people <- people %>%
   summarize(n = n()) %>% 
   filter(gender %in% c("female", "male")) %>% 
   mutate(p = n / sum(n)) %>%
-  mutate(stat = "Unique names")
+  mutate(stat = "Developers")
 gender_summary_commit_author <- commits %>%
   group_by(author_gender) %>% 
   summarize(n = n()) %>% 
@@ -180,7 +180,7 @@ gender_summary_commit_author <- commits %>%
 summary_tidy <- rbind(gender_summary_commit_author, gender_summary_people) %>%
   rename(Gender = gender)
 # Reorder the factors
-summary_tidy <- within(summary_tidy, stat <- factor(stat, levels=c("Unique names", "Commits")))
+summary_tidy <- within(summary_tidy, stat <- factor(stat, levels=c("Developers", "Commits")))
 # Colors
 pal <- brewer.pal(7, "Set1")
 ggplot(summary_tidy, aes(x = stat, y = p, fill = Gender)) + 
@@ -188,21 +188,22 @@ ggplot(summary_tidy, aes(x = stat, y = p, fill = Gender)) +
   geom_text(aes(label=round(p, 2)), position=position_dodge(width=0.9), vjust=-0.25) +
   theme_bw() +
   theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.text.y = element_blank(),
         plot.title = element_text(size = 18),
         axis.text.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14)) +
-  ggtitle("People and commits by gender") +
+  ggtitle("Developers and commits by gender") +
+  ylab("Proportion of total") +
   scale_fill_manual(values = c(pal[3], pal[4]))
 ```
 
 ## Summarize number of repos by team composition
 
 ```{r plot_buckets}
-ggplot(author_summary %>% filter(!is.na(team_type)), aes(x = team_type)) + 
+bucket_plot_data <- author_summary %>% filter(!is.na(team_type))
+ggplot(bucket_plot_data, aes(x = team_type)) + 
   geom_bar(fill = "red3") +
   theme_bw() +
   ylab("Number of repos") +
@@ -211,7 +212,7 @@ ggplot(author_summary %>% filter(!is.na(team_type)), aes(x = team_type)) +
         plot.title = element_text(size = 18),
         axis.text.y = element_text(size = 12),
         axis.text.x = element_text(size = 12, angle = 45, hjust = 1)) +
-  ggtitle("Developer team composition")
+  ggtitle(paste("Developer team composition (", nrow(bucket_plot_data), " teams)", sep = ""))
 ```
 
 ## Plot diversity of developers and commits
@@ -227,7 +228,7 @@ ggplot(shannon_plt_data, aes(x = shannon_authors, y = shannon_commits, size = nu
   geom_point(color = "red3") +
   xlab("Shannon diversity index: unique commit authors") +
   ylab("Shannon diversity index: individual commits") +
-  ggtitle("Gender diversity of developers and commits") +
+  ggtitle(paste("Gender diversity of developers and commits (", sum(shannon_plt_data$num_repos), " teams)", sep = "")) +
   scale_x_continuous(limits = c(0, 0.7)) +
   scale_y_continuous(limits = c(0, 0.7)) +
   theme_bw() +
@@ -257,7 +258,7 @@ ggplot(team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos)) +
   geom_point(color = "red3") +
   xlab("Team size (female + male)") +
   ylab("Shannon diversity index: unique commit authors") +
-  ggtitle("Gender diversity and team size") +
+  ggtitle(paste("Gender diversity and team size (", sum(team_size_plt_data$num_repos), " teams)", sep = "")) +
   theme_bw() +
   theme(plot.title = element_text(size = 18),
         axis.title = element_text(size = 14),
