@@ -13,8 +13,8 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(RColorBrewer))
-setwd("~/Dropbox/Documents/Github_mining/paper/scripts/")
 source("../../src/R/project_info.R")
+setwd(paper_scripts_dir)
 ```
 
 ## Load data from BigQuery
@@ -22,7 +22,7 @@ source("../../src/R/project_info.R")
 Genders were inferred for each "valid" unique name of commit authors and committers.
 
 ```{r load_data}
-gender <- list_tabledata(project = proj, dataset = ds_analysis, table = table_gender)
+gender <- list_tabledata(project = proj, dataset = ds_analysis, table = table_gender_by_name)
 query <- paste("
 SELECT
   repo_name,
@@ -42,19 +42,44 @@ commits <- commits %>%
   rename(author_gender = gender)  %>% 
   left_join(gender %>% select(full_name, gender), by = c("committer_name" = "full_name")) %>% 
   rename(committer_gender = gender)
+
+# Make a version of commits table with null author and committer logins filled in with author-specific info so they can be collapsed
+# Name fields are never null
+commits_no_null_login <- commits
+null_author_login <- which(is.na(commits_no_null_login$author_login))
+null_committer_login <- which(is.na(commits_no_null_login$committer_login))
+commits_no_null_login[null_author_login, "author_login"] <- commits_no_null_login[null_author_login, "author_name"]
+commits_no_null_login[null_committer_login, "committer_login"] <- commits_no_null_login[null_committer_login, "committer_name"]
 ```
 
 ## Combine authors and committers into one table and look at gender breakdown
 
 ```{r people}
-authors <- commits %>% 
-  select(author_name, author_gender) %>% 
-  unique() %>% 
-  rename(name = author_name, gender = author_gender)
-committers <- commits %>% 
-  select(committer_name, committer_gender) %>% 
-  unique() %>% 
-  rename(name = committer_name, gender = committer_gender)
+# Collapse by name and login, keeping a version with a gender call where possible
+authors <- commits_no_null_login %>% 
+  select(author_login, author_name, author_gender) %>% 
+  group_by(author_name) %>% 
+  arrange(author_gender) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  group_by(author_login) %>% 
+  arrange(author_gender) %>% 
+  filter(row_number() == 1) %>%
+  rename(name = author_name, gender = author_gender) %>%
+  ungroup() %>%
+  select(name, gender)
+committers <- commits_no_null_login %>% 
+  select(committer_login, committer_name, committer_gender) %>% 
+  group_by(committer_name) %>% 
+  arrange(committer_gender) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  group_by(committer_login) %>% 
+  arrange(committer_gender) %>% 
+  filter(row_number() == 1) %>%
+  rename(name = committer_name, gender = committer_gender) %>%
+  ungroup() %>%
+  select(name, gender)
 people <- rbind(authors, committers) %>% unique() %>% arrange(name)
 
 # Gender breakdown of people
@@ -67,7 +92,16 @@ gender %>% group_by(gender) %>% summarize(num_people = n())
 ## Gender breakdown of authors and committers by repo
 
 ```{r summaries}
-author_summary <- commits %>% 
+author_summary <- commits_no_null_login %>% 
+  select(repo_name, author_login, author_name, author_gender) %>% 
+  group_by(repo_name, author_name) %>% 
+  arrange(author_gender) %>% 
+  filter(row_number() == 1) %>% 
+  ungroup() %>% 
+  group_by(repo_name, author_login) %>% 
+  arrange(author_gender) %>% 
+  filter(row_number() == 1) %>%
+  ungroup() %>%
   select(repo_name, author_name, author_gender) %>% 
   unique() %>% 
   group_by(repo_name, author_gender) %>% 
@@ -77,7 +111,7 @@ author_summary <- commits %>%
   ungroup() %>%
   data.frame()
 
-commit_summary <- commits %>% 
+commit_summary <- commits_no_null_login %>% 
   select(repo_name, author_gender) %>% 
   group_by(repo_name, author_gender) %>% 
   summarize(num_commits = n()) %>% 
@@ -169,7 +203,7 @@ gender_summary_people <- people %>%
   filter(gender %in% c("female", "male")) %>% 
   mutate(p = n / sum(n)) %>%
   mutate(stat = "Developers")
-gender_summary_commit_author <- commits %>%
+gender_summary_commit_author <- commits_no_null_login %>%
   group_by(author_gender) %>% 
   summarize(n = n()) %>% 
   rename(gender = author_gender) %>%
@@ -275,14 +309,14 @@ ggplot(team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos)) +
 ```{r push_to_bq}
 upload_job_authors <- insert_upload_job(project = proj, 
                                         dataset = ds_analysis, 
-                                        table = "gender_authors", 
+                                        table = table_gender_authors, 
                                         values = author_summary,
                                         create_disposition = "CREATE_IF_NEEDED", 
                                         write_disposition = "WRITE_TRUNCATE")
 
 upload_job_commits <- insert_upload_job(project = proj, 
                                         dataset = ds_analysis, 
-                                        table = "gender_commits", 
+                                        table = table_gender_commits, 
                                         values = commit_summary,
                                         create_disposition = "CREATE_IF_NEEDED", 
                                         write_disposition = "WRITE_TRUNCATE")
