@@ -6,7 +6,7 @@ suppressPackageStartupMessages(library(tm))
 suppressPackageStartupMessages(library(topicmodels))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(reshape2))
-source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/project_info.R")
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 
 # Import article metadata
 article_data <- list_tabledata(project = proj, dataset = ds_lit_search, 

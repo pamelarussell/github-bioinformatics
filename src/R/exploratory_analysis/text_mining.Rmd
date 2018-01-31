@@ -20,7 +20,7 @@ suppressPackageStartupMessages(library(gridExtra))
 suppressPackageStartupMessages(library(grid))
 suppressPackageStartupMessages(library(tm))
 setwd("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis")
-source("project_info.R")
+source("../project_info.R")
 ```
 
 # Comments

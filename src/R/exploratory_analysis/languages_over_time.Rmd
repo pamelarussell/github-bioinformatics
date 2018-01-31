@@ -18,7 +18,7 @@ suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(bigrquery))
 setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
 rm(list=ls())
-source("project_info.R")
+source("../project_info.R")
 top_langs <- c("C/C++ Header",
                "JavaScript",
                "Java",
