@@ -2,6 +2,10 @@
 # Project name
 proj <- "github-bioinformatics-171721"
 
+# Local structure
+paper_scripts_dir <- "~/Dropbox/Documents/Github_mining/paper/scripts/"
+saved_repo_features <- "~/Dropbox/Documents/Github_mining/paper/data/repo_features.txt"
+
 # Data from GitHub API
 ds_gh <- "repos"
 table_pr <- "pull_requests"
@@ -14,6 +18,7 @@ table_commits <- "commits"
 
 # Data from analysis results
 ds_analysis <- "analysis"
+table_repo_features <- "repo_features"
 table_loc_by_repo <- "lines_of_code_by_repo"
 table_code_chunk_freq_10_50 <- "code_chunk_freq_10_50"
 table_code_chunk_freq_5_80 <- "code_chunk_freq_5_80"
@@ -24,7 +29,7 @@ table_num_langs_by_repo <- "num_langs_by_repo"
 table_num_devs_by_repo <- "num_devs_by_repo"
 table_lang_bytes_by_repo <- "language_bytes_by_repo"
 table_test_cases <- "test_cases"
-table_gender <- "gender"
+table_gender_by_name <- "gender_by_name"
 table_gender_authors <- "gender_authors"
 table_gender_commits <- "gender_commits"
 

@@ -47,8 +47,6 @@ parser.add_argument('--tb_commit_types', action = 'store', dest = 'table_commit_
                     help = 'BigQuery table for commit types')
 parser.add_argument('--tb_project_duration', action = 'store', dest = 'table_project_duration', required = True,
                     help = 'BigQuery table for project duration')
-parser.add_argument('--tb_num_devs_by_repo', action = 'store', dest = 'table_num_devs_by_repo', required = True,
-                    help = 'BigQuery table for number of devs by repo')
 
 args = parser.parse_args()
     
@@ -73,7 +71,6 @@ table_test_cases = args.table_test_cases
 table_test_cases_by_repo = args.table_test_cases_by_repo
 table_commit_types = args.table_commit_types
 table_project_duration = args.table_project_duration
-table_num_devs_by_repo = args.table_num_devs_by_repo
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 # Get BigQuery client
@@ -131,11 +128,6 @@ run_query_and_save_results(client, build_query_project_duration(proj, gh_api_dat
 run_query_and_save_results(client, build_query_lines_of_code_by_repo(proj, gh_api_dataset, table_files, res_dataset, table_lines_of_code_file), 
                            res_dataset, table_lines_of_code_repo)
 
-# Number of developers by repo
-# This is the number of commit *authors*.
-# Authors are identified by their login.
-run_query_and_save_results(client, build_query_num_devs_by_repo(proj, gh_api_dataset, table_commits), 
-                           res_dataset, table_num_devs_by_repo)
 
 print('\nAll done: %s.\n\n' % os.path.basename(__file__))
 

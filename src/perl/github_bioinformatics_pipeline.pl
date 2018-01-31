@@ -85,8 +85,7 @@ my $bq_tb_test_cases = "test_cases"; # Test cases
 my $bq_tb_test_cases_by_repo = "test_cases_by_repo"; # Test cases by repo
 my $bq_tb_commit_types = "commit_types"; # Commit types
 my $bq_tb_project_duration = "project_duration"; # Project duration
-my $bq_tb_num_devs_by_repo = "num_devs_by_repo"; # Number of commit authors by repo
-my $bq_tb_gender = "gender"; # Inferred gender of project contributors
+my $bq_tb_gender = "gender_by_name"; # Inferred gender of project contributors
 
 
 # -----------------------------------------------------------------
@@ -250,8 +249,7 @@ if($run_bq_analysis_queries) {
 	"--tb_test_cases $bq_tb_test_cases " .
 	"--tb_test_cases_by_repo $bq_tb_test_cases_by_repo " .
 	"--tb_commit_types $bq_tb_commit_types " .
-	"--tb_project_duration $bq_tb_project_duration " .
-	"--tb_num_devs_by_repo $bq_tb_num_devs_by_repo ")
+	"--tb_project_duration $bq_tb_project_duration ")
 } else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
 	"save results to tables\n")}
 

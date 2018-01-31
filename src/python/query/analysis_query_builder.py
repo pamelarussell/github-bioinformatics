@@ -240,31 +240,6 @@ def build_query_lines_of_code_by_repo(proj, ds_files, table_files, ds_loc, table
     """ % (proj, ds_files, table_files, proj, ds_loc, table_loc)
     
     
-# Number of developers by repo
-# This is the number of commit *authors*.
-# Authors are identified by their login.
-def build_query_num_devs_by_repo(proj, dataset, table):
-    return """
-SELECT
-  repo_name,
-  COUNT(*) AS num_commit_authors
-FROM (
-  SELECT
-    repo_name,
-    author_login
-  FROM
-    [%s:%s.%s]
-  WHERE
-    author_login IS NOT NULL
-  GROUP BY
-    repo_name,
-    author_login)
-GROUP BY
-  repo_name
-ORDER BY
-  num_commit_authors DESC   """ % (proj, dataset, table)
-    
-    
     
     
     
