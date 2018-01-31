@@ -270,7 +270,23 @@ ggplot(team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos)) +
   scale_size(breaks = c(1, seq(40, most_repos - most_repos %% 40, by = 40)))
 ```
 
+## Push repo-level results to BigQuery tables
 
+```{r push_to_bq}
+upload_job_authors <- insert_upload_job(project = proj, 
+                                        dataset = ds_analysis, 
+                                        table = "gender_authors", 
+                                        values = author_summary,
+                                        create_disposition = "CREATE_IF_NEEDED", 
+                                        write_disposition = "WRITE_TRUNCATE")
+
+upload_job_commits <- insert_upload_job(project = proj, 
+                                        dataset = ds_analysis, 
+                                        table = "gender_commits", 
+                                        values = commit_summary,
+                                        create_disposition = "CREATE_IF_NEEDED", 
+                                        write_disposition = "WRITE_TRUNCATE")
+```
 
 
 
