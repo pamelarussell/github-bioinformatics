@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, 
+knitr::opts_chunk$set(echo = TRUE, 
                       message = TRUE,
                       fig.width = 11,
                       fig.height = 8)
@@ -16,9 +16,8 @@ suppressPackageStartupMessages(library(parsedate))
 suppressPackageStartupMessages(library(scales))
 suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(bigrquery))
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
 rm(list=ls())
-source("../project_info.R")
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 top_langs <- c("C/C++ Header",
                "JavaScript",
                "Java",

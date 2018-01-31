@@ -5,6 +5,7 @@ proj <- "github-bioinformatics-171721"
 # Local structure
 paper_scripts_dir <- "~/Dropbox/Documents/Github_mining/paper/scripts/"
 saved_repo_features <- "~/Dropbox/Documents/Github_mining/paper/data/repo_features.txt"
+load_repo_features <- function() {read.table(saved_repo_features, header = T, sep = "\t")}
 
 # Data from GitHub API
 ds_gh <- "repos"
@@ -32,6 +33,7 @@ table_test_cases <- "test_cases"
 table_gender_by_name <- "gender_by_name"
 table_gender_authors <- "gender_authors"
 table_gender_commits <- "gender_commits"
+table_comments <- "comments"
 
 # Programming languages
 ds_lang <- "languages"

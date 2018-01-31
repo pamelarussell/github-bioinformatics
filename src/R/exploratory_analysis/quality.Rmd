@@ -10,8 +10,7 @@ knitr::opts_chunk$set(echo = F, warning = F, message = F)
 
 ```{r echo = F}
 # Environment setup
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
-source("quality.R")
+source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/quality.R")
 ```
 
 ```{r}

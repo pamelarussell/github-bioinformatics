@@ -1,0 +1,255 @@
+---
+title: "gender"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(RColorBrewer))
+setwd("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis")
+source("../project_info.R")
+```
+
+```{r load_data}
+gender <- list_tabledata(project = proj, dataset = ds_analysis, table = table_gender)
+query <- paste("
+SELECT
+  repo_name,
+  author_login,
+  author_id,
+  author_name,
+  committer_login,
+  committer_id,
+  committer_name,
+  commit_message
+FROM
+  [", proj, ":", ds_gh, ".", table_commits, "]
+", sep = "")
+commits <- query_exec(query, project = proj, max_pages = Inf)
+commits <- commits %>% 
+  left_join(gender %>% select(full_name, gender), by = c("author_name" = "full_name")) %>% 
+  rename(author_gender = gender)  %>% 
+  left_join(gender %>% select(full_name, gender), by = c("committer_name" = "full_name")) %>% 
+  rename(committer_gender = gender)
+```
+
+```{r people}
+authors <- commits %>% 
+  select(author_name, author_gender) %>% 
+  unique() %>% 
+  rename(name = author_name, gender = author_gender)
+committers <- commits %>% 
+  select(committer_name, committer_gender) %>% 
+  unique() %>% 
+  rename(name = committer_name, gender = committer_gender)
+people <- rbind(authors, committers) %>% unique() %>% arrange(name)
+
+# Gender breakdown of people
+people %>% group_by(gender) %>% summarize(num_people = n())
+
+# Gender breakdown of names we tried to call a gender on
+gender %>% group_by(gender) %>% summarize(num_people = n())
+```
+
+```{r summaries}
+author_summary <- commits %>% 
+  select(repo_name, author_name, author_gender) %>% 
+  unique() %>% 
+  group_by(repo_name, author_gender) %>% 
+  summarize(unique_author_names = n()) %>% 
+  spread(author_gender, unique_author_names, fill = 0) %>%
+  rename(no_gender = "<NA>") %>%
+  ungroup() %>%
+  data.frame()
+
+commit_summary <- commits %>% 
+  select(repo_name, author_gender) %>% 
+  group_by(repo_name, author_gender) %>% 
+  summarize(num_commits = n()) %>% 
+  spread(author_gender, num_commits, fill = 0) %>% 
+  rename(no_gender = "<NA>") %>% 
+  ungroup %>% 
+  data.frame()
+```
+
+```{r diversity}
+# Max proportion of no gender calls to analyze a repo
+max_no_gender <- 0.25
+
+# Classify the repo by its gender breakdown
+classify <- function(male, female, na) {
+  if(na / (male + female + na) > max_no_gender) NA
+  else {
+    if (total == 1) {
+      if (male == 1) "Solo male"
+      else if(female == 1) "Solo female"
+      else NA
+    } else {
+      if (male == 0) "All female"
+      else if (female == 0) "All male"
+      else if (male > female) "Majority male"
+      else if (female > male) "Majority female"
+      else "Equal"
+    }
+  }
+}
+
+# Shannon index of diversity
+# counts is vector of category counts
+shannon <- function(counts) {
+  counts <- counts[which(counts != 0)]
+  if(length(counts) == 0) 0
+  else {
+    proportions <- counts / sum(counts)
+    -1 * sum(sapply(proportions, function(x) {x * log(x)}))
+  }
+}
+
+# Add Shannon index and team type to repo summary
+author_summary$team_type <- NA
+author_summary$shannon <- NA
+for (i in 1:nrow(author_summary)) {
+  f <- unlist(unname(author_summary[i, "female"]))
+  m <- unlist(unname(author_summary[i, "male"]))
+  ng <- unlist(unname(author_summary[i, "no_gender"]))
+  # Only classify repos with sufficient gender calls
+  total <- m + f + ng
+  if (ng / total > max_no_gender) next
+  s <- shannon(c(f, m))
+  author_summary[i, "team_type"] <- classify(m, f, ng)
+  author_summary[i, "shannon"] <- s
+}
+author_summary <- within(author_summary, 
+                         team_type <- factor(team_type, levels=names(sort(table(team_type), decreasing=TRUE))))
+
+# Add Shannon index to commit summary
+commit_summary$shannon <- NA
+for (i in 1:nrow(commit_summary)) {
+  f <- unlist(unname(commit_summary[i, "female"]))
+  m <- unlist(unname(commit_summary[i, "male"]))
+  ng <- unlist(unname(commit_summary[i, "no_gender"]))
+  total <- m + f + ng
+  if (ng / total > 0.25) next
+  s <- shannon(c(f, m))
+  commit_summary[i, "shannon"] <- s
+}
+
+# Join diversity of people and commits
+diversity_summary <- author_summary %>% 
+  select(repo_name, shannon) %>% 
+  rename(shannon_authors = shannon) %>%
+  left_join(commit_summary %>% 
+              select(repo_name, shannon) %>% 
+              rename(shannon_commits = shannon), by = "repo_name")
+```
+
+```{r people_summary_figure}
+gender_summary_people <- people %>% 
+  group_by(gender) %>% 
+  summarize(n = n()) %>% 
+  filter(gender %in% c("female", "male")) %>% 
+  mutate(p = n / sum(n)) %>%
+  mutate(stat = "Unique names")
+gender_summary_commit_author <- commits %>%
+  group_by(author_gender) %>% 
+  summarize(n = n()) %>% 
+  rename(gender = author_gender) %>%
+  filter(gender %in% c("female", "male")) %>% 
+  mutate(p = n / sum(n)) %>%
+  mutate(stat = "Commits")
+
+summary_tidy <- rbind(gender_summary_commit_author, gender_summary_people) %>%
+  rename(Gender = gender)
+# Reorder the factors
+summary_tidy <- within(summary_tidy, stat <- factor(stat, levels=c("Unique names", "Commits")))
+# Colors
+pal <- brewer.pal(7, "Set1")
+ggplot(summary_tidy, aes(x = stat, y = p, fill = Gender)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label=round(p, 2)), position=position_dodge(width=0.9), vjust=-0.25) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        plot.title = element_text(size = 18),
+        axis.text.x = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14)) +
+  ggtitle("People and commits by gender") +
+  scale_fill_manual(values = c(pal[3], pal[4]))
+```
+
+```{r plot_buckets}
+ggplot(author_summary %>% filter(!is.na(team_type)), aes(x = team_type)) + 
+  geom_bar(fill = "red3") +
+  theme_bw() +
+  ylab("Number of repos") +
+  theme(axis.title.x = element_blank(),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 18),
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12, angle = 45, hjust = 1)) +
+  ggtitle("Developer team composition")
+```
+
+```{r diversity_plot_dev_commit}
+shannon_plt_data <- diversity_summary %>% 
+  select(shannon_authors, shannon_commits) %>% 
+  filter(!is.na(shannon_authors) & !is.na(shannon_commits)) %>% 
+  group_by(shannon_authors, shannon_commits) %>% 
+  summarize(num_repos = n()) %>% 
+  arrange(-num_repos)
+ggplot(shannon_plt_data, aes(x = shannon_authors, y = shannon_commits, size = num_repos)) + 
+  geom_point(color = "red3") +
+  xlab("Shannon diversity index: unique commit authors") +
+  ylab("Shannon diversity index: individual commits") +
+  ggtitle("Gender diversity of developers and commits") +
+  scale_x_continuous(limits = c(0, 0.7)) +
+  scale_y_continuous(limits = c(0, 0.7)) +
+  theme_bw() +
+  theme(plot.title = element_text(size = 18),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.position = c(0.15, 0.85),
+        legend.background = element_rect(color = "black", size = 0.3)) +
+  labs(size = "Number of repos") +
+  scale_size(breaks = c(1, unname(unlist(shannon_plt_data[1,3]))))
+```
+
+```{r diversity_plot_team_size}
+team_size_plt_data <- author_summary %>% 
+  mutate(team_size = male + female) %>% 
+  select(team_size, shannon) %>% 
+  filter(!is.na(shannon)) %>% 
+  group_by(team_size, shannon) %>% 
+  summarize(num_repos = n()) %>% 
+  arrange(-num_repos)
+most_repos <- unname(unlist(team_size_plt_data[1,3]))
+ggplot(team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos)) + 
+  geom_point(color = "red3") +
+  xlab("Team size (female + male)") +
+  ylab("Shannon diversity index: unique commit authors") +
+  ggtitle("Gender diversity and team size") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 18),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.background = element_rect(color = "black", size = 0.3)) +
+  labs(size = "Number of repos") +
+  scale_size(breaks = c(1, seq(40, most_repos - most_repos %% 40, by = 40)))
+```
+
+
+
+
+

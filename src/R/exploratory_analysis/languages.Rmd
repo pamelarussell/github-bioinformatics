@@ -9,26 +9,9 @@ knitr::opts_chunk$set(echo = T, warning = F, message = F)
 
 
 ```{r echo = F}
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
-source("languages.R")
+source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/languages.R")
+repo_level_data <- load_repo_features()
 ```
-
-
-```{r}
-# Number of languages
-qplot(repo_level_data$num_languages,
-      geom = "histogram",
-      binwidth = 1,
-      main = "Histogram of number of languages",
-      xlab = "Number of languages",
-      ylab = "Number of repos",
-      fill = I("darkmagenta")) +
-  theme(plot.title = element_text(size = 24),
-        axis.title.x = element_text(size = 16),
-        axis.title.y = element_text(size = 16))
-```
-
-
 
 
 ```{r}

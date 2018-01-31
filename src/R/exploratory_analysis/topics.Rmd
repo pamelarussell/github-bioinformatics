@@ -5,7 +5,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/topics.R")
+source("~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R")
 ```
 
 ```{r plot_topics}

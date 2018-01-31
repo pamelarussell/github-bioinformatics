@@ -12,9 +12,8 @@ rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
-source("project_info.R")
-source("join_repo_level_data.R")
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+repo_level_data <- load_repo_features()
 ```
 
 

@@ -13,8 +13,7 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(RColorBrewer))
-source("../../src/R/project_info.R")
-setwd(paper_scripts_dir)
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 ```
 
 ## Load data from BigQuery

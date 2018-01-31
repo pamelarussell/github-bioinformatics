@@ -3,8 +3,7 @@ suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(tidyr))
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
-source("project_info.R")
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 
 # Function to load duplicated chunks
 load_dup_chunks <- function(table) {

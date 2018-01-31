@@ -3,9 +3,7 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(googlesheets))
 suppressPackageStartupMessages(library(scales))
-setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
-source("project_info.R")
-source("join_repo_level_data.R")
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 
 # Load the data from BigQuery
 repos_by_lang <- list_tabledata(project = proj, dataset = ds_analysis, table = "num_repos_by_lang") %>%

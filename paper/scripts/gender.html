@@ -131,14 +131,14 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(tidyr))
 suppressPackageStartupMessages(library(RColorBrewer))
-source(&quot;../../src/R/project_info.R&quot;)
-setwd(paper_scripts_dir)</code></pre>
+source(&quot;~/Dropbox/Documents/Github_mining/src/R/project_info.R&quot;)</code></pre>
 </div>
 <div id="load-data-from-bigquery" class="section level2">
 <h2>Load data from BigQuery</h2>
 <p>Genders were inferred for each “valid” unique name of commit authors and committers.</p>
-<pre class="r"><code>gender &lt;- list_tabledata(project = proj, dataset = ds_analysis, table = table_gender_by_name)
-query &lt;- paste(&quot;
+<pre class="r"><code>gender &lt;- list_tabledata(project = proj, dataset = ds_analysis, table = table_gender_by_name)</code></pre>
+<pre><code>## Auto-refreshing stale OAuth token.</code></pre>
+<pre class="r"><code>query &lt;- paste(&quot;
 SELECT
   repo_name,
   author_login,

@@ -1,0 +1,241 @@
+---
+title: 'Exploratory analysis: text mining'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+```{r}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(tidytext))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(hunspell))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(tm))
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+```
+
+# Comments
+
+```{r cache = T}
+# Load comments data from BigQuery
+
+
+# Query to add language to comments table
+query <- paste('
+                  SELECT id, [language], comments
+                  FROM
+                  [', proj, ':', ds_analysis, '.', table_comments, '] AS comments
+                  INNER JOIN (
+                  SELECT id AS loc_id, [language] 
+                  FROM [', proj, ':', ds_analysis, '.', table_loc, ']) AS lines_of_code
+                  ON comments.id = loc_id
+                  GROUP BY id, [language], comments', 
+               sep = '')
+
+# Run query
+comments_data <- query_exec(query, project = proj, max_pages = Inf)
+```
+
+### Tf-idf of comments by language
+
+```{r fig.width = 11, fig.height = 8.5, cache = T}
+# tf-idf by language
+language_words <- comments_data %>%
+  filter(language == 'R' | language == 'Java' | language == 'Perl' |
+           language == 'MATLAB' | language == 'C' | language == 'Scala') %>%
+  unnest_tokens(word, comments) %>%
+  filter(hunspell_check(word)) %>%
+  count(language, word, sort = T) %>%
+  ungroup() %>%
+  bind_tf_idf(word, language, n) %>%
+  arrange(desc(tf_idf))
+
+# Top words by tf-idf
+top_tf_idf <- language_words %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>%
+  mutate(language = factor(language, levels = sort(unique(language))))
+  
+# Function to make a plot for one language
+mk_plt <- function(lang) {
+  
+  lang_data <- top_tf_idf %>% 
+    filter(language == lang) %>%
+    top_n(10) %>%
+    arrange(desc(tf_idf))
+  
+  ggplot(data = lang_data, aes(x = reorder(word, tf_idf), y = tf_idf)) +
+    geom_col(fill = 'steelblue') +
+    labs(title = lang, x = NULL, y = NULL) +
+    scale_y_continuous(labels = comma, limits = c(0, 0.006)) +
+    theme(legend.position="none",
+          axis.text = element_text(size = 14),
+          plot.title = element_text(hjust = 0.5, size = 24)) + 
+    coord_flip()
+  
+}
+
+# Make plot for all languages
+plots <- lapply(sort(unique(top_tf_idf$language)), mk_plt)
+grid.arrange(grobs = plots, ncol = 3, 
+             top=textGrob("Top scoring words within comments by tf-idf", 
+                          gp=gpar(fontsize=28, font = 8)))
+```
+
+# Article abstracts
+
+```{r cache = T}
+# Load abstracts data from BigQuery
+# Query to join language to articles table
+query <- paste('
+                SELECT
+                  repo_name,
+                  language_name,
+                  abstract
+                FROM
+                  [', proj, ':', ds_gh, '.', table_art, '] AS abstracts
+                INNER JOIN (
+                  SELECT
+                    repo_name AS lang_repo_name,
+                    language_name
+                  FROM
+                    [', proj, ':', ds_gh, '.', table_lang, ']) AS languages
+                ON
+                  abstracts.repo_name = lang_repo_name
+                GROUP BY
+                  repo_name,
+                  language_name,
+                  abstract
+                ORDER BY
+                  repo_name               
+               ', sep = '')
+
+# Run query
+abstracts_data <- query_exec(query, project = proj, max_pages = Inf)
+```
+
+### Tf-idf of abstracts
+
+Each "document" corresponds to one programming language and is all the abstracts for repos that have any code in that language, according to the "languages" table in the GitHub BigQuery dataset.
+
+```{r fig.width = 13, fig.height = 15, cache = T}
+# Function to get tf-idf by language
+# ngram_n: N for ngrams (1 if single words)
+# Filter_spellcheck: filter tokens with spellchecker
+language_words_tfidf <- function(ngram_n, filter_spellcheck) {
+  
+  tokens <- abstracts_data %>%
+    select(language_name, abstract) %>%
+    # Remove non-meaningful "languages"
+    filter(language_name != 'HTML' & language_name != 'CSS' & language_name != 'Makefile' &
+             language_name != 'TeX') %>%
+    # Count number of abstracts per language
+    group_by(language_name) %>%
+    mutate(num_abstracts_for_lang = n()) %>%
+    # Remove languages with too few abstracts
+    filter(num_abstracts_for_lang > 25) %>%
+    # Unnest tokens
+    unnest_tokens(word, abstract, token = 'ngrams', n = ngram_n) %>%
+    # Count number of times the word appears
+    group_by(word, language_name) %>%
+    mutate(n_word = n())
+  
+  # Remove words that don't pass spell checker
+  if(filter_spellcheck) {
+    tokens <- filter(tokens, hunspell_check(word))
+  }
+  
+  # Stem
+  tokens <- mutate(tokens, stem = stemDocument(word))
+  #tokens <- mutate(tokens, stem = word) # This removes stemming
+  
+  # tf-idf by stem
+  tfidf_stem <- tokens %>% 
+    # Count number of times each stem occurs by language
+    count(language_name, stem, sort = T) %>%
+    ungroup() %>%
+    # Add tf-idf
+    bind_tf_idf(stem, language_name, n)
+  
+  # Join to tokens
+  tokens <- left_join(tokens, tfidf_stem)
+  
+  # Reduce each stem to its most common word representative
+  tokens <- tokens %>% 
+    group_by(language_name, stem) %>% 
+    slice(which.max(n_word)) %>%
+    ungroup() %>%
+    # Sort by tf-idf
+    arrange(desc(tf_idf)) %>%
+    # Convert to factors
+    mutate(word = factor(word, levels = rev(unique(word)))) %>%
+    mutate(language_name = factor(language_name, levels = sort(unique(language_name))))
+  
+  tokens
+  
+}
+
+# Function to make a plot for one language
+# top_tf_idf: output of top_words_tf_idf
+# ngram_n: N for ngrams (1 if single words)
+# filter_spellcheck: filter tokens with spellchecker
+# lang: language
+# axis_lim: Max axis value for plot
+# num_top: Number of top words to get for the language
+mk_plt <- function(top_tf_idf, ngram_n, filter_spellcheck, lang, axis_lim, num_top) {
+  
+  # Get data for this language
+  lang_data <- top_tf_idf %>% 
+    filter(language_name == lang) %>%
+    # Get top n words
+    # Returns more if there are ties
+    top_n(num_top) %>%
+    # Sort in descending order
+    arrange(desc(tf_idf))
+  
+  # Make the plot
+  ggplot(data = lang_data, aes(x = reorder(word, tf_idf), y = tf_idf)) +
+    geom_col(fill = 'steelblue') +
+    labs(title = lang, x = NULL, y = NULL) +
+    scale_y_continuous(labels = comma, limits = c(0, axis_lim),
+                       breaks = function(lims) {pretty(lims, 3)}) +
+    theme(legend.position="none",
+          axis.text.x = element_text(size = 14),
+          axis.text.y = element_text(size = 14),
+          plot.title = element_text(hjust = 0.5, size = 24)) + 
+    coord_flip()
+  
+}
+
+# Function to make plot for all languages
+# ngram_n: N for ngrams (1 if single words)
+# filter_spellcheck: filter tokens with spellchecker
+# axis_lim: Max axis value for plot
+# num_top: Number of top words to get for the language
+mk_plt_all_langs <- function(ngram_n, filter_spellcheck, axis_lim, num_top) {
+  # Get the data to plot
+  top_tf_idf <- language_words_tfidf(ngram_n, filter_spellcheck)
+  # Make a plot for each language
+  plots <- lapply(sort(unique(top_tf_idf$language_name)), function(x) {
+    mk_plt(top_tf_idf, ngram_n, filter_spellcheck, x, axis_lim, num_top)})
+  # Arrange all the plots in a grid
+  grid.arrange(grobs = plots, ncol = 3, top=textGrob("Top scoring tokens within abstracts by tf-idf", 
+                                                     gp=gpar(fontsize=28, font = 8)))
+}
+
+# Generate the plots for various n-grams
+mk_plt_all_langs(1, T, 0.0025, 10)
+mk_plt_all_langs(2, F, 0.0025, 10)
+mk_plt_all_langs(3, F, 0.0025, 10)
+mk_plt_all_langs(4, F, 0.0025, 10)
+```
+
+
+

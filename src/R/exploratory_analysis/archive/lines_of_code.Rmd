@@ -1,0 +1,36 @@
+---
+title: 'Exploratory analysis: lines of code'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r}
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+setwd("~/Documents/Github_mining/src/R/exploratory_analysis")
+source("project_info.R")
+source("join_repo_level_data.R")
+```
+
+
+```{r}
+# Lines of code
+qplot(log10(repo_level_data$lines_of_code),
+      geom = "histogram",
+      main = "Histogram of lines of code",
+      xlab = "Total lines of code (log10)",
+      ylab = "Number of repos",
+      fill = I("darkmagenta")) +
+  theme(plot.title = element_text(size = 24),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16))
+```
+
+
+
+
