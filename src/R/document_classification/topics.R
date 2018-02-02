@@ -42,7 +42,7 @@ dtm <- article_data %>%
   cast_dtm(repo_name, word, n)
 
 # Run latent dirichlet allocation
-lda <- LDA(dtm, k = 10, control = list(seed = 1614))
+lda <- LDA(dtm, k = 8, control = list(seed = 1614))
 topics <- tidy(lda, matrix = "beta") %>%
   mutate(topic = paste0("topic", topic))
 
@@ -60,7 +60,8 @@ abstract_top_topics <- tidy(lda, matrix = "gamma") %>%
   group_by(repo_name) %>%
   filter(gamma > 0.25)
 
-
+# Clean up
+rm(iso_to_iso, journal_to_iso_abbrev, lda, dtm)
 
 
 

@@ -63,7 +63,7 @@ for (i in 1:k) {
         # Both numeric
         x <- tryCatch({
           res <- cor.test(data1, data2)
-          if (res$estimate > 0.5 && res$p.value < pval_cutoff) {
+          if (abs(res$estimate) > 0.5 && res$p.value < pval_cutoff) {
             record <- data.frame(var1 = name1, var2 = name2, corr = res$estimate, pval = res$p.value)
             assoc.numeric <- rbind(assoc.numeric, record)
           }
