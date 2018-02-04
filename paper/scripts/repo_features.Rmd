@@ -947,7 +947,7 @@ for(t in unique(abstract_top_topics$topic)) {
   join_tbl(df)
   repo_data[[colname]] <- sapply(repo_data[[colname]], na_to_false)
 }
-rm(abstract_top_topics, article_data, df, dtm, lda, topics, topics_specialized, iso_to_iso, journal_to_iso_abbrev)
+rm(abstract_top_topics, article_data, df, topics, topics_specialized)
 ```
 
 ## Save table to a file

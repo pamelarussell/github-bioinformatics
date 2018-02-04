@@ -16,92 +16,41 @@ knitr::opts_chunk$set(echo = TRUE)
 source("~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R")
 ```
 
-## Get top terms for each topic
-
-```{r top_terms}
-top_terms <- topics_specialized %>%
-  group_by(topic) %>%
-  top_n(10, beta) %>%
-  ungroup() %>%
-  arrange(topic, -beta)
-```
-
-## Give the topics meaningful names
-
-```{r name_topics}
-# Make sure the results are what we think before assigning meaningful names
-terms_by_topic_num <- list(
-  "topic1" = c("cancer", "drug", "type", "chromatin", "patients", "heterogeneity", "subtypes", "predictive", "breast", "epigenetic"),
-  "topic2" = c("ms", "proteomics", "mass", "pride", "peptide", "spectrometry", "resolution", "microscopy", "peptides", "images"),
-  "topic3" = c("variant", "ngs", "calling", "copy", "somatic", "illumina", "sv", "insertions", "calls", "exome"),
-  "topic4" = c("genotype", "populations", "markers", "posterior", "rare", "scaffolding", "formula", "uncertainty", "variance", "controls"),
-  "topic5" = c("metabolic", "domains", "residues", "translation", "supertree", "conformational", "pymol", "ppi", "homology", "sampled"),
-  "topic6" = c("web", "interface", "application", "access", "researchers", "interactive", "ontology", "api", "browser", "graphical"),
-  "topic7" = c("graph", "motifs", "tf", "bruijn", "motif", "mers", "synteny", "partitioning", "tfs", "draft"),
-  "topic8" = c("rna", "seq", "transcript", "transcripts", "transcriptome", "rrna", "splicing", "mirna", "microbiome", "16s"))
-for(i in 1:length(terms_by_topic_num)) {
-  if(!all(top_terms %>% filter(topic == names(terms_by_topic_num)[i]) %>% select(term) == terms_by_topic_num[i])) {
-    stop("Topic terms don't match expectation from previous analysis")
-  }
-}
-rm(i)
-# Assign a name to each topic
-topic_translation <- list("topic1" = "Cancer and epigenetics",
-                          "topic2" = "Proteomics and microscopy",
-                          "topic3" = "Variant calling",
-                          "topic4" = "Genetics and population analysis",
-                          "topic5" = "Structure and molecular interaction",
-                          "topic6" = "Web and graphical applications",
-                          "topic7" = "Assembly and sequence analysis",
-                          "topic8" = "Transcription and RNA-seq")
-rm(terms_by_topic_num)
-
-# Function to rename data in "topic" column of data frame
-rename_topic <- function(data) {
-  rtrn <- data
-  rtrn$topic <- sapply(rtrn$topic, function(x) topic_translation[[x]])
-  rtrn
-}
-top_terms <- rename_topic(top_terms)
-abstract_top_topics <- rename_topic(abstract_top_topics)
-topics <- rename_topic(topics)
-topics_specialized <- rename_topic(topics_specialized)
-```
-
 ## Plot top terms
 
-```{r plot_topics}
+```{r plot_topics, fig.width = 7, fig.height = 8}
 # Plot top terms
-top_terms %>%
+facet_text <- num_repos_per_topic %>% mutate(label = paste(total, "repos"))
+facet_text$facet <- factor(facet_text$topic, levels = num_repos_per_topic$topic)
+plt_data <- top_terms %>%
+  left_join(num_repos_per_topic, by = "topic") %>%
   mutate(term = reorder(term, beta)) %>%
-  ggplot(aes(term, beta, fill = factor(topic))) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~ topic, scales = "free") +
-  coord_flip()
+  rename(Beta = beta, Term = term, Total_repos = total)
+plt_data$facet <- factor(plt_data$topic, levels = num_repos_per_topic$topic)
+plt_data %>% ggplot(aes(Term, Beta)) +
+  geom_col(show.legend = FALSE, fill = "red3") +
+  facet_wrap(~ facet, scales = "free_y", nrow = 4) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 12.5),
+        axis.text = element_text(size = 10.5),
+        strip.text = element_text(size = 10.5)) +
+  coord_flip() + 
+  geom_text(data = facet_text,
+    mapping = aes(x = -Inf, y = -Inf, label = label),
+    hjust = -1.4,
+    vjust = -1.4,
+    inherit.aes = FALSE,
+    size = 5)
+rm(facet_text, plt_data)
 ```
 
-## Plot number of repos per topic
-
-```{r repos_per_topic}
-# Count number of repos associated with each topic
-num_repos_per_topic <- abstract_top_topics %>% 
-  group_by(topic) %>% 
-  summarize(total = n()) %>%
-  arrange(-total)
-
-ggplot(num_repos_per_topic, aes(topic, total)) + 
-  geom_bar(stat="identity") + 
-  ylab("Number of repos") + 
-  xlab("Topic") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
 
 ## Amount of code per language and topic
 
 ```{r languages}
 # Read in repo data and get bytes per language
-load(repo_data_file)
-bytes_per_lang <- repo_data_cached %>% select(repo_name, starts_with("bytes"))
+repo_data <- load_repo_features()
+bytes_per_lang <- repo_data %>% select(repo_name, starts_with("bytes"))
 
 # Summarize total bytes per topic. Has bytes double counted if repos have multiple topics.
 bytes_per_topic <- abstract_top_topics %>% 
@@ -115,27 +64,13 @@ bytes_per_topic <- bytes_per_topic %>%
   rename(Topic = topic, Language = variable, Bytes = value)
 
 # Bubble plot of amount of code per language vs topic
+require(scales)
 ggplot(bytes_per_topic, aes(Topic, Language)) + 
   geom_point(aes(size = Bytes)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_size(labels = comma)
 ```
 
-## Time series plot of topics
-
-```{r date}
-topic_vs_year <- abstract_top_topics %>% 
-  select(repo_name, topic) %>% 
-  left_join(article_data %>% select(repo_name, year), by = "repo_name") %>%
-  group_by(topic, year) %>%
-  summarise(repos = n()) %>%
-  ungroup() %>%
-  group_by(year) %>% 
-  mutate(repos_pct = repos / sum(repos))
-
-# Make area plots
-ggplot(topic_vs_year, aes(x = year)) + geom_area(aes(y = repos, fill = topic))
-ggplot(topic_vs_year, aes(x = year)) + geom_area(aes(y = repos_pct, fill = topic))
-```
 
 ## Topics vs journals
 

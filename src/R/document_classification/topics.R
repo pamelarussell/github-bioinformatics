@@ -60,6 +60,58 @@ abstract_top_topics <- tidy(lda, matrix = "gamma") %>%
   group_by(repo_name) %>%
   filter(gamma > 0.25)
 
+# Get top terms for each topic
+top_terms <- topics_specialized %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# Give the topics meaningful names
+# Make sure the results are what we think before assigning names
+terms_by_topic_num <- list(
+  "topic1" = c("cancer", "drug", "type", "chromatin", "patients", "heterogeneity", "subtypes", "predictive", "breast", "epigenetic"),
+  "topic2" = c("ms", "proteomics", "mass", "pride", "peptide", "spectrometry", "resolution", "microscopy", "peptides", "images"),
+  "topic3" = c("variant", "ngs", "calling", "copy", "somatic", "illumina", "sv", "insertions", "calls", "exome"),
+  "topic4" = c("genotype", "populations", "markers", "posterior", "rare", "scaffolding", "formula", "uncertainty", "variance", "controls"),
+  "topic5" = c("metabolic", "domains", "residues", "translation", "supertree", "conformational", "pymol", "ppi", "homology", "sampled"),
+  "topic6" = c("web", "interface", "application", "access", "researchers", "interactive", "ontology", "api", "browser", "graphical"),
+  "topic7" = c("graph", "motifs", "tf", "bruijn", "motif", "mers", "synteny", "partitioning", "tfs", "draft"),
+  "topic8" = c("rna", "seq", "transcript", "transcripts", "transcriptome", "rrna", "splicing", "mirna", "microbiome", "16s"))
+for(i in 1:length(terms_by_topic_num)) {
+  if(!all(top_terms %>% filter(topic == names(terms_by_topic_num)[i]) %>% select(term) == terms_by_topic_num[i])) {
+    stop("Topic terms don't match expectation from previous analysis")
+  }
+}
+rm(i)
+# Assign a name to each topic
+topic_translation <- list("topic1" = "Cancer and epigenetics",
+                          "topic2" = "Proteomics and microscopy",
+                          "topic3" = "Variant calling",
+                          "topic4" = "Genetics and population analysis",
+                          "topic5" = "Structure and molecular interaction",
+                          "topic6" = "Web and graphical applications",
+                          "topic7" = "Assembly and sequence analysis",
+                          "topic8" = "Transcription and RNA-seq")
+rm(terms_by_topic_num)
+
+# Function to rename data in "topic" column of data frame
+rename_topic <- function(data) {
+  rtrn <- data
+  rtrn$topic <- sapply(rtrn$topic, function(x) topic_translation[[x]])
+  rtrn
+}
+top_terms <- rename_topic(top_terms)
+abstract_top_topics <- rename_topic(abstract_top_topics)
+topics <- rename_topic(topics)
+topics_specialized <- rename_topic(topics_specialized)
+
+# Count number of repos associated with each topic
+num_repos_per_topic <- abstract_top_topics %>% 
+  group_by(topic) %>% 
+  summarize(total = n()) %>%
+  arrange(-total)
+
 # Clean up
 rm(iso_to_iso, journal_to_iso_abbrev, lda, dtm)
 
