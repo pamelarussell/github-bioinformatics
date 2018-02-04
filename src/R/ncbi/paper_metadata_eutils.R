@@ -34,6 +34,20 @@ metadata_by_repo <- list_tabledata(project = bq_project, dataset = bq_ds, table 
 # Table of article data to fill in for each repo
 article_data <- data.frame(num_res=NULL)
 
+# Function to convert author list to a single string
+aut_affil <- function(record) {
+  ord <- order(order(Author(record)[[1]]$order))
+  aut_df <- Author(record)[[1]][ord,]
+  affil_vec <- unname(Affiliation(record)[[1]])[ord]
+  full_name_vec <- aut_df %>%
+    mutate(full_name = paste(ForeName, LastName)) %>% 
+    select(full_name)
+  rtrn <- NULL
+  rtrn$authors <- paste(full_name_vec[[1]], collapse = "; ")
+  rtrn$affiliations <- paste(affil_vec, collapse = "; ")
+  rtrn
+}
+
 # Iterate through the repos
 num_done <- 0
 for (i in 1:nrow(metadata_by_repo)) {
@@ -85,7 +99,9 @@ for (i in 1:nrow(metadata_by_repo)) {
   title <- ArticleTitle(records)
   country <- Country(records)
   e_location_id <- ELocationID(records)
-  #affiliation <- Affiliation(records)
+  author_affiliation <- aut_affil(records)
+  authors <- author_affiliation$authors
+  affiliations <- author_affiliation$affiliations
   language <- Language(records)
   grant_id <- GrantID(records)
   agency <- Agency(records)
