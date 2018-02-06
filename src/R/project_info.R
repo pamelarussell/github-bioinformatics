@@ -31,8 +31,9 @@ table_num_devs_by_repo <- "num_devs_by_repo"
 table_lang_bytes_by_repo <- "language_bytes_by_repo"
 table_test_cases <- "test_cases"
 table_gender_by_name <- "gender_by_name"
-table_gender_authors <- "gender_authors"
+table_gender_commit_authors <- "gender_commit_authors"
 table_gender_commits <- "gender_commits"
+table_gender_paper_authors <- "gender_paper_authors"
 table_comments <- "comments"
 
 # Programming languages

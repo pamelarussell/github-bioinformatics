@@ -99,7 +99,7 @@ for (i in 1:nrow(metadata_by_repo)) {
   title <- ArticleTitle(records)
   country <- Country(records)
   e_location_id <- ELocationID(records)
-  author_affiliation <- aut_affil(records)
+  author_affiliation <- aut_affil(records) # Author list and affiliations in order
   authors <- author_affiliation$authors
   affiliations <- author_affiliation$affiliations
   language <- Language(records)
@@ -143,8 +143,8 @@ for (i in 1:nrow(metadata_by_repo)) {
   # Add the record to article data table
   article_data <- rbind(article_data, 
                         data.frame(repo_name, pmid, nlm_unique_id, article_id, journal, medline_ta,
-                                   iso_abbrev, volume, issue, title, country, e_location_id,
-                                   language, grant_id, agency, acronym, registry_num,
+                                   iso_abbrev, volume, issue, title, country, e_location_id, authors,
+                                   affiliations, language, grant_id, agency, acronym, registry_num,
                                    pub_status, year_received, month_received, day_received,
                                    year_epublish, month_epublish, day_epublish, year_ppublish,
                                    month_ppublish, day_ppublish, year_pmc, month_pmc, day_pmc,

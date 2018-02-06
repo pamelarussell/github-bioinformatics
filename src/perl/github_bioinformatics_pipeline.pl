@@ -288,8 +288,9 @@ if($run_code_chunk_frequency) {
 # Analyze frequency of code chunks
 if($infer_gender) {
 	my $genderize_api_key = read_file($genderize_key_file);
-	my $cmmd_infer_gender = "Rscript $script_infer_gender --project $bq_proj_gh_bioinf --ds_gh $bq_ds_repos " .
-	"--commits $bq_tb_commits --out_ds $bq_ds_analysis_results --gender_table $bq_tb_gender --key $genderize_api_key";
+	my $cmmd_infer_gender = "Rscript $script_infer_gender --project $bq_proj_gh_bioinf " .
+	"--repo_ds $bq_ds_repos --commits $bq_tb_commits --out_ds $bq_ds_analysis_results --articles $bq_tb_eutils " .
+	"--gender_table $bq_tb_gender --lit_search_ds $bq_ds_lit_search --key $genderize_api_key";
 	run_cmmd($cmmd_infer_gender);
 } else {print("\nSkipping step: analyze code chunk frequency\n")}
 

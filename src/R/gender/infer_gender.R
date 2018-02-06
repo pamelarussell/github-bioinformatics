@@ -8,40 +8,55 @@ suppressPackageStartupMessages(library(optparse))
 
 option_list = list(
   make_option(c("-p", "--project"), action = "store", type = 'character', help = "BigQuery project"),
-  make_option(c("-d", "--ds_gh"), action = "store", type = 'character', help = "BigQuery dataset with commits table"),
+  make_option(c("-r", "--repo_ds"), action = "store", type = 'character', help = "BigQuery dataset with commits table"),
+  make_option(c("-l", "--lit_search_ds"), action = "store", type = 'character', help = "BigQuery dataset lit search data"),
   make_option(c("-c", "--commits"), action = "store", type = 'character', help = "BigQuery commits table"),
+  make_option(c("-a", "--articles"), action = "store", type = 'character', help = "BigQuery article metadata table"),
   make_option(c("-o", "--out_ds"), action = "store", type = 'character', help = "BigQuery dataset to write genders to"),
   make_option(c("-g", "--gender_table"), action = "store", type = 'character', help = "BigQuery table to write genders to"),
   make_option(c("-k", "--key"), action = "store", type = 'character', help = "Genderize.io API key"))
 opt = parse_args(OptionParser(option_list = option_list))
 
 proj <- opt$p
-ds_gh <- opt$d
+ds_gh <- opt$r
+ds_lit_search <- opt$l
 table_commits <- opt$c
+table_articles <- opt$a
 genderize_api_key <- opt$k
 dest_dataset <- opt$o
 dest_table <- opt$g
 
-# Get author and committer names from commits table
+# Get commit author and committer names from commits table
 query <- paste("SELECT author_name, committer_name FROM [", 
                proj, ":", ds_gh, ".", table_commits, "] GROUP BY author_name, committer_name", 
                sep="")
-raw_names <- query_exec(query, project = proj, max_pages = Inf)
+raw_names_dev <- query_exec(query, project = proj, max_pages = Inf)
 
-# Get number of words in a string split on whitespace
+# Get paper author names from article metadata table
+query <- paste("SELECT authors FROM [", 
+               proj, ":", ds_lit_search, ".", table_articles, "]",
+               sep = "")
+author_lists <- query_exec(query, project = proj, max_pages = Inf)
+raw_names_aut <- NULL
+for(author_list in author_lists$authors) {
+  authors <- sapply(author_list, function(x) trimws(unlist(strsplit(x, ";"))))
+  raw_names_aut <- unname(c(raw_names_aut, authors))
+}
+
+# Function to get number of words in a string split on whitespace
 num_tokens <- function(str) {
   tokens <- unlist(strsplit(str, "\\s+"))
   length(tokens)
 }
 
-# Get first word
+# Function to get first word
 first_word <- function(str) {
   tokens <- unlist(strsplit(str, "\\s+"))
   tokens[1]
 }
 
 # Clean the names
-unique_names <- unique(c(raw_names$author_name, raw_names$committer_name))
+unique_names <- unique(c(raw_names_dev$author_name, raw_names_dev$committer_name, raw_names_aut))
 clean_names <- unique_names[unname(sapply(unique_names, function(x) {
   nt <- num_tokens(x)
   first <- first_word(x)
@@ -62,7 +77,7 @@ gender$first_name <- unlist(sapply(gender$full_name, first_word))
 mapping <- list('Š'='S', 'š'='s', 'Ž'='Z', 'ž'='z', 'À'='A', 'Á'='A', 'Â'='A', 'Ã'='A', 'Ä'='A', 'Å'='A', 
                 'Æ'='A', 'Ç'='C', 'È'='E', 'É'='E', 'Ê'='E', 'Ë'='E', 'Ì'='I', 'Í'='I', 'Î'='I', 'Ï'='I', 
                 'Ñ'='N', 'Ò'='O', 'Ó'='O', 'Ô'='O', 'Õ'='O', 'Ö'='O', 'Ø'='O', 'Ù'='U', 'Ú'='U', 'Û'='U', 
-                'Ü'='U', 'Ý'='Y', 'Þ'='B', 'ß'='Ss', 'à'='a', 'á'='a', 'â'='a', 'ã'='a', 'ä'='a', 'å'='a', 
+                'Ü'='U', 'Ý'='Y', 'Þ'='B', 'à'='a', 'á'='a', 'â'='a', 'ã'='a', 'ä'='a', 'å'='a', 
                 'æ'='a', 'ç'='c', 'è'='e', 'é'='e', 'ê'='e', 'ë'='e', 'ì'='i', 'í'='i', 'î'='i', 'ï'='i', 
                 'ð'='o', 'ñ'='n', 'ò'='o', 'ó'='o', 'ô'='o', 'õ'='o', 'ö'='o', 'ø'='o', 'ù'='u', 'ú'='u', 
                 'û'='u', 'ý'='y', 'ý'='y', 'þ'='b', 'ÿ'='y')
