@@ -182,11 +182,11 @@ join_tbl(
 )
 ```
 
-## Developer gender
+## Gender of developers and paper authors
 
 ```{r gender}
 join_tbl(
-  get_table(ds_analysis, table_gender_authors) %>% rename(commit_authors_female = female,
+  get_table(ds_analysis, table_gender_commit_authors) %>% rename(commit_authors_female = female,
                                                           commit_authors_male = male,
                                                           commit_authors_no_gender = no_gender,
                                                           team_type_gender = team_type,
@@ -198,6 +198,16 @@ join_tbl(
                                                           commits_male = male,
                                                           commits_no_gender = no_gender,
                                                           shannon_commits_gender = shannon)
+)
+
+join_tbl(
+  get_table(ds_analysis, table_gender_paper_authors) %>% rename(paper_authors_female = female,
+                                                          paper_authors_male = male,
+                                                          paper_authors_no_gender = no_gender,
+                                                          team_type_paper_authors = team_type,
+                                                          first_author_gender = first_author,
+                                                          last_author_gender = last_author,
+                                                          shannon_paper_authors = shannon)
 )
 
 ```
