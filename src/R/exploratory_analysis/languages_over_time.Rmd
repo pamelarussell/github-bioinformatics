@@ -51,11 +51,24 @@ WHERE
   loc.language IS NOT NULL
 "
 data_all_lang <- query_exec(query, project = proj, max_pages = Inf) %>% 
-  select(language, init_commit) %>%
+  select(repo_name, language, init_commit) %>%
   mutate(init_commit = parse_iso_8601(init_commit)) %>%
   mutate(year = cut(as.Date(init_commit), breaks = "year")) %>%
-  select(year, language) %>%
+  select(repo_name, year, language) %>%
   mutate(year = as.numeric(substr(year, 1, 4)))
+
+lang_first_added_to_repo <- data_all_lang %>% 
+  group_by(repo_name, language) %>% 
+  filter(year == min(year)) %>% 
+  ungroup() %>% 
+  unique() %>% 
+  arrange(repo_name) %>% 
+  select(year, language) %>% 
+  group_by(year, language) %>% 
+  summarize(num_repos = n()) %>% 
+  filter(language %in% top_langs) %>% 
+  arrange(-num_repos) %>%
+  ungroup()
 
 total_files_per_year <- data_all_lang %>% 
   select(year) %>% 
@@ -72,7 +85,21 @@ data <- data_all_lang %>%
   mutate(year_fmt = substr(year, 1, 4))
 ```
 
-```{r make_plot}
+```{r make_plot_lang_first_added}
+ggplot(lang_first_added_to_repo %>% filter(year >= 2010) %>% mutate(year = as.character(year)), 
+       aes(x = year, y = num_repos, colour = language, group = language)) +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        plot.title = element_text(size = 24)) +
+  xlab("Year") +
+  ylab("Number of repos adding language for the first time") + 
+  ggtitle("When languages were first added to repos") +
+  scale_color_discrete("Language")
+```
+
+```{r make_plot_pct_files}
 ggplot(data %>% filter(year_fmt >= 2010),
        aes(x = year_fmt,
            y = pct_total_files_year,
