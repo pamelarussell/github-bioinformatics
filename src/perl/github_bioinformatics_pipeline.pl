@@ -1,11 +1,34 @@
+#!/usr/bin/perl
+
 use strict;
 use warnings;
 use File::Slurp;
+use JSON;
+use Data::Dumper;
 
 # ********************************************************************************************************
 # ********************************************   PARAMETERS   ********************************************
 # ********************************************************************************************************
 
+
+# -----------------------------------------------------------------
+#               JSON file describing project structure
+# -----------------------------------------------------------------
+
+# File should contain the following keys:
+# 
+# "bq_proj_main": Name of BigQuery project for main dataset
+# "gsheet_repos_main": Name of Google Sheet with curated article and repo info for main dataset
+# "gcs_bucket_main": Name of Google Cloud Storage bucket for main project data
+# "src_dir": Source code directory
+# "out_results_dir": Directory to save some results in
+# "lit_search_metadata_dir": Directory with XML metadata from lit search
+# "lit_search_pdf_dir": Directory containing PDF articles from lit search
+# "genderize_key_file": File containing single line with genderize.io API key
+# "python3": Python 3 executable
+# cloc: CLOC executable
+
+my $params_json = "/Users/Pamela/Dropbox/Documents/Github_mining/structure/project_params.json";
 
 # -----------------------------------------------------------------
 #                    Choose steps to run 
@@ -43,16 +66,26 @@ my $run_extract_comments = 0;
 my $run_code_chunk_frequency = 0;
 
 # Infer gender for project contributors
-my $infer_gender = 1;
+my $infer_gender = 0;
+
+
+
+# ********************************************************************************************************
+# ***************************   NO CONFIGURABLE PARAMETERS BEYOND THIS POINT   ***************************
+# ********************************************************************************************************
+
+# Read the JSON file of parameters
+my $json_params_content = read_file($params_json);
+my $project_params_scalar = decode_json($json_params_content);
+my %project_params = %$project_params_scalar;
 
 
 # -----------------------------------------------------------------
 #                   BigQuery project structure
 # -----------------------------------------------------------------
 
-
 # Project
-my $bq_proj_gh_bioinf = "github-bioinformatics-171721";
+my $bq_proj_main = $project_params{"bq_proj_main"};
 # Datasets
 my $bq_ds_repos = "repos";
 my $bq_ds_analysis_results = "analysis";
@@ -87,28 +120,25 @@ my $bq_tb_commit_types = "commit_types"; # Commit types
 my $bq_tb_project_duration = "project_duration"; # Project duration
 my $bq_tb_gender = "gender_by_name"; # Inferred gender of project contributors
 
-
 # -----------------------------------------------------------------
 #                   Google Drive project structure
 # -----------------------------------------------------------------
 
-my $gsheet_repos_curated = "gh_repos_in_articles_curated";
-
+my $gsheet_repos_main = $project_params{"gsheet_repos_main"};
 
 # -----------------------------------------------------------------
 #                Google Cloud Storage project structure
 # -----------------------------------------------------------------
 
-my $gcs_bucket = "ghbioinf_paper_data";
+my $gcs_bucket_main = $project_params{"gcs_bucket_main"};
 my $gcs_regex_csv = "contents-[0-9]+\.csv";
-
 
 # -----------------------------------------------------------------
 #                    Local project structure
 # -----------------------------------------------------------------
 
 # Source directories
-my $src_dir = "/Users/Pamela/Dropbox/Documents/Github_mining/src/";
+my $src_dir = $project_params{"src_dir"};
 my $src_dir_R = "$src_dir/R/";
 my $src_dir_python = "$src_dir/python/";
 
@@ -131,22 +161,22 @@ my $script_gh_api_file_init_commit = "$src_dir_python/gh_api_file_init_commit.py
 my $script_infer_gender = "$src_dir_R/gender/infer_gender.R";
 
 # Output directories
-my $out_results_dir = "/Users/Pamela/Dropbox/Documents/Github_mining/results/";
+my $out_results_dir = $project_params{"out_results_dir"};
 my $out_results_dir_cloc = "$out_results_dir/cloc/";
 
 # Literature search
-my $lit_search_metadata_dir = "/Users/Pamela/Dropbox/github_mining/articles/article_metadata/";
-my $lit_search_pdf_dir = "/Users/Pamela/Dropbox/github_mining/articles/pdfs/";
+my $lit_search_metadata_dir = $project_params{"lit_search_metadata_dir"};
+my $lit_search_pdf_dir = $project_params{"lit_search_pdf_dir"};
 
 # Genderize.io API key
-my $genderize_key_file = "/Users/Pamela/Dropbox/Documents/Github_mining/key/genderize_api_key.txt"; # File containing single line with genderize.io API key
+my $genderize_key_file = $project_params{"genderize_key_file"};
 
 # -----------------------------------------------------------------
 #                        External tools
 # -----------------------------------------------------------------
 
-my $python3 = "/Library/Frameworks/Python.framework/Versions/3.6/bin/python3";
-my $cloc_exec = "/Users/Pamela/Dropbox/Software/cloc-1.72.pl";
+my $python3 = $project_params{"python3"};
+my $cloc_exec = $project_params{"cloc"};
 
 
 # -----------------------------------------------------------------
@@ -155,10 +185,6 @@ my $cloc_exec = "/Users/Pamela/Dropbox/Software/cloc-1.72.pl";
 
 my $languages_to_skip = "XML,HTML,JSON,YAML";
 
-
-# ********************************************************************************************************
-# ***********************************   NO PARAMETERS BEYOND THIS POINT   ********************************
-# ********************************************************************************************************
 
 
 # -----------------------------------------------------------------
@@ -173,67 +199,67 @@ if($extract_repos_from_lit_search) {
 
 # Check for issues with repository names that have been manually curated
 if($check_repo_existence) {
-	run_cmmd("$python3 $script_check_repo_existence --sheet $gsheet_repos_curated");
+	run_cmmd("$python3 $script_check_repo_existence --sheet $gsheet_repos_main");
 } else {print("\nSkipping step: check for repo existence\n")}
 
 # Get article metadata from Eutils
 if($query_eutils_article_metadata) {
-	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj_gh_bioinf --dataset $bq_ds_lit_search --in_table " .
+	run_cmmd("Rscript $script_article_metadata_eutils --project $bq_proj_main --dataset $bq_ds_lit_search --in_table " .
 	"$bq_tb_repo_article_curated --out_table $bq_tb_eutils")
 } else {print("\nSkipping step: get article metadata from Eutils\n")}
 
 # Get repo metrics from GitHub API
 if($generate_repo_metrics) {
 	run_cmmd("$python3 $script_gh_api_repo_metrics --ds $bq_ds_repos --table $bq_tb_repo_metrics ".
-	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
+	"--sheet $gsheet_repos_main --proj $bq_proj_main")
 } else {print("\nSkipping step: get repo info from GitHub API\n")}
 
 # Get language info from GitHub API
 if($generate_language_bytes) {
 	run_cmmd("$python3 $script_gh_api_languages --ds $bq_ds_repos --table $bq_tb_languages_gh_api ".
-	"--sheet $gsheet_repos_curated")
+	"--sheet $gsheet_repos_main")
 } else {print("\nSkipping step: get language info from GitHub API\n")}
 
 # Get licenses from GitHub API
 if($generate_licenses) {
 	run_cmmd("$python3 $script_gh_api_licenses --ds $bq_ds_repos --table $bq_tb_licenses ".
-	"--sheet $gsheet_repos_curated")
+	"--sheet $gsheet_repos_main")
 } else {print("\nSkipping step: get licenses from GitHub API\n")}
 
 # Get commits from GitHub API
 if($generate_commits) {
 	run_cmmd("$python3 $script_gh_api_commits --ds $bq_ds_repos --table $bq_tb_commits ".
-	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
+	"--sheet $gsheet_repos_main --proj $bq_proj_main")
 } else {print("\nSkipping step: get commits from GitHub API\n")}
 
 # Get file info from GitHub API
 if($generate_file_info) {
 	run_cmmd("$python3 $script_gh_api_file_info --ds $bq_ds_repos --table $bq_tb_files ".
-	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
+	"--sheet $gsheet_repos_main --proj $bq_proj_main")
 } else {print("\nSkipping step: get file info from GitHub API\n")}
 
 # Get file contents from GitHub API
 if($generate_file_contents) {
 	run_cmmd("$python3 $script_gh_api_file_contents --ds $bq_ds_repos --table_file_contents $bq_tb_contents ".
-	"--table_file_info $bq_tb_files --proj $bq_proj_gh_bioinf")
+	"--table_file_info $bq_tb_files --proj $bq_proj_main")
 } else {print("\nSkipping step: get file contents from GitHub API\n")}
 
 # Get file initial commit times from GitHub API
 if($generate_file_init_commits) {
 	run_cmmd("$python3 $script_gh_api_file_init_commit --ds $bq_ds_repos --table_init_commit $bq_tb_file_init_commit ".
-	"--table_file_info $bq_tb_files --proj $bq_proj_gh_bioinf")
+	"--table_file_info $bq_tb_files --proj $bq_proj_main")
 } else {print("\nSkipping step: get file initial commits from GitHub API\n")}
 
 # Get pull request info from GitHub API
 if($generate_pr_data) {
 	run_cmmd("$python3 $script_gh_api_pr_data --ds $bq_ds_repos --table $bq_tb_prs ".
-	"--sheet $gsheet_repos_curated --proj $bq_proj_gh_bioinf")
+	"--sheet $gsheet_repos_main --proj $bq_proj_main")
 } else {print("\nSkipping step: get pull request info from GitHub API\n")}
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
 if($run_bq_analysis_queries) {
 	run_cmmd("$python3 $script_run_bq_queries_analysis " .
-	"--proj $bq_proj_gh_bioinf " .
+	"--proj $bq_proj_main " .
 	"--github_api_ds $bq_ds_repos " .
 	"--analysis_ds $bq_ds_analysis_results " .
 	"--results_ds $bq_ds_analysis_results " .
@@ -257,9 +283,9 @@ if($run_bq_analysis_queries) {
 if($run_cloc) {
 	my $out_log_cloc = "$out_results_dir_cloc/run.out";
 	my $cmmd_cloc = "$python3 $script_cloc " .
-	"--bucket $gcs_bucket " .
+	"--bucket $gcs_bucket_main " .
 	"--regex_csv $gcs_regex_csv " .
-	"--proj $bq_proj_gh_bioinf " .
+	"--proj $bq_proj_main " .
 	"--out_ds $bq_ds_analysis_results " .
 	"--tb_loc $bq_tb_loc_by_file " .
 	"--tb_sc $bq_tb_contents_comments_stripped " .
@@ -271,7 +297,7 @@ if($run_cloc) {
 
 # Extract comments from source files and push to BigQuery table
 if($run_extract_comments) {
-	my $cmmd_extract_comments = "$python3 $script_extract_comments --proj_bioinf $bq_proj_gh_bioinf --tb_contents $bq_tb_contents " .
+	my $cmmd_extract_comments = "$python3 $script_extract_comments --proj_bioinf $bq_proj_main --tb_contents $bq_tb_contents " .
 	"--tb_loc $bq_tb_loc_by_file --ds_gh $bq_ds_repos --ds_loc " .
 	"$bq_ds_analysis_results --out_ds $bq_ds_analysis_results --table $bq_tb_comments";
 	run_cmmd($cmmd_extract_comments)
@@ -279,7 +305,7 @@ if($run_extract_comments) {
 
 # Analyze frequency of code chunks
 if($run_code_chunk_frequency) {
-	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --proj_bioinf $bq_proj_gh_bioinf --ds_gh $bq_ds_repos " .
+	my $cmmd_code_chunk_freq = "$python3 $script_code_chunk_frequency --proj_bioinf $bq_proj_main --ds_gh $bq_ds_repos " .
 	"--ds_res $bq_ds_analysis_results --table_files $bq_tb_files --table_sc $bq_tb_contents_comments_stripped " .
 	"--table_out $bq_tb_code_chunk_freq --table_loc $bq_tb_loc_by_file --langs_skip $languages_to_skip";
 	run_cmmd($cmmd_code_chunk_freq);
@@ -288,7 +314,7 @@ if($run_code_chunk_frequency) {
 # Analyze frequency of code chunks
 if($infer_gender) {
 	my $genderize_api_key = read_file($genderize_key_file);
-	my $cmmd_infer_gender = "Rscript $script_infer_gender --project $bq_proj_gh_bioinf " .
+	my $cmmd_infer_gender = "Rscript $script_infer_gender --project $bq_proj_main " .
 	"--repo_ds $bq_ds_repos --commits $bq_tb_commits --out_ds $bq_ds_analysis_results --articles $bq_tb_eutils " .
 	"--gender_table $bq_tb_gender --lit_search_ds $bq_ds_lit_search --key $genderize_api_key";
 	run_cmmd($cmmd_infer_gender);
