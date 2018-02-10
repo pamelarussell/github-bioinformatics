@@ -21,6 +21,7 @@ use Data::Dumper;
 # "gsheet_repos_main": Name of Google Sheet with curated article and repo info for main dataset
 # "gcs_bucket_main": Name of Google Cloud Storage bucket for main project data
 # "src_dir": Source code directory
+# "paper_dir": Directory with paper stuff e.g. scripts to make the figures
 # "out_results_dir": Directory to save some results in
 # "lit_search_metadata_dir": Directory with XML metadata from lit search
 # "lit_search_pdf_dir": Directory containing PDF articles from lit search

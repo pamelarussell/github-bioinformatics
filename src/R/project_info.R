@@ -1,11 +1,18 @@
+library(jsonlite)
+
+proj_params_json <- "/Users/Pamela/Dropbox/Documents/Github_mining/structure/project_params.json"
+
+# Read parameters from JSON
+proj_params <- fromJSON(proj_params_json, flatten = T)
 
 # Project name
-proj <- "github-bioinformatics-171721"
+proj_main <- proj_params[["bq_proj_main"]]
 
 # Local structure
-paper_scripts_dir <- "~/Dropbox/Documents/Github_mining/paper/scripts/"
-saved_repo_features <- "~/Dropbox/Documents/Github_mining/paper/data/repo_features.txt"
-load_repo_features <- function() {read.table(saved_repo_features, header = T, sep = "\t")}
+paper_dir <- proj_params[["paper_dir"]]
+paper_scripts_dir <- paste(paper_dir, "scripts", sep = "/")
+saved_repo_features_main <- paste(paper_dir, "data/repo_features_main.txt", sep = "/")
+load_repo_features <- function(file) {read.table(file, header = T, sep = "\t")}
 
 # Data from GitHub API
 ds_gh <- "repos"
