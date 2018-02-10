@@ -3,12 +3,18 @@ from time import sleep
 
 import chardet
 from github3 import login
-
 from pycurl import Curl
-from local_params import gh_username, gh_oauth_key
 
-# GitHub credentials
-gh_userpwd = '%s:%s' %(gh_username, gh_oauth_key)
+
+# Get GitHub credentials as string for API
+def gh_userpwd(gh_username, gh_oauth_key):
+    """ Returns string version of GitHub credentials to be passed to GitHub API
+    
+    Args:
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
+    """
+    return('%s:%s' %(gh_username, gh_oauth_key))
 
 # GitHub API rate limit
 api_rate_limit_per_hour = 5000

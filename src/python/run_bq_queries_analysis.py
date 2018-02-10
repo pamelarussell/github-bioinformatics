@@ -1,19 +1,20 @@
 import argparse
-from local_params import json_key_final_dataset
-from util import run_query_and_save_results
-from bigquery import get_client
-from query import *
 import os
+
+from bigquery import get_client
+
+from query import *
+from util import run_query_and_save_results
 
 
 ##### Run analysis queries against GitHub dataset tables and store the results in new tables 
-
-
 # Command line arguments
 parser = argparse.ArgumentParser()
 
 # Project
 parser.add_argument('--proj', action = 'store', dest = 'proj', required = True, help = 'BigQuery project')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 
 # Datasets
 parser.add_argument('--github_api_ds', action = 'store', dest = 'gh_api_dataset', required = True, help = 'BigQuery dataset containing GitHub API data')
@@ -53,6 +54,7 @@ args = parser.parse_args()
 # BigQuery parameters
 # Project
 proj = args.proj
+json_key = args.json_key
 # Datasets
 gh_api_dataset = args.gh_api_dataset
 analysis_dataset = args.analysis_dataset
@@ -75,7 +77,7 @@ table_project_duration = args.table_project_duration
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 # Get BigQuery client
 print('Getting BigQuery client\n')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False)
+client = get_client(json_key_file=json_key, readonly=False)
     
 # Run the queries
  

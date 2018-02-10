@@ -1,6 +1,7 @@
 import unittest
 
-from gh_api import get_file_info, get_license, get_language_bytes, get_pull_requests, get_file_contents, gh_curl_response, get_commits
+from gh_api import get_file_contents, gh_curl_response, get_commits
+from gh_api import get_file_info, get_license, get_language_bytes, get_pull_requests
 from gh_api.repo import Repo
 
 

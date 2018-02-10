@@ -1,13 +1,12 @@
 import argparse
-import os
 import operator
+import os
 
 from bigquery import get_client
 
 from comments import extract_comments_string, comment_extractor
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
-from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 
@@ -15,6 +14,8 @@ from util import delete_bq_table, create_bq_table, push_bq_records, run_query_an
 parser = argparse.ArgumentParser()
 parser.add_argument('--proj_bioinf', action = 'store', dest = 'project_bioinf', required = True,
                     help = 'BigQuery GitHub bioinformatics project')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 parser.add_argument('--ds_gh', action = 'store', dest = 'ds_gh', required = True, 
                     help = 'BigQuery dataset containing GitHub files data')
 parser.add_argument('--tb_contents', action = 'store', dest = 'table_contents', required = True,
@@ -32,6 +33,7 @@ args = parser.parse_args()
 
 # BigQuery parameters
 project_bioinf = args.project_bioinf
+json_key = args.json_key
 ds_gh = args.ds_gh
 ds_loc = args.ds_loc
 out_ds = args.out_ds
@@ -42,7 +44,7 @@ table_lines_of_code_file = args.tb_loc
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False)
+client = get_client(json_key_file=json_key, readonly=False)
 
 # Delete the comments table if it exists
 delete_bq_table(client, out_ds, table)

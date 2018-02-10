@@ -1,13 +1,13 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from local_params import json_key_final_dataset
 
-def get_repo_names(sheet):
+def get_repo_names(sheet, json_key):
     """
     Returns the sorted names of repositories marked with use_repo=1 in the Google sheet
     
     params:
         sheet: Name of Google Sheets file
+        json_key: JSON key file for Google credentials
         
     returns:
         Sorted list of repo names
@@ -15,7 +15,7 @@ def get_repo_names(sheet):
     """
     # Use creds to create a client to interact with the Google Drive API
     scope = ['https://spreadsheets.google.com/feeds']
-    creds = ServiceAccountCredentials.from_json_keyfile_name(json_key_final_dataset, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(json_key, scope)
     client = gspread.authorize(creds)
      
     # Load repos from the spreadsheet

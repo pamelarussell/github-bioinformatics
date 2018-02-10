@@ -4,10 +4,8 @@ import os
 from bigquery import get_client
 
 from dry import add_chunks, make_records, split_into_lines
-
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
-from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records, run_query_and_save_results
 
 
@@ -16,6 +14,8 @@ from util import delete_bq_table, create_bq_table, push_bq_records, run_query_an
 parser = argparse.ArgumentParser()
 parser.add_argument('--proj_bioinf', action = 'store', dest = 'project_bioinf', required = True,
                     help = 'BigQuery GitHub bioinformatics project')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 parser.add_argument('--ds_gh', action = 'store', dest = 'ds_gh', required = True, 
                     help = 'BigQuery GitHub dataset')
 parser.add_argument('--ds_res', action = 'store', dest = 'ds_res', required = True, 
@@ -42,6 +42,7 @@ min_line_len_2 = 50
 
 # BigQuery parameters
 project_bioinf = args.project_bioinf
+json_key = args.json_key
 ds_gh = args.ds_gh
 ds_res = args.ds_res
 table_files = args.tab_files
@@ -57,7 +58,7 @@ langs_to_skip = set([s.lower() for s in args.langs_skip.split(",")])
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
+client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
 
 
 # Delete the output tables if they exist

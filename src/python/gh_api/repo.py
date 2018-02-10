@@ -4,14 +4,17 @@ from gh_api import gh_curl_response, url_repos
 class Repo(object):
     """Repo data from the repos endpoint of the GitHub API"""
 
-    def __init__(self, repo_name):
+    def __init__(self, repo_name, gh_username, gh_oauth_key):
         """
         Args:
             repo_name: GitHub user and repo name e.g. 'broadgsa/gatk'
+            gh_username: GitHub username for GitHub API
+            gh_oauth_key: (String) GitHub oauth key
+
         """
         self.repo_name = repo_name
         self.url = "%s/%s" %(url_repos, repo_name)
-        self.response = gh_curl_response(self.url)
+        self.response = gh_curl_response(self.url, gh_username, gh_oauth_key)
         
     def get_repo_name(self):
         return self.repo_name

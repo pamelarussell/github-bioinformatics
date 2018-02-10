@@ -10,7 +10,6 @@ from bigquery import get_client
 
 from google.cloud import bigquery, storage
 from google.cloud.bigquery import SchemaField
-from local_params import json_key_final_dataset
 from util import parse_cloc_response, delete_bq_table, create_bq_table, push_bq_records, write_file, run_query_and_save_results
 from util import rec_contents_comments_stripped
 from util import unique_vals
@@ -27,6 +26,8 @@ parser.add_argument('--regex_csv', action = 'store', dest = 'regex_csv', require
                     help = 'Regex uniquely identifying contents CSV file names in the Google Cloud Storage bucket')
 parser.add_argument('--proj', action = 'store', dest = 'proj', required = True,
                     help = 'BigQuery GitHub bioinformatics project')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 parser.add_argument('--out_ds', action = 'store', dest = 'out_ds', required = True, 
                     help = 'BigQuery dataset to write to')
 parser.add_argument('--tb_loc', action = 'store', dest = 'tb_loc', required = True, 
@@ -55,6 +56,7 @@ regex_csv = re.compile(args.regex_csv)
 
 # BigQuery parameters
 proj = args.proj
+json_key = args.json_key
 out_ds = args.out_ds
 table_loc_ungrouped = "tmp_loc_ungrouped"
 table_sc_ungrouped = "tmp_sc_ungrouped"
@@ -67,7 +69,7 @@ cloc_exec = args.cloc
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-bq_client = get_client(json_key_file=json_key_final_dataset, readonly=False)
+bq_client = get_client(json_key_file=json_key, readonly=False)
 
 # Delete the final output tables if they exist
 delete_bq_table(bq_client, out_ds, table_loc)
@@ -124,7 +126,7 @@ skip_re = re.compile(
 
 # Identify contents file names in GCS bucket
 print("\nIdentifying contents CSV files on Google Cloud Storage")
-gcs_client = storage.Client.from_service_account_json(json_key_final_dataset)
+gcs_client = storage.Client.from_service_account_json(json_key)
 bucket = gcs_client.get_bucket(bucket_name)
 blobs = bucket.list_blobs()
 contents_blobs = [blob for blob in blobs if regex_csv.match(blob.name)]

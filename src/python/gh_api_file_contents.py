@@ -1,35 +1,43 @@
 import argparse
+from time import sleep
 
 from bigquery import get_client
 
 from gh_api import get_file_contents
-from local_params import json_key_final_dataset
 from util import create_bq_table, push_bq_records
 from util import curr_time_utc
 from util import max_record_size
 from util import run_bq_query
-from time import sleep
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--proj', action = 'store', dest = 'proj', required = True,
                     help = 'BigQuery project name')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 
                     help = 'BigQuery dataset to write table to')
 parser.add_argument('--table_file_info', action = 'store', dest = 'table_info', required = True, 
                     help = 'BigQuery table to read file info from')
 parser.add_argument('--table_file_contents', action = 'store', dest = 'table_contents', required = True, 
                     help = 'BigQuery table to write file contents to')
+parser.add_argument('--gh_user', action = 'store', dest = 'gh_username', required = True, 
+                    help = 'GitHub username for API')
+parser.add_argument('--gh_oauth_key', action = 'store', dest = 'gh_oauth_key', required = True, 
+                    help = '(String) GitHub oauth key')
 args = parser.parse_args()
  
 proj = args.proj
+json_key = args.json_key
 dataset = args.ds
 table_info = args.table_info
 table_contents = args.table_contents
+gh_username = args.gh_username
+gh_oauth_key = args.gh_oauth_key
  
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
+client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
  
 # Table schema
 schema = [
@@ -72,7 +80,7 @@ def get_contents_record(file_info_record):
     size = file_info_record["size"]
     if size <= max_record_size - 1000:
         try:
-            contents = get_file_contents(git_url)
+            contents = get_file_contents(git_url, gh_username, gh_oauth_key)
         except:
             pass
     return {'repo_name': repo_name,

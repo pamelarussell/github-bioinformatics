@@ -45,13 +45,15 @@ def validate_response_found(parsed, message = ""):
         if parsed["message"] == "Not Found":
             raise ValueError("Parsed response has message: Not Found. Further information:\n%s" %message)
 
-def gh_curl_response(url):
+def gh_curl_response(url, gh_username, gh_oauth_key):
     """
     Returns the parsed curl response from the GitHub API
     Combines pages if applicable
     
     params:
         url: URL e.g. 'https://api.github.com/repos/samtools/samtools'
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
         
     returns:
         Parsed API response. Returns a list of dicts, one for each record, or just one
@@ -65,7 +67,7 @@ def gh_curl_response(url):
         buffer = BytesIO()
         c = pycurl.Curl()
         c.setopt(c.URL, add_page_num(url, page_num))
-        c.setopt(c.USERPWD, gh_userpwd)
+        c.setopt(c.USERPWD, gh_userpwd(gh_username, gh_oauth_key))
         c.setopt(c.WRITEDATA, buffer)
         sleep_gh_rate_limit()
         try:
@@ -99,10 +101,17 @@ def gh_curl_response(url):
                     page_num = page_num + 1
     return results
 
-def curr_commit_master(repo_name):
-    """ Returns the sha for the current commit on the master branch """
+def curr_commit_master(repo_name, gh_username, gh_oauth_key):
+    """ Returns the sha for the current commit on the master branch 
+    
+    Args:
+        repo_name: Repo name
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
+
+    """
     try:
-        response = gh_curl_response(get_commits_master_url(replace_special_chars(repo_name)))
+        response = gh_curl_response(get_commits_master_url(replace_special_chars(repo_name)), gh_username, gh_oauth_key)
         return response["sha"]
     except ValueError:
         return None
@@ -144,16 +153,19 @@ def get_contents_url(repo_name, path = None):
     else:
         return "%s/%s/contents" % (url_repos, replace_special_chars(repo_name))
     
-def get_file_info(repo_name, path = None):
+def get_file_info(repo_name, gh_username, gh_oauth_key, path = None):
     """ Returns list of dicts, one dict containing info for each file in repo
         If a path is provided, if the path is a single file, returns info for that
         file. If path is a directory, returns files in that directory. Ignores submodules.
     
     Args:
         repo_name: Repo name
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
         path: Optional path within repo    
     """
-    response = gh_curl_response(get_contents_url(replace_special_chars(repo_name), replace_special_chars(path)))
+    response = gh_curl_response(get_contents_url(replace_special_chars(repo_name), replace_special_chars(path)),
+                                gh_username, gh_oauth_key)
     rtrn = []
     for file in response:
         try:
@@ -175,15 +187,17 @@ def get_file_info(repo_name, path = None):
             print("For repo %s, caught TypeError; skipping file record: %s" %(repo_name, file))
     return rtrn
             
-def get_file_contents(url):
+def get_file_contents(url, gh_username, gh_oauth_key):
     """ Returns file contents as a string 
     Returns None if there is a problem, e.g. file is too big to get contents from normal API,
     or if file can't be decoded into text, or if path is a submodule. 
     
     Args:
         url: URL for the specific version of the file from the repos API
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
     """
-    response = gh_curl_response(url)
+    response = gh_curl_response(url, gh_username, gh_oauth_key)
     try:
         encoding = response["encoding"]
         assert(encoding == "base64")
@@ -194,36 +208,61 @@ def get_file_contents(url):
     except UnicodeDecodeError:
         return None
             
-def get_language_bytes(repo_name):
+def get_language_bytes(repo_name, gh_username, gh_oauth_key):
     """ Returns dict of bytes by language
     
     Params:
         repo_name: Repo name
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
     """
-    response = gh_curl_response(get_languages_url(replace_special_chars(repo_name)))
+    response = gh_curl_response(get_languages_url(replace_special_chars(repo_name)), gh_username, gh_oauth_key)
     if not response:
         return {}
     return response
 
-def get_license(repo_name):
-    """ Returns name of repo license as a string, or None if GitHub API could not detect a license """
+def get_license(repo_name, gh_username, gh_oauth_key):
+    """ Returns name of repo license as a string, or None if GitHub API could not detect a license 
+    
+    Params:
+        repo_name: Repo name
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
+
+    """
     try:
-        response = gh_curl_response(get_license_url(replace_special_chars(repo_name)))
+        response = gh_curl_response(get_license_url(replace_special_chars(repo_name)), gh_username, gh_oauth_key)
         return response["license"]["key"]
     except ValueError:
         return None
 
-def get_commits(repo_name):
-    """ Returns list of dicts; each dict is info for one commit to default branch """
-    response = gh_curl_response(get_commits_url(replace_special_chars(repo_name)))
+def get_commits(repo_name, gh_username, gh_oauth_key):
+    """ Returns list of dicts; each dict is info for one commit to default branch 
+    
+    Params:
+        repo_name: Repo name
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
+    
+    """
+    response = gh_curl_response(get_commits_url(replace_special_chars(repo_name)), gh_username, gh_oauth_key)
     if not response:
         return []
     else:
         return response
 
-def get_initial_commit(repo_name, path):
-    """ Returns date of first commit for a path as a datetime object """
-    response = gh_curl_response(get_commits_url(replace_special_chars(repo_name), replace_special_chars(path)))
+def get_initial_commit(repo_name, path, gh_username, gh_oauth_key):
+    """ Returns date of first commit for a path as a datetime object 
+    
+    Params:
+        repo_name: Repo name
+        path: File path within repo
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
+        
+    """
+    response = gh_curl_response(get_commits_url(replace_special_chars(repo_name), replace_special_chars(path)),
+                                gh_username, gh_oauth_key)
     if not response:
         raise ValueError("No commits for repo %s and path %s" % (replace_special_chars(repo_name), 
                                                                  replace_special_chars(path)))
@@ -235,15 +274,18 @@ def get_initial_commit(repo_name, path):
             print(response)
         raise ValueError("Caught TypeError for repo %s and path %s" % (repo_name, path))
 
-def get_pull_requests(repo_name, state = "all"):
+def get_pull_requests(repo_name, gh_username, gh_oauth_key, state = "all"):
     """ Returns list of pull requests.
     Each pull request is a dict of data.
     
     Params:
         repo_name
+        gh_username: GitHub username for GitHub API
+        gh_oauth_key: (String) GitHub oauth key
         state: "all", "open", or "closed"
+
     """
-    rtrn = gh_curl_response(get_pulls_url(replace_special_chars(repo_name), state))
+    rtrn = gh_curl_response(get_pulls_url(replace_special_chars(repo_name), state), gh_username, gh_oauth_key)
     if not rtrn:
         return []
     else:

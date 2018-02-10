@@ -3,7 +3,6 @@ import argparse
 from bigquery import get_client
 
 from gh_api import get_initial_commit
-from local_params import json_key_final_dataset
 import pycurl
 from util import create_bq_table, push_bq_records
 from util import curr_time_utc
@@ -13,22 +12,31 @@ from util import run_bq_query
 parser = argparse.ArgumentParser()
 parser.add_argument('--proj', action = 'store', dest = 'proj', required = True,
                     help = 'BigQuery project name')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 parser.add_argument('--ds', action = 'store', dest = 'ds', required = True, 
                     help = 'BigQuery dataset to write table to')
 parser.add_argument('--table_file_info', action = 'store', dest = 'table_info', required = True, 
                     help = 'BigQuery table to read file info from')
 parser.add_argument('--table_init_commit', action = 'store', dest = 'table_init_commit', required = True, 
                     help = 'BigQuery table to write file initial commit times to')
+parser.add_argument('--gh_user', action = 'store', dest = 'gh_username', required = True, 
+                    help = 'GitHub username for API')
+parser.add_argument('--gh_oauth_key', action = 'store', dest = 'gh_oauth_key', required = True, 
+                    help = '(String) GitHub oauth key')
 args = parser.parse_args()
  
 proj = args.proj
+json_key = args.json_key
 dataset = args.ds
 table_info = args.table_info
 table_init_commit = args.table_init_commit
+gh_username = args.gh_username
+gh_oauth_key = args.gh_oauth_key
  
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False, swallow_results=True)
+client = get_client(json_key_file=json_key, readonly=False, swallow_results=True)
  
 # Table schema
 schema = [
@@ -67,7 +75,7 @@ def get_init_commit(file_info_record):
             'file_name': file_info_record["file_name"],
             'path': path,
             'sha': file_info_record["sha"],
-            'init_commit_timestamp': get_initial_commit(repo_name, path).isoformat()}
+            'init_commit_timestamp': get_initial_commit(repo_name, path, gh_username, gh_oauth_key).isoformat()}
     
     
 print("%s\tGetting file initial commit times from GitHub API and pushing to table" % curr_time_utc())

@@ -5,10 +5,12 @@ from bigquery import get_client
 import xmltodict
 
 from lit_search import parse_record, gh_repo_from_text, gh_repo_from_pdf
-from local_params import json_key_final_dataset
 from util import delete_bq_table, create_bq_table, push_bq_records
 
+
 parser = argparse.ArgumentParser()
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key file for BigQuery dataset')
 parser.add_argument('--metadata-dir', action = 'store', dest = 'metadata_dir', required = True, 
                     help = 'Directory containing article metadata XML files')
 parser.add_argument('--pdf-dir', action = 'store', dest = 'pdf_dir', required = True, 
@@ -58,10 +60,11 @@ def gh_repos_from_metadata(metadata):
 
 # Write the results to BigQuery table
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
+json_key = args.json_key
 bq_ds = args.bq_ds
 bq_tb = args.bq_tb
 print('\nGetting BigQuery client\n')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False)
+client = get_client(json_key_file=json_key, readonly=False)
 
 # Delete the output table if it exists
 delete_bq_table(client, bq_ds, bq_tb)

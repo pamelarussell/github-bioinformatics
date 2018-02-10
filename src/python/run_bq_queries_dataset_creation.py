@@ -1,21 +1,21 @@
 import argparse
-from local_params import json_key_final_dataset
-from util import run_query_and_save_results
+import os
+import time
+
 from bigquery import get_client
+
 from query import *
 from structure import *
-import time
-import os
 from util import get_repo_names
-
-
-##### Run queries against GitHub dataset tables to construct reduced dataset and store the results in new tables 
+from util import run_query_and_save_results
 
 
 # Command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--sheet', action = 'store', dest = 'sheet', required = True, 
                     help = 'Google Sheet with use_repo as a column')
+parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
+                    help = 'JSON key for BigQuery dataset')
 parser.add_argument('--tb_commits', action = 'store', dest = 'table_commits', required = True,
                     help = 'BigQuery commits table')
 parser.add_argument('--tb_contents', action = 'store', dest = 'table_contents', required = True,
@@ -31,6 +31,7 @@ args = parser.parse_args()
     
 # BigQuery parameters
 res_dataset = args.res_dataset
+json_key = args.json_key
 table_commits = args.table_commits
 table_contents = args.table_contents
 table_files = args.table_files
@@ -40,12 +41,12 @@ table_licenses = args.table_licenses
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
 # Get BigQuery client
 print('Getting BigQuery client\n')
-client = get_client(json_key_file=json_key_final_dataset, readonly=False)
+client = get_client(json_key_file=json_key, readonly=False)
     
 # Get repo names
 sheet = args.sheet
 print("Getting repo names from spreadsheet")
-repos = get_repo_names(sheet)
+repos = get_repo_names(sheet, json_key)
 print("There are %s repos with use_repo = 1.\n" % len(repos))
     
 # Run the queries
