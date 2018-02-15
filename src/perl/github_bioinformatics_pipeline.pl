@@ -11,6 +11,9 @@ use JSON;
 # -----------------------------------------------------------------
 
 # Key names for config file
+my $key_gh_user = "gh_username";
+my $key_gh_oauth_key = "gh_oauth_key";
+my $key_json_key_google = "json_key";
 my $key_bq_proj = "bq_proj";
 my $key_gsheet_repos = "gsheet_repos";
 my $key_gcs_bucket = "gcs_bucket";
@@ -45,8 +48,14 @@ my $help_str = 	"\n--------------------------------------------------------\n\n"
 				"\n" .
 				"Config file is JSON with top-level keys:\n" .
 				"\n" .
+				"* GitHub API configuration *\n" .
+				"\n" .
+				"'$key_gh_user': GitHub username\n" .
+				"'$key_gh_oauth_key': GitHub Oauth key\n" .
+				"\n" .
 				"* Google configuration *\n" .
 				"\n" .
+				"'$key_json_key_google': File with JSON key for Google credentials\n" .
 				"'$key_bq_proj': Name of BigQuery project\n" .
 				"'$key_gsheet_repos': Name of Google Sheet with curated article and repo info\n" .
 				"'$key_gcs_bucket': Name of Google Cloud Storage bucket for project data\n" .
@@ -95,13 +104,17 @@ my %config = %$config_scalar or die_with_message("Malformed config file");
 # Check for required keys
 my @required_keys = ($key_bq_proj, $key_gsheet_repos, $key_gcs_bucket, $key_python3, $key_cloc_exec, $key_src_dir,
 	$key_out_results_dir, $key_lit_search_metadata_dir, $key_lit_search_pdf_dir, $key_genderize_key_file,
-	$key_extract_repos_from_lit_search, $key_check_repo_existence, $key_query_eutils_article_metadata,
+	$key_extract_repos_from_lit_search, $key_check_repo_existence, $key_query_eutils_article_metadata, $key_json_key_google,
 	$key_generate_language_bytes, $key_generate_licenses, $key_generate_commits, $key_generate_file_info,
 	$key_generate_file_contents, $key_generate_file_init_commits, $key_generate_repo_metrics, $key_generate_pr_data,
-	$key_run_cloc, $key_run_bq_analysis_queries, $key_run_extract_comments, $key_run_code_chunk_frequency, $key_infer_gender);
+	$key_run_cloc, $key_run_bq_analysis_queries, $key_run_extract_comments, $key_run_code_chunk_frequency, $key_infer_gender,
+	$key_gh_user, $key_gh_oauth_key);
 foreach my $key (@required_keys) {if(!exists $config{$key}) {die_with_message("Missing key: $key")}}
 
 # Get parameters from config
+my $gh_user = $config{$key_gh_user};
+my $gh_oauth_key = $config{$key_gh_oauth_key};
+my $json_key = $config{$key_json_key_google};
 my $bq_proj = $config{$key_bq_proj};
 my $gsheet_repos = $config{$key_gsheet_repos};
 my $gcs_bucket = $config{$key_gcs_bucket};
@@ -219,7 +232,8 @@ if($extract_repos_from_lit_search) {
 
 # Check for issues with repository names that have been manually curated
 if($check_repo_existence) {
-	run_cmmd("$python3 $script_check_repo_existence --sheet $gsheet_repos");
+	run_cmmd("$python3 $script_check_repo_existence --sheet $gsheet_repos --json_key $json_key " .
+	"--gh_user $gh_user --gh_oauth_key $gh_oauth_key");
 } else {print("\nSkipping step: check for repo existence\n")}
 
 # Get article metadata from Eutils
@@ -231,49 +245,49 @@ if($query_eutils_article_metadata) {
 # Get repo metrics from GitHub API
 if($generate_repo_metrics) {
 	run_cmmd("$python3 $script_gh_api_repo_metrics --ds $bq_ds_repos --table $bq_tb_repo_metrics ".
-	"--sheet $gsheet_repos --proj $bq_proj")
+	"--sheet $gsheet_repos --proj $bq_proj --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get repo info from GitHub API\n")}
 
 # Get language info from GitHub API
 if($generate_language_bytes) {
 	run_cmmd("$python3 $script_gh_api_languages --ds $bq_ds_repos --table $bq_tb_languages_gh_api ".
-	"--sheet $gsheet_repos")
+	"--sheet $gsheet_repos --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get language info from GitHub API\n")}
 
 # Get licenses from GitHub API
 if($generate_licenses) {
 	run_cmmd("$python3 $script_gh_api_licenses --ds $bq_ds_repos --table $bq_tb_licenses ".
-	"--sheet $gsheet_repos")
+	"--sheet $gsheet_repos --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get licenses from GitHub API\n")}
 
 # Get commits from GitHub API
 if($generate_commits) {
 	run_cmmd("$python3 $script_gh_api_commits --ds $bq_ds_repos --table $bq_tb_commits ".
-	"--sheet $gsheet_repos --proj $bq_proj")
+	"--sheet $gsheet_repos --proj $bq_proj --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get commits from GitHub API\n")}
 
 # Get file info from GitHub API
 if($generate_file_info) {
 	run_cmmd("$python3 $script_gh_api_file_info --ds $bq_ds_repos --table $bq_tb_files ".
-	"--sheet $gsheet_repos --proj $bq_proj")
+	"--sheet $gsheet_repos --proj $bq_proj --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get file info from GitHub API\n")}
 
 # Get file contents from GitHub API
 if($generate_file_contents) {
 	run_cmmd("$python3 $script_gh_api_file_contents --ds $bq_ds_repos --table_file_contents $bq_tb_contents ".
-	"--table_file_info $bq_tb_files --proj $bq_proj")
+	"--table_file_info $bq_tb_files --proj $bq_proj --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get file contents from GitHub API\n")}
 
 # Get file initial commit times from GitHub API
 if($generate_file_init_commits) {
 	run_cmmd("$python3 $script_gh_api_file_init_commit --ds $bq_ds_repos --table_init_commit $bq_tb_file_init_commit ".
-	"--table_file_info $bq_tb_files --proj $bq_proj")
+	"--table_file_info $bq_tb_files --proj $bq_proj --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get file initial commits from GitHub API\n")}
 
 # Get pull request info from GitHub API
 if($generate_pr_data) {
 	run_cmmd("$python3 $script_gh_api_pr_data --ds $bq_ds_repos --table $bq_tb_prs ".
-	"--sheet $gsheet_repos --proj $bq_proj")
+	"--sheet $gsheet_repos --proj $bq_proj --json_key $json_key --gh_user $gh_user --gh_oauth_key $gh_oauth_key")
 } else {print("\nSkipping step: get pull request info from GitHub API\n")}
 
 # Run BigQuery analysis queries against GitHub bioinformatics dataset and save results to tables
