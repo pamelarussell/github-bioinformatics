@@ -1,15 +1,18 @@
 library(jsonlite)
 
-proj_params_json <- "/Users/Pamela/Dropbox/Documents/Github_mining/structure/project_params.json"
+json_params_main <- "/Users/Pamela/Dropbox/Documents/Github_mining/structure/config_main_proj.json"
+json_params_high_profile <- "/Users/Pamela/Dropbox/Documents/Github_mining/structure/config_high_profile.json"
 
 # Read parameters from JSON
-proj_params <- fromJSON(proj_params_json, flatten = T)
+params_main <- fromJSON(json_params_main, flatten = T)
+params_high_profile <- fromJSON(json_params_main, flatten = T)
 
-# Project name
-proj_main <- proj_params[["bq_proj_main"]]
+# Project names
+proj_main <- params_main[["bq_proj"]]
+proj_high_profile <- params_high_profile[["bq_proj"]]
 
 # Local structure
-paper_dir <- proj_params[["paper_dir"]]
+paper_dir <- params_main[["paper_dir"]]
 paper_scripts_dir <- paste(paper_dir, "scripts", sep = "/")
 saved_repo_features_main <- paste(paper_dir, "data/repo_features_main.txt", sep = "/")
 load_repo_features <- function(file) {read.table(file, header = T, sep = "\t")}
