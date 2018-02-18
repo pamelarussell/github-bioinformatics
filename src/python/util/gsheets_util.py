@@ -17,13 +17,22 @@ def get_repo_names(sheet, json_key):
     scope = ['https://spreadsheets.google.com/feeds']
     creds = ServiceAccountCredentials.from_json_keyfile_name(json_key, scope)
     client = gspread.authorize(creds)
+    
      
     # Load repos from the spreadsheet
-    records = client.open(sheet).get_worksheet(1).get_all_records()
-    rtrn = list({rec["repo_name"] for rec in records if rec["use_repo"] == 1})
-    rtrn.sort()
-    return rtrn
-    
+    try:
+        records = client.open(sheet).get_worksheet(0).get_all_records()
+        rtrn = list({rec["repo_name"] for rec in records if rec["use_repo"] == 1})
+        rtrn.sort()
+        print("Got %s repos." %(len(rtrn)))
+        return rtrn
+    except gspread.exceptions.SpreadsheetNotFound as e:
+        print("\nSpreadsheet not found. Did you share the sheet with the client email in your JSON oauth file?")
+        all_sheets = client.openall()
+        for s in all_sheets:
+            print(s.title)
+        print("\n")
+        raise e
     
 
 
