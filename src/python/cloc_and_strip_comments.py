@@ -271,6 +271,7 @@ WHERE
     COUNT(sha) = 1)
 """ % (proj, out_ds, table_loc_ungrouped, proj, out_ds, table_loc_ungrouped)
   
+    
 query_group_sc = """
 SELECT
   *
@@ -278,7 +279,7 @@ FROM (
   SELECT
     *
   FROM
-    [github-bioinformatics-171721:analysis.tmp_sc_ungrouped]
+    [%s:%s.%s]
   GROUP BY
     sha,
     contents_comments_stripped)
@@ -290,7 +291,7 @@ WHERE
     SELECT
       *
     FROM
-      [github-bioinformatics-171721:analysis.tmp_sc_ungrouped]
+      [%s:%s.%s]
     GROUP BY
       sha,
       contents_comments_stripped)

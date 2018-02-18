@@ -325,7 +325,8 @@ if($run_cloc) {
 	"--tb_sc $bq_tb_contents_comments_stripped " .
 	"--tb_skip $bq_tb_loc_by_file_skipped " .
 	"--outfile $out_log_cloc " .
-	"--cloc $cloc_exec ";
+	"--cloc $cloc_exec " .
+	"--json_key $json_key";
 	run_cmmd($cmmd_cloc, $out_log_cloc)
 } else {print("\nSkipping step: count lines of code\n")}
 
