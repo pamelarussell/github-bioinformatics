@@ -15,7 +15,7 @@ parser.add_argument('--sheet', action = 'store', dest = 'sheet', required = True
                     help = 'Google Sheet with use_repo as a column')
 parser.add_argument('--json_key', action = 'store', dest = 'json_key', required = True, 
                     help = 'JSON key file with Google credentials')
-parser.add_argument('--gh_user', action = 'store', dest = 'gh_username', required = True, 
+parser.add_argument('--gh_user', action = 'store', dest = 'gh_user', required = True, 
                     help = 'GitHub username for API')
 parser.add_argument('--gh_oauth_key', action = 'store', dest = 'gh_oauth_key', required = True, 
                     help = '(String) GitHub oauth key')

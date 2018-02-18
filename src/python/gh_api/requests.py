@@ -164,7 +164,7 @@ def get_file_info(repo_name, gh_username, gh_oauth_key, path = None):
         gh_oauth_key: (String) GitHub oauth key
         path: Optional path within repo    
     """
-    response = gh_curl_response(get_contents_url(replace_special_chars(repo_name), replace_special_chars(path)),
+    response = gh_curl_response(get_contents_url(replace_special_chars(repo_name), path),
                                 gh_username, gh_oauth_key)
     rtrn = []
     for file in response:
@@ -173,7 +173,7 @@ def get_file_info(repo_name, gh_username, gh_oauth_key, path = None):
             if tp == "dir":
                 # Recursively get files in subdirectories
                 existing_paths = set([rec["path"] for rec in rtrn])
-                rtrn = rtrn + [rec for rec in get_file_info(replace_special_chars(repo_name), 
+                rtrn = rtrn + [rec for rec in get_file_info(replace_special_chars(repo_name), gh_username, gh_oauth_key,
                                                             file["path"]) if rec["path"] not in existing_paths]
             else:
                 if tp == "file" or tp == "symlink":
@@ -183,7 +183,7 @@ def get_file_info(repo_name, gh_username, gh_oauth_key, path = None):
                         pass
                     else:
                         raise ValueError("Type not supported: %s" % tp)
-        except TypeError:
+        except TypeError as e:
             print("For repo %s, caught TypeError; skipping file record: %s" %(repo_name, file))
     return rtrn
             
