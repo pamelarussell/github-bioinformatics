@@ -44,8 +44,6 @@ parser.add_argument('--tb_test_cases', action = 'store', dest = 'table_test_case
                     help = 'BigQuery table for number of test cases')
 parser.add_argument('--tb_test_cases_by_repo', action = 'store', dest = 'table_test_cases_by_repo', required = True,
                     help = 'BigQuery table for number of test cases by repo')
-parser.add_argument('--tb_commit_types', action = 'store', dest = 'table_commit_types', required = True,
-                    help = 'BigQuery table for commit types')
 parser.add_argument('--tb_project_duration', action = 'store', dest = 'table_project_duration', required = True,
                     help = 'BigQuery table for project duration')
 
@@ -71,7 +69,6 @@ table_num_languages_by_repo = args.table_num_langs_by_repo
 table_num_repos_by_language = args.table_num_repos_by_lang
 table_test_cases = args.table_test_cases
 table_test_cases_by_repo = args.table_test_cases_by_repo
-table_commit_types = args.table_commit_types
 table_project_duration = args.table_project_duration
 
 # Using BigQuery-Python https://github.com/tylertreat/BigQuery-Python
@@ -113,12 +110,6 @@ run_query_and_save_results(client, build_query_test_cases(proj, gh_api_dataset, 
 # Number of test cases and lines of code in test cases by repo
 run_query_and_save_results(client, build_query_test_cases_by_repo(proj, res_dataset, table_test_cases),
                            res_dataset, table_test_cases_by_repo)
- 
-# Number of bug fix commits and total commits by repo
-# Bug fix commits are identified using the heuristic in "A Large Scale Study of Programming Languages and Code Quality in Github"
-# Ray B, Posnett D, Filkov V, Devanbu P. A large scale study of programming languages and code quality in github. Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering. ACM; 2014. pp. 155–165. doi:10.1145/2635868.2635922
-run_query_and_save_results(client, build_query_commit_types(proj, gh_api_dataset, table_commits), 
-                           res_dataset, table_commit_types)
  
 # Project duration
 run_query_and_save_results(client, build_query_project_duration(proj, gh_api_dataset, table_commits), 
