@@ -5,7 +5,7 @@ json_params_high_profile <- "/Users/Pamela/Dropbox/Documents/Github_mining/struc
 
 # Read parameters from JSON
 params_main <- fromJSON(json_params_main, flatten = T)
-params_high_profile <- fromJSON(json_params_main, flatten = T)
+params_high_profile <- fromJSON(json_params_high_profile, flatten = T)
 
 # Project names
 proj_main <- params_main[["bq_proj"]]

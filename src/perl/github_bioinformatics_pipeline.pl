@@ -308,8 +308,8 @@ if($run_bq_analysis_queries) {
 	"--tb_num_repos_by_lang $bq_tb_num_repos_by_lang " .
 	"--tb_test_cases $bq_tb_test_cases " .
 	"--tb_test_cases_by_repo $bq_tb_test_cases_by_repo " .
-	"--tb_commit_types $bq_tb_commit_types " .
-	"--tb_project_duration $bq_tb_project_duration ")
+	"--tb_project_duration $bq_tb_project_duration " .
+	"--json_key $json_key")
 } else {print("\nSkipping step: run BigQuery analysis queries against GitHub bioinformatics dataset and " .
 	"save results to tables\n")}
 
