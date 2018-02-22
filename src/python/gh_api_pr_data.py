@@ -92,7 +92,7 @@ for repo_name in repos:
         if records is not None:
             print("%s\tPushing %s pull request records for repo %s/%s: %s" 
                   % (curr_time_utc(), len(records), num_done, num_repos, repo_name))
-            push_bq_records(client, dataset, table, records)
+            push_bq_records(client = client, dataset = dataset, table = table, records = records, max_batch = 10)
         else:
             print("%s\tPushing 0 pull request records for repo %s/%s: %s" 
                   % (curr_time_utc(), num_done, num_repos, repo_name))
