@@ -92,7 +92,7 @@ Get paper author lists
 ```{r load_author_lists}
 # Function to get author lists of papers from BigQuery
 get_author_lists <- function(proj) {
-  query <- paste("SELECT repo_name, authors FROM [", 
+  query <- paste("SELECT repo_name, title, authors FROM [", 
                  proj, ":", ds_lit_search, ".", table_article_metadata, "]",
                  sep = "")
   query_exec(query, project = proj, max_pages = Inf)
@@ -351,6 +351,7 @@ gender_stats_author_list <- function(author_list, gender_table) {
 # Function to summarize diversity info of author lists by repo
 paper_authors_summary <- function(author_lists, gender_table) {
   rtrn <- data.frame(repo_name = character(),
+                     title = character(),
                      female = integer(),
                      male = integer(),
                      no_gender = integer(),
@@ -360,6 +361,7 @@ paper_authors_summary <- function(author_lists, gender_table) {
                      shannon = numeric())
   for(i in 1:nrow(author_lists)) {
     repo_name <- author_lists[i, "repo_name"]
+    title <- author_lists[i, "title"]
     author_list <- author_lists[i, "authors"]
     gender_stats <- gender_stats_author_list(author_list, gender_table)
     male <- gender_stats$male
@@ -371,6 +373,7 @@ paper_authors_summary <- function(author_lists, gender_table) {
     sd <- shannon(c(male, female))
     rtrn <- rbind(rtrn,
                   data.frame(repo_name = repo_name,
+                             title = title,
                              female = female,
                              male = male,
                              no_gender = no_gender,
@@ -392,6 +395,9 @@ paper_authors_summary_high_prof <- paper_authors_summary(author_lists_high_prof,
 ```{r gender_summary_figure}
 # Function to combine several diversity measurements into a tidy summary table
 gender_summary_tidy <- function(developers, commits_no_null_login, paper_authors_summary, dataset_name) {
+  paper_authors_summary_dedup_articles <- paper_authors_summary %>% 
+    select(-repo_name) %>%
+    unique()
   gender_summary_developers <- developers %>% 
     group_by(gender) %>% 
     summarize(n = n()) %>% 
@@ -405,14 +411,14 @@ gender_summary_tidy <- function(developers, commits_no_null_login, paper_authors
     filter(gender %in% c("female", "male")) %>% 
     mutate(total = sum(n), p = n / total) %>%
     mutate(stat = "Commits")
-  gender_summary_first_author <- paper_authors_summary %>%
+  gender_summary_first_author <- paper_authors_summary_dedup_articles %>%
     group_by(first_author) %>%
     summarize(n = n()) %>%
     rename(gender = first_author) %>%
     filter(gender %in% c("female", "male")) %>% 
     mutate(total = sum(n), p = n / total) %>%
     mutate(stat = "First authors")
-  gender_summary_last_author <- paper_authors_summary %>%
+  gender_summary_last_author <- paper_authors_summary_dedup_articles %>%
     group_by(last_author) %>%
     summarize(n = n()) %>%
     rename(gender = last_author) %>%
@@ -421,7 +427,7 @@ gender_summary_tidy <- function(developers, commits_no_null_login, paper_authors
     mutate(stat = "Last authors")
   gender_summary_paper_authors <- data.frame(
     gender = c("female", "male"), 
-    n = c(sum(paper_authors_summary$female), sum(paper_authors_summary$male))) %>% 
+    n = c(sum(paper_authors_summary_dedup_articles$female), sum(paper_authors_summary_dedup_articles$male))) %>% 
     mutate(total = sum(n), p = n / total) %>%
     mutate(stat = "Paper authors")
   
@@ -482,7 +488,8 @@ ggplot(gender_summary_tidy %>% filter(Gender == "female"),
         legend.title = element_text(size = 12)) +
   ggtitle("Developers, commits, and paper authorships by gender") +
   ylab("Proportion of female contributors") +
-  scale_fill_manual(values = c("#ff6666", "#ffdb4d"))
+  scale_fill_manual(values = c("#ff6666", "#ffdb4d")) +
+  expand_limits(x = 5.7)
 ```
 
 ## Summarize number of repos by team composition
