@@ -15,6 +15,7 @@ proj_high_profile <- params_high_profile[["bq_proj"]]
 paper_dir <- params_main[["paper_dir"]]
 paper_scripts_dir <- paste(paper_dir, "scripts", sep = "/")
 saved_repo_features_main <- paste(paper_dir, "data/repo_features_main.txt", sep = "/")
+saved_repo_features_high_prof <- paste(paper_dir, "data/repo_features_high_prof.txt", sep = "/")
 load_repo_features <- function(file) {read.table(file, header = T, sep = "\t")}
 
 # Data from GitHub API
