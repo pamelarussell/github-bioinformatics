@@ -3,11 +3,17 @@ title: "Gender analysis of developers and paper authors"
 output: html_document
 ---
 
+## Session info
+
+```{r session_info}
+rm(list=ls())
+sessionInfo()
+```
+
 ## Environment setup
 
 ```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
-rm(list=ls())
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))

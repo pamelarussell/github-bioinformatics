@@ -51,14 +51,16 @@ topics_specialized <- topics %>%
   group_by(term) %>% 
   mutate(max_beta = max(beta), second_beta = beta[order(beta, decreasing = T)][2]) %>% 
   filter(beta == max_beta & log2(beta / second_beta) > 2) %>% 
-  select(topic, term, beta)
+  select(topic, term, beta) %>%
+  ungroup()
 
 # Classify abstracts
 abstract_top_topics <- tidy(lda, matrix = "gamma") %>% 
   mutate(topic = paste0("topic", topic)) %>%
   rename(repo_name = document) %>%
   group_by(repo_name) %>%
-  filter(gamma > 0.25)
+  filter(gamma > 0.25) %>%
+  ungroup()
 
 # Get top terms for each topic
 top_terms <- topics_specialized %>%
@@ -110,7 +112,8 @@ topics_specialized <- rename_topic(topics_specialized)
 num_repos_per_topic <- abstract_top_topics %>% 
   group_by(topic) %>% 
   summarize(total = n()) %>%
-  arrange(-total)
+  arrange(-total) %>%
+  ungroup()
 
 # Clean up
 rm(iso_to_iso, journal_to_iso_abbrev, lda, dtm)

@@ -122,14 +122,41 @@ $(document).ready(function () {
 </div>
 
 
+<div id="session-info" class="section level2">
+<h2>Session info</h2>
+<pre class="r"><code>rm(list=ls())
+sessionInfo()</code></pre>
+<pre><code>## R version 3.4.3 (2017-11-30)
+## Platform: x86_64-apple-darwin15.6.0 (64-bit)
+## Running under: macOS High Sierra 10.13.2
+## 
+## Matrix products: default
+## BLAS: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/3.4/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## loaded via a namespace (and not attached):
+##  [1] compiler_3.4.3  backports_1.1.2 magrittr_1.5    rprojroot_1.3-2
+##  [5] tools_3.4.3     htmltools_0.3.6 yaml_2.1.16     Rcpp_0.12.14   
+##  [9] stringi_1.1.6   rmarkdown_1.8   knitr_1.18      stringr_1.2.0  
+## [13] digest_0.6.13   evaluate_0.10.1</code></pre>
+</div>
 <div id="envirnoment-setup" class="section level2">
 <h2>Envirnoment setup</h2>
-<pre class="r"><code>rm(list=ls())
-knitr::opts_chunk$set(echo = TRUE)</code></pre>
+<pre class="r"><code>knitr::opts_chunk$set(echo = TRUE)
+source(&quot;~/Dropbox/Documents/Github_mining/src/R/project_info.R&quot;)
+proj &lt;- proj_main
+# Read repo features
+repo_data &lt;- load_repo_features(saved_repo_features_main)</code></pre>
 </div>
 <div id="run-topic-modeling-on-article-abstracts-associated-with-each-repo" class="section level2">
 <h2>Run topic modeling on article abstracts associated with each repo</h2>
-<pre class="r"><code>source(&quot;~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R&quot;)</code></pre>
+<pre class="r"><code>source(&quot;~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R&quot;, local = TRUE)</code></pre>
 <pre><code>## Joining, by = &quot;word&quot;</code></pre>
 </div>
 <div id="plot-top-terms" class="section level2">
@@ -161,19 +188,19 @@ plt_data %&gt;% ggplot(aes(Term, Beta)) +
 </div>
 <div id="amount-of-code-per-language-and-topic" class="section level2">
 <h2>Amount of code per language and topic</h2>
-<pre class="r"><code># Read in repo data and get bytes per language
-repo_data &lt;- load_repo_features()
-bytes_per_lang &lt;- repo_data %&gt;% select(repo_name, starts_with(&quot;bytes&quot;))
+<pre class="r"><code># Get bytes per language
+bytes_per_lang &lt;- repo_data %&gt;% 
+  select(repo_name, starts_with(&quot;bytes&quot;)) %&gt;%
+  mutate(repo_name = as.character(repo_name))
 
 # Summarize total bytes per topic. Has bytes double counted if repos have multiple topics.
 bytes_per_topic &lt;- abstract_top_topics %&gt;% 
   select(repo_name, topic) %&gt;% 
   left_join(bytes_per_lang, by = &quot;repo_name&quot;) %&gt;% 
   group_by(topic) %&gt;% 
-  summarise_at(vars(starts_with(&quot;bytes&quot;)), mean)</code></pre>
-<pre><code>## Warning: Column `repo_name` joining character vector and factor, coercing
-## into character vector</code></pre>
-<pre class="r"><code>colnames(bytes_per_topic) &lt;- gsub(&quot;bytes_&quot;, &quot;&quot;, colnames(bytes_per_topic))
+  summarise_at(vars(starts_with(&quot;bytes&quot;)), mean) %&gt;%
+  ungroup()
+colnames(bytes_per_topic) &lt;- gsub(&quot;bytes_&quot;, &quot;&quot;, colnames(bytes_per_topic))
 bytes_per_topic &lt;- bytes_per_topic %&gt;% 
   melt(id.vars = &quot;topic&quot;) %&gt;%
   rename(Topic = topic, Language = variable, Bytes = value)
@@ -193,7 +220,8 @@ require(scales)</code></pre>
   filter(!is.na(iso_abbrev)) %&gt;%
   group_by(iso_abbrev) %&gt;% 
   summarise(num_articles = n()) %&gt;% 
-  arrange(-num_articles)
+  arrange(-num_articles) %&gt;%
+  ungroup()
 
 top_journals &lt;- articles_per_journal[1:10, &quot;iso_abbrev&quot;][[1]]
 
@@ -203,7 +231,8 @@ topics_by_journal &lt;- abstract_top_topics %&gt;%
   rename(journal = iso_abbrev) %&gt;%
   filter(journal %in% top_journals) %&gt;%
   group_by(topic, journal) %&gt;%
-  summarise(num_repos = n())
+  summarise(num_repos = n()) %&gt;%
+  ungroup()
 
 # Bubble plot of topics vs journals
 ggplot(topics_by_journal, aes(topic, journal)) + 

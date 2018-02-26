@@ -3,17 +3,27 @@ title: "Topic modeling of article abstracts"
 output: html_document
 ---
 
+## Session info
+
+```{r session_info}
+rm(list=ls())
+sessionInfo()
+```
+
 ## Envirnoment setup
 
 ```{r setup}
-rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+proj <- proj_main
+# Read repo features
+repo_data <- load_repo_features(saved_repo_features_main)
 ```
 
 ## Run topic modeling on article abstracts associated with each repo
 
 ```{r run_topic_modeling}
-source("~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R")
+source("~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R", local = TRUE)
 ```
 
 ## Plot top terms
@@ -48,16 +58,18 @@ rm(facet_text, plt_data)
 ## Amount of code per language and topic
 
 ```{r languages}
-# Read in repo data and get bytes per language
-repo_data <- load_repo_features()
-bytes_per_lang <- repo_data %>% select(repo_name, starts_with("bytes"))
+# Get bytes per language
+bytes_per_lang <- repo_data %>% 
+  select(repo_name, starts_with("bytes")) %>%
+  mutate(repo_name = as.character(repo_name))
 
 # Summarize total bytes per topic. Has bytes double counted if repos have multiple topics.
 bytes_per_topic <- abstract_top_topics %>% 
   select(repo_name, topic) %>% 
   left_join(bytes_per_lang, by = "repo_name") %>% 
   group_by(topic) %>% 
-  summarise_at(vars(starts_with("bytes")), mean)
+  summarise_at(vars(starts_with("bytes")), mean) %>%
+  ungroup()
 colnames(bytes_per_topic) <- gsub("bytes_", "", colnames(bytes_per_topic))
 bytes_per_topic <- bytes_per_topic %>% 
   melt(id.vars = "topic") %>%
@@ -79,7 +91,8 @@ articles_per_journal <- article_data %>%
   filter(!is.na(iso_abbrev)) %>%
   group_by(iso_abbrev) %>% 
   summarise(num_articles = n()) %>% 
-  arrange(-num_articles)
+  arrange(-num_articles) %>%
+  ungroup()
 
 top_journals <- articles_per_journal[1:10, "iso_abbrev"][[1]]
 
@@ -89,7 +102,8 @@ topics_by_journal <- abstract_top_topics %>%
   rename(journal = iso_abbrev) %>%
   filter(journal %in% top_journals) %>%
   group_by(topic, journal) %>%
-  summarise(num_repos = n())
+  summarise(num_repos = n()) %>%
+  ungroup()
 
 # Bubble plot of topics vs journals
 ggplot(topics_by_journal, aes(topic, journal)) + 
