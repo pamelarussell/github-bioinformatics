@@ -108,7 +108,7 @@ add_years <- function(date, years) {
 }
 
 # Get various lines of code measurements
-loc_data <- function(file_info_df, suffix) {
+loc_data <- function(file_info_df, suffix, include_mean_size = TRUE) {
   data <- file_info_df %>% 
     group_by(repo_name) %>% 
     summarise(
@@ -122,8 +122,11 @@ loc_data <- function(file_info_df, suffix) {
       mean_lines_code = mean(lines_of_code),
       mean_lines_code_and_comment = mean(lines_of_code + lines_comment),
       mean_bytes_per_line_code_and_comment = sum(size) / (sum(lines_of_code) + sum(lines_comment))
-    ) %>% 
-    mutate(pct_lines_comment = total_lines_comment / total_lines_code_and_comment)
+    ) %>% mutate(pct_lines_comment = total_lines_comment / total_lines_code_and_comment)
+  
+  if(!include_mean_size) {
+    data <- data %>% select(-mean_bytes)
+  }
   
   colnames(data) <- sapply(colnames(data), function(x) {
     if (x == "repo_name") x
@@ -193,6 +196,70 @@ add_test_case_code_amt_bool <- function(repo_data, test_cases_by_lang_property, 
   repo_data
 }
 
+# Get file info
+get_file_info <- function(proj) {
+  query <- paste("SELECT
+  file_info.repo_name AS repo_name,
+                 loc.language AS language,
+                 loc.code AS lines_of_code,
+                 loc.comment as lines_comment,
+                 file_info.size AS size
+                 FROM (
+                 SELECT
+                 repo_name,
+                 sha
+                 FROM
+                 ", table_str(proj, ds_gh, table_file_info), "
+                 GROUP BY
+                 repo_name,
+                 sha,
+                 size) AS file_info
+                 INNER JOIN (
+                 SELECT
+                 sha,
+                 language,
+                 comment,
+                 code
+                 FROM
+                 ", table_str(proj, ds_analysis, table_loc), "
+                 GROUP BY
+                 sha,
+                 language,
+                 comment,
+                 code) AS loc
+                 ON
+                 file_info.sha = loc.sha", sep="")
+  
+  query_exec(query, project = proj, max_pages = Inf)
+}
+
+# Get test cases
+get_test_cases_no_data <- function(proj) {
+  # Query to join file size to test case table
+  query <- paste("SELECT
+               test_cases.repo_name AS repo_name,
+               test_cases.path AS path,
+               test_cases.language AS language,
+               test_cases.lines AS lines,
+               file_info.size AS size
+               FROM (
+               SELECT
+               *
+               FROM ", table_str(proj, ds_analysis, table_test_cases), ") AS test_cases
+               INNER JOIN (
+               SELECT
+               sha,
+               size
+               FROM
+               ", table_str(proj, ds_gh, table_file_info),
+                 "GROUP BY
+               sha,
+               size ) AS file_info
+               ON
+               test_cases.sha = file_info.sha", sep="")
+  
+  fetch_query_res(query, proj) %>% filter(!language %in% non_lang_file_types)
+}
 
 ##### Languages #####
 
@@ -250,59 +317,66 @@ lang_features <- c("interpreted", "compiled", "type_system_static", "type_system
                    "compatibility_structural", "compatibility_duck")
 
 
-##### Analysis #####
+##### Functions to join new analysis to a table #####
 
-## Pull in all data for a project and write to table on disk
-compile_and_save_proj_data <- function(proj) {
-  
-  # Initialize table for all repo-level data
-  repo_data <- data.frame(repo_name = character(0))
-  
-  # Repo license
+
+# Repo license
+add_license <- function(proj, repo_data) {
   message("Adding repo licenses")
-  repo_data <- join_tbl(repo_data, 
-    get_table(proj, ds_gh, table_licenses) %>%
-      select(repo_name, license)
+  join_tbl(repo_data, 
+           get_table(proj, ds_gh, table_licenses) %>%
+             select(repo_name, license)
   )
-  
-  # Project duration
+}
+
+# Project duration
+add_proj_duration <- function(proj, repo_data) {
   message("Adding project duration")
-  repo_data <- join_tbl(repo_data, 
-    get_table(proj, ds_analysis, table_proj_duration)
+  join_tbl(repo_data, 
+           get_table(proj, ds_analysis, table_proj_duration)
   )
-  
-  # Gender of developers and paper authors
+}
+
+# Gender of developers and paper authors
+add_gender <- function(proj, repo_data) {
   message("Adding gender analysis")
-  repo_data <- join_tbl(repo_data, 
-    get_table(proj, ds_analysis, table_gender_commit_authors) %>% rename(commit_authors_female = female,
-                                                                         commit_authors_male = male,
-                                                                         commit_authors_no_gender = no_gender,
-                                                                         team_type_gender = team_type,
-                                                                         shannon_commit_author_gender = shannon))
+  rtrn <- join_tbl(repo_data, 
+                   get_table(proj, ds_analysis, table_gender_commit_authors) %>% 
+                     rename(commit_authors_female = female,
+                            commit_authors_male = male,
+                            commit_authors_no_gender = no_gender,
+                            team_type_gender = team_type,
+                            shannon_commit_author_gender = shannon))
   
-  repo_data <- join_tbl(repo_data, 
-    get_table(proj, ds_analysis, table_gender_commits) %>% rename(commits_female = female,
-                                                                  commits_male = male,
-                                                                  commits_no_gender = no_gender,
-                                                                  shannon_commits_gender = shannon))
+  rtrn <- join_tbl(rtrn, 
+                   get_table(proj, ds_analysis, table_gender_commits) %>% 
+                     rename(commits_female = female,
+                            commits_male = male,
+                            commits_no_gender = no_gender,
+                            shannon_commits_gender = shannon))
   
-  repo_data <- join_tbl(repo_data, 
-    get_table(proj, ds_analysis, table_gender_paper_authors) %>% rename(paper_authors_female = female,
-                                                                        paper_authors_male = male,
-                                                                        paper_authors_no_gender = no_gender,
-                                                                        team_type_paper_authors = team_type,
-                                                                        first_author_gender = first_author,
-                                                                        last_author_gender = last_author,
-                                                                        shannon_paper_authors = shannon))
-  
-  
-  # Repo-level metrics from GitHub API
+  rtrn <- join_tbl(rtrn, 
+                   get_table(proj, ds_analysis, table_gender_paper_authors) %>% 
+                     rename(paper_authors_female = female,
+                            paper_authors_male = male,
+                            paper_authors_no_gender = no_gender,
+                            team_type_paper_authors = team_type,
+                            first_author_gender = first_author,
+                            last_author_gender = last_author,
+                            shannon_paper_authors = shannon))
+  rtrn
+}
+
+# Repo-level metrics from GitHub API
+add_repo_metrics <- function(proj, repo_data) {
   message("Adding repo metrics")
-  repo_data <- join_tbl(repo_data, 
-    get_table(proj, ds_gh, table_repo_metrics) %>%
-      select(repo_name, is_fork, stargazers_count, watchers_count, forks_count, subscribers_count))
-  
-  # Journal articles publishing the repos
+  join_tbl(repo_data, 
+           get_table(proj, ds_gh, table_repo_metrics) %>%
+             select(repo_name, is_fork, stargazers_count, watchers_count, forks_count, subscribers_count))
+}
+
+# Journal articles publishing the repos
+add_article_info <- function(proj, repo_data) {
   message("Adding article info")
   article_metadata <- get_table(proj, ds_lit_search, table_article_metadata) %>% 
     select(repo_name, iso_abbrev, year_pubmed, month_pubmed, day_pubmed, cited_by_pmc, cited_by_pmc_date) %>% 
@@ -319,169 +393,138 @@ compile_and_save_proj_data <- function(proj) {
     mutate(num_citations_per_week_pmc_minus_2_years = num_citations_pmc / weeks_since_pub_minus_2_years) %>% 
     select(repo_name, journal, date_pubmed, num_citations_pmc, num_citations_per_week_pmc_minus_2_years)
   
-  repo_data <- join_tbl(repo_data, article_metadata)
-  
-  
-  ## Individual source files
-  
+  join_tbl(repo_data, article_metadata)
+}
+
+add_file_info  <- function(proj, repo_data) {
   message("Adding file info")
-  query <- paste("SELECT
-  file_info.repo_name AS repo_name,
-  loc.language AS language,
-  loc.code AS lines_of_code,
-  loc.comment as lines_comment,
-  file_info.size AS size
-FROM (
-  SELECT
-    repo_name,
-    sha
-  FROM
-    ", table_str(proj, ds_gh, table_file_info), "
-  GROUP BY
-    repo_name,
-    sha,
-    size) AS file_info
-INNER JOIN (
-  SELECT
-    sha,
-    language,
-    comment,
-    code
-  FROM
-    ", table_str(proj, ds_analysis, table_loc), "
-  GROUP BY
-    sha,
-    language,
-    comment,
-    code) AS loc
-ON
-  file_info.sha = loc.sha", sep="")
-  
-  file_info <- query_exec(query, project = proj, max_pages = Inf)
+  file_info <- get_file_info(proj)
   file_info_no_data <- file_info %>% filter(!language %in% non_lang_file_types)
   
-  repo_data <- join_tbl(repo_data, 
-    file_info %>% 
-      group_by(repo_name) %>% 
-      summarize(
-        num_langs = length(unique(language)),
-        total_file_size = sum(as.numeric(size)), 
-        largest_file_size = max(as.numeric(size)), 
-        mean_file_size = mean(as.numeric(size)))
+  rtrn <- join_tbl(repo_data, 
+                   file_info %>% 
+                     group_by(repo_name) %>% 
+                     summarize(
+                       num_langs = length(unique(language)),
+                       total_file_size = sum(as.numeric(size)), 
+                       largest_file_size = max(as.numeric(size)), 
+                       mean_file_size = mean(as.numeric(size)))
   )
   
-  repo_data <- join_tbl(repo_data, 
-    file_info_no_data %>% 
-      group_by(repo_name) %>% 
-      summarize(
-        num_langs_no_data = length(unique(language)),
-        total_file_size_no_data = sum(as.numeric(size)), 
-        largest_file_size_no_data = max(as.numeric(size)), 
-        mean_file_size_no_data = mean(as.numeric(size)))
+  rtrn <- join_tbl(rtrn, 
+                   file_info_no_data %>% 
+                     group_by(repo_name) %>% 
+                     summarize(
+                       num_langs_no_data = length(unique(language)),
+                       total_file_size_no_data = sum(as.numeric(size)), 
+                       largest_file_size_no_data = max(as.numeric(size)), 
+                       mean_file_size_no_data = mean(as.numeric(size)))
   )
   
-  
-  ## When each file was first committed
-  
+  rtrn
+}
+
+
+add_init_commit  <- function(proj, repo_data) {
   message("Adding initial commit times")
   # Query to get summary of times when files were first committed
   query <- paste("
-SELECT
-  COUNT(repo_name) AS num_files_same_commit_hour,
-  repo_name,
-  repo_duration_months + 1 as repo_num_months,
-  file_commit_months_from_proj_start,
-  file_commit_days_from_proj_start,
-  file_commit_hours_from_proj_start
-FROM (
-  SELECT
-    project_duration.repo_name AS repo_name,
-    project_duration.first_commit AS repo_first_commit,
-    project_duration.last_commit AS repo_last_commit,
-    DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
-      DATETIME(TIMESTAMP(project_duration.first_commit)),
-      HOUR) AS repo_duration_hours,
-    DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
-      DATETIME(TIMESTAMP(project_duration.first_commit)),
-      DAY) AS repo_duration_days,
-    DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
-      DATETIME(TIMESTAMP(project_duration.first_commit)),
-      MONTH) AS repo_duration_months,
-    init_commit.init_commit_timestamp AS file_commit,
-    DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
-      DATETIME(TIMESTAMP(project_duration.first_commit)),
-      HOUR) AS file_commit_hours_from_proj_start,
-    DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
-      DATETIME(TIMESTAMP(project_duration.first_commit)),
-      DAY) AS file_commit_days_from_proj_start,
-    DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
-      DATETIME(TIMESTAMP(project_duration.first_commit)),
-      MONTH) AS file_commit_months_from_proj_start
-  FROM (
-    SELECT
-      repo_name,
-      init_commit_timestamp
-    FROM
-      ", table_str_std_sql(proj, ds_gh, table_init_commit), ") AS init_commit
-  INNER JOIN
-    ", table_str_std_sql(proj, ds_analysis, table_proj_duration), " AS project_duration
-  ON
-    init_commit.repo_name = project_duration.repo_name)
-GROUP BY
-  repo_name,
-  repo_duration_hours,
-  repo_duration_days,
-  repo_duration_months,
-  file_commit_hours_from_proj_start,
-  file_commit_days_from_proj_start,
-  file_commit_months_from_proj_start
-ORDER BY
-  repo_name",
+        SELECT
+          COUNT(repo_name) AS num_files_same_commit_hour,
+          repo_name,
+          repo_duration_months + 1 as repo_num_months,
+          file_commit_months_from_proj_start,
+          file_commit_days_from_proj_start,
+          file_commit_hours_from_proj_start
+        FROM (
+          SELECT
+            project_duration.repo_name AS repo_name,
+            project_duration.first_commit AS repo_first_commit,
+            project_duration.last_commit AS repo_last_commit,
+            DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
+              DATETIME(TIMESTAMP(project_duration.first_commit)),
+              HOUR) AS repo_duration_hours,
+            DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
+              DATETIME(TIMESTAMP(project_duration.first_commit)),
+              DAY) AS repo_duration_days,
+            DATETIME_DIFF(DATETIME(TIMESTAMP(project_duration.last_commit)),
+              DATETIME(TIMESTAMP(project_duration.first_commit)),
+              MONTH) AS repo_duration_months,
+            init_commit.init_commit_timestamp AS file_commit,
+            DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
+              DATETIME(TIMESTAMP(project_duration.first_commit)),
+              HOUR) AS file_commit_hours_from_proj_start,
+            DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
+              DATETIME(TIMESTAMP(project_duration.first_commit)),
+              DAY) AS file_commit_days_from_proj_start,
+            DATETIME_DIFF(DATETIME(TIMESTAMP(init_commit.init_commit_timestamp)),
+              DATETIME(TIMESTAMP(project_duration.first_commit)),
+              MONTH) AS file_commit_months_from_proj_start
+          FROM (
+            SELECT
+              repo_name,
+              init_commit_timestamp
+            FROM
+              ", table_str_std_sql(proj, ds_gh, table_init_commit), ") AS init_commit
+          INNER JOIN
+            ", table_str_std_sql(proj, ds_analysis, table_proj_duration), " AS project_duration
+          ON
+            init_commit.repo_name = project_duration.repo_name)
+        GROUP BY
+          repo_name,
+          repo_duration_hours,
+          repo_duration_days,
+          repo_duration_months,
+          file_commit_hours_from_proj_start,
+          file_commit_days_from_proj_start,
+          file_commit_months_from_proj_start
+        ORDER BY
+          repo_name",
                  sep = "")
   
   # Pull down query results
   init_commit <- query_exec(query, project = proj, max_pages = Inf, use_legacy_sql = F)
   
   # Number of different days when new files were added
-  repo_data <- join_tbl(repo_data, 
-    init_commit %>% 
-      select(repo_name, file_commit_days_from_proj_start) %>% 
-      group_by(repo_name) %>% 
-      summarise(num_days_new_files_added = n_distinct(file_commit_days_from_proj_start))
+  rtrn <- join_tbl(repo_data, 
+                   init_commit %>% 
+                     select(repo_name, file_commit_days_from_proj_start) %>% 
+                     group_by(repo_name) %>% 
+                     summarise(num_days_new_files_added = n_distinct(file_commit_days_from_proj_start))
   )
   
   # Mean number of files added per day when new files were added
-  repo_data <- join_tbl(repo_data, 
-    init_commit %>% 
-      group_by(repo_name, file_commit_days_from_proj_start) %>% 
-      summarise(files_added = sum(num_files_same_commit_hour)) %>% 
-      summarise(mean_new_files_per_day_with_new_files = mean(files_added))
+  rtrn <- join_tbl(rtrn, 
+                   init_commit %>% 
+                     group_by(repo_name, file_commit_days_from_proj_start) %>% 
+                     summarise(files_added = sum(num_files_same_commit_hour)) %>% 
+                     summarise(mean_new_files_per_day_with_new_files = mean(files_added))
   )
   
   # Mean day since project initial commit that new files were added
-  repo_data <- join_tbl(repo_data, 
-    init_commit %>% 
-      group_by(repo_name) %>% 
-      summarise(mean_day_new_files_added = sum(num_files_same_commit_hour * file_commit_days_from_proj_start) / sum(num_files_same_commit_hour))
+  rtrn <- join_tbl(rtrn, 
+                   init_commit %>% 
+                     group_by(repo_name) %>% 
+                     summarise(mean_day_new_files_added = sum(num_files_same_commit_hour * file_commit_days_from_proj_start) / sum(num_files_same_commit_hour))
   )
   
   # Mean number of files added per month including months with no new files
-  repo_data <- join_tbl(repo_data, 
-    init_commit %>% 
-      group_by(repo_name) %>% 
-      summarize(mean_files_added_per_month = sum(num_files_same_commit_hour / repo_num_months))
+  rtrn <- join_tbl(rtrn, 
+                   init_commit %>% 
+                     group_by(repo_name) %>% 
+                     summarize(mean_files_added_per_month = sum(num_files_same_commit_hour / repo_num_months))
   )
   
   # Proportion of months with new files added
-  repo_data <- join_tbl(repo_data, 
-    init_commit %>% 
-      group_by(repo_name) %>% 
-      summarise(months_with_new_files = n_distinct(file_commit_months_from_proj_start)) %>% 
-      inner_join(init_commit %>% 
-                   select(repo_name, repo_num_months) %>% 
-                   distinct(), by = "repo_name") %>% 
-      mutate(pct_months_new_files_added = months_with_new_files / repo_num_months) %>% 
-      select(repo_name, pct_months_new_files_added)
+  rtrn <- join_tbl(rtrn, 
+                   init_commit %>% 
+                     group_by(repo_name) %>% 
+                     summarise(months_with_new_files = n_distinct(file_commit_months_from_proj_start)) %>% 
+                     inner_join(init_commit %>% 
+                                  select(repo_name, repo_num_months) %>% 
+                                  distinct(), by = "repo_name") %>% 
+                     mutate(pct_months_new_files_added = months_with_new_files / repo_num_months) %>% 
+                     select(repo_name, pct_months_new_files_added)
   )
   
   # Longest number of months in a row with new files added
@@ -492,124 +535,158 @@ ORDER BY
     sapply(new_file_consecutive_months$repo_name, function(repo) max_consecutive_months(init_commit, repo, "file_commit_months_from_proj_start"))
   new_file_consecutive_months$consecutive_months_no_new_files_added <- 
     sapply(new_file_consecutive_months$repo_name, function(repo) max_consecutive_months(init_commit, repo, "file_commit_months_from_proj_start", F))
-  repo_data <- join_tbl(repo_data, new_file_consecutive_months)
-  
-  
-  ## Commits - various analyses
-  
-  message("Adding commit analysis")
+  rtrn <- join_tbl(rtrn, new_file_consecutive_months)
+  rtrn
+}
+
+# Outside contributions
+add_outside_commits <- function(proj, repo_data) {
+  message("Adding outside commits")
   commits_table_str <- table_str(proj, ds_gh, table_commits)
+  
+  commits <- fetch_query_res(paste("
+                                     SELECT
+                                     repo_name,
+                                     committer_id,
+                                     author_id
+                                     FROM
+                                     ", table_str(proj, ds_gh, table_commits), "
+                                     GROUP BY
+                                     repo_name,
+                                     committer_id,
+                                     author_id"), proj)
+  
+  # Number of commit authors who are never committers
+  rtrn <- join_tbl(repo_data, 
+                   as.tbl(commits) %>% 
+                     select(repo_name, author_id) %>% 
+                     anti_join(commits %>% select(repo_name, committer_id), 
+                               by = c("repo_name", "author_id" = "committer_id")) %>% 
+                     group_by(repo_name) %>% 
+                     summarise(num_non_committing_authors = n())
+  )
+  
+  rtrn$num_non_committing_authors <- sapply(rtrn$num_non_committing_authors, na_to_zero)
+  
   
   # Percentage of commits with different author and committer
   query <- paste("
-SELECT
-  num_commits.repo_name AS repo_name,
-  num_commits_diff_author.num_commits / num_commits.num_commits as pct_commits_diff_author_committer
-FROM (
-  SELECT
-    repo_name,
-    COUNT(repo_name) AS num_commits
-  FROM
-    ", commits_table_str, "
-  GROUP BY
-    repo_name) AS num_commits
-INNER JOIN (
-  SELECT
-    repo_name,
-    COUNT(repo_name) AS num_commits
-  FROM
-    ", commits_table_str, "
-  WHERE
-    author_id != committer_id
-  GROUP BY
-    repo_name) AS num_commits_diff_author
-ON
-  num_commits.repo_name = num_commits_diff_author.repo_name
-", sep = "")
+        SELECT
+          num_commits.repo_name AS repo_name,
+          num_commits_diff_author.num_commits / num_commits.num_commits as pct_commits_diff_author_committer
+        FROM (
+          SELECT
+            repo_name,
+            COUNT(repo_name) AS num_commits
+          FROM
+            ", commits_table_str, "
+          GROUP BY
+            repo_name) AS num_commits
+        INNER JOIN (
+          SELECT
+            repo_name,
+            COUNT(repo_name) AS num_commits
+          FROM
+            ", commits_table_str, "
+          WHERE
+            author_id != committer_id
+          GROUP BY
+            repo_name) AS num_commits_diff_author
+        ON
+          num_commits.repo_name = num_commits_diff_author.repo_name
+        ", sep = "")
   
-  repo_data <- join_tbl(repo_data, fetch_query_res(query, proj))
-  repo_data$pct_commits_diff_author_committer <- sapply(repo_data$pct_commits_diff_author_committer, na_to_zero)
-  
-  # Median and mean commit message length
+  rtrn <- join_tbl(rtrn, fetch_query_res(query, proj))
+  rtrn$pct_commits_diff_author_committer <- sapply(rtrn$pct_commits_diff_author_committer, na_to_zero)
+  rtrn
+}
+
+# Median and mean commit message length
+add_commit_message <- function(proj, repo_data) {
+  message("Adding commit message")
+  commits_table_str <- table_str(proj, ds_gh, table_commits)
   query <- paste("
-SELECT
-  repo_name,
-  NTH(501, QUANTILES(LENGTH(commit_message), 1001)) AS median_commit_message_len,
-  AVG(LENGTH(commit_message)) AS mean_commit_message_len
-FROM
-  ", commits_table_str, "
-GROUP BY
-  repo_name
-", sep = "")
-  repo_data <- join_tbl(repo_data, fetch_query_res(query, proj))
-  
-  # Commit timing by month
+        SELECT
+          repo_name,
+          NTH(501, QUANTILES(LENGTH(commit_message), 1001)) AS median_commit_message_len,
+          AVG(LENGTH(commit_message)) AS mean_commit_message_len
+        FROM
+          ", commits_table_str, "
+        GROUP BY
+          repo_name
+        ", sep = "")
+  join_tbl(repo_data, fetch_query_res(query, proj))
+}
+
+# Commit timing by month
+add_commit_timing <- function(proj, repo_data) {
+  message("Adding commit timing")
   query <- paste("
-SELECT
-  COUNT(repo_name) AS num_commits_same_month,
-  repo_name,
-  DATETIME_DIFF(DATETIME(TIMESTAMP(repo_last_commit)),
-    DATETIME(TIMESTAMP(repo_first_commit)),
-    MONTH) + 1 AS repo_num_months,
-  DATETIME_DIFF(DATETIME(TIMESTAMP(commit_timestamp)),
-    DATETIME(TIMESTAMP(repo_first_commit)),
-    MONTH) AS commit_months_from_proj_start
-FROM (
-  SELECT
-    first_last.repo_name AS repo_name,
-    first_last.first_commit AS repo_first_commit,
-    first_last.last_commit AS repo_last_commit,
-    commits.author_commit_date AS commit_timestamp
-  FROM (
-    SELECT
-      repo_name,
-      author_commit_date
-    FROM
-      ", table_str_std_sql(proj, ds_gh, table_commits), ") AS commits
-  INNER JOIN (
-    SELECT
-      repo_name,
-      first_commit,
-      last_commit
-    FROM (
-      SELECT
-        repo_name,
-        MIN(author_commit_date) AS first_commit,
-        MAX(author_commit_date) AS last_commit
-      FROM
-        ", table_str_std_sql(proj, ds_gh, table_commits), "
-      GROUP BY
-        repo_name ) ) AS first_last
-  ON
-    commits.repo_name = first_last.repo_name )
-GROUP BY
-  repo_name,
-  repo_num_months,
-  commit_months_from_proj_start
-ORDER BY
-  repo_name,
-  commit_months_from_proj_start
-", sep = "")
+        SELECT
+          COUNT(repo_name) AS num_commits_same_month,
+          repo_name,
+          DATETIME_DIFF(DATETIME(TIMESTAMP(repo_last_commit)),
+            DATETIME(TIMESTAMP(repo_first_commit)),
+            MONTH) + 1 AS repo_num_months,
+          DATETIME_DIFF(DATETIME(TIMESTAMP(commit_timestamp)),
+            DATETIME(TIMESTAMP(repo_first_commit)),
+            MONTH) AS commit_months_from_proj_start
+        FROM (
+          SELECT
+            first_last.repo_name AS repo_name,
+            first_last.first_commit AS repo_first_commit,
+            first_last.last_commit AS repo_last_commit,
+            commits.author_commit_date AS commit_timestamp
+          FROM (
+            SELECT
+              repo_name,
+              author_commit_date
+            FROM
+              ", table_str_std_sql(proj, ds_gh, table_commits), ") AS commits
+          INNER JOIN (
+            SELECT
+              repo_name,
+              first_commit,
+              last_commit
+            FROM (
+              SELECT
+                repo_name,
+                MIN(author_commit_date) AS first_commit,
+                MAX(author_commit_date) AS last_commit
+              FROM
+                ", table_str_std_sql(proj, ds_gh, table_commits), "
+              GROUP BY
+                repo_name ) ) AS first_last
+          ON
+            commits.repo_name = first_last.repo_name )
+        GROUP BY
+          repo_name,
+          repo_num_months,
+          commit_months_from_proj_start
+        ORDER BY
+          repo_name,
+          commit_months_from_proj_start
+        ", sep = "")
   
   commit_months <- query_exec(query, project = proj, max_pages = Inf, use_legacy_sql = F)
   
   # Mean commits per month including months with no commits
-  repo_data <- join_tbl(repo_data, 
-    commit_months %>% 
-      group_by(repo_name) %>% 
-      summarize(mean_commits_per_month = sum(num_commits_same_month / repo_num_months))
+  rtrn <- join_tbl(repo_data, 
+                   commit_months %>% 
+                     group_by(repo_name) %>% 
+                     summarize(mean_commits_per_month = sum(num_commits_same_month / repo_num_months))
   )
   
   # Percentage of months with at least one commit
-  repo_data <- join_tbl(repo_data, 
-    commit_months %>% 
-      group_by(repo_name) %>% 
-      summarise(months_with_commits = n_distinct(commit_months_from_proj_start)) %>% 
-      inner_join(commit_months %>% 
-                   select(repo_name, repo_num_months) %>% 
-                   distinct(), by = "repo_name") %>% 
-      mutate(pct_months_with_commits = months_with_commits / repo_num_months) %>% 
-      select(repo_name, pct_months_with_commits)
+  rtrn <- join_tbl(rtrn, 
+                   commit_months %>% 
+                     group_by(repo_name) %>% 
+                     summarise(months_with_commits = n_distinct(commit_months_from_proj_start)) %>% 
+                     inner_join(commit_months %>% 
+                                  select(repo_name, repo_num_months) %>% 
+                                  distinct(), by = "repo_name") %>% 
+                     mutate(pct_months_with_commits = months_with_commits / repo_num_months) %>% 
+                     select(repo_name, pct_months_with_commits)
   )
   
   # Longest number of months in a row with commits
@@ -620,65 +697,69 @@ ORDER BY
     sapply(commit_consecutive_months$repo_name, function(repo) max_consecutive_months(commit_months, repo, "commit_months_from_proj_start"))
   commit_consecutive_months$consecutive_months_no_commits <- 
     sapply(commit_consecutive_months$repo_name, function(repo) max_consecutive_months(commit_months, repo, "commit_months_from_proj_start", F))
-  repo_data <- join_tbl(repo_data, commit_consecutive_months)
+  rtrn <- join_tbl(rtrn, commit_consecutive_months)
   
   # Were there commits after the paper appeared in PubMed?
-  commits_after_article_in_pubmed <- repo_data %>% 
+  commits_after_article_in_pubmed <- rtrn %>% 
     select(repo_name, last_commit, date_pubmed) %>% 
     mutate(commits_after_article_in_pubmed = last_commit > date_pubmed) %>%
     select(repo_name, commits_after_article_in_pubmed)
-  repo_data <- join_tbl(repo_data, commits_after_article_in_pubmed)
+  join_tbl(rtrn, commits_after_article_in_pubmed)
+}
+
+
+# Frequency of code chunks within repo
+add_code_chunk_freq <- function(proj, repo_data) {
+  message("Adding code chunk frequency")
+  process_code_chunk_freq <- function(table_name, col_suffix) {
+    
+    query <- paste("SELECT repo_name, num_occurrences FROM [",
+                   proj, ":", ds_analysis, ".", table_name, "]",
+                   sep = "")
+    
+    code_chunk_freq <- query_exec(query, project = proj, max_pages = Inf)
+    
+    total_code_chunks <- code_chunk_freq %>%
+      group_by(repo_name) %>%
+      summarize(total_code_chunks = n())
+    
+    repeated_code_chunks <- code_chunk_freq %>%
+      filter(num_occurrences > 1) %>%
+      group_by(repo_name) %>%
+      summarize(repeated_code_chunks = n())
+    
+    max_code_chunk_occurrence <- code_chunk_freq %>%
+      group_by(repo_name) %>%
+      summarise(max_code_chunk_occurrence = max(num_occurrences))
+    
+    mean_code_chunk_occurrence <- code_chunk_freq %>%
+      group_by(repo_name) %>%
+      summarise(mean_code_chunk_occurrence = mean(num_occurrences))
+    
+    join_data <- total_code_chunks %>%
+      full_join(repeated_code_chunks, by = "repo_name") %>%
+      full_join(max_code_chunk_occurrence, by = "repo_name") %>%
+      full_join(mean_code_chunk_occurrence, by = "repo_name")
+    
+    colnames(join_data) <- sapply(colnames(join_data), function(x) {
+      if(x == "repo_name") x
+      else paste(x, "_", col_suffix, sep="")
+    })
+    
+    join_data
+    
+  }
   
-  
-  ## Frequency of code chunks within repo
-  
-  # # Function to process one version of code chunk frequency table
-  # process_code_chunk_freq <- function(table_name, col_suffix) {
-  #   
-  #   query <- paste("SELECT repo_name, num_occurrences FROM [", 
-  #                  proj, ":", ds_analysis, ".", table_name, "]", 
-  #                  sep = "")
-  #   
-  #   code_chunk_freq <- query_exec(query, project = proj, max_pages = Inf)
-  #   
-  #   total_code_chunks <- code_chunk_freq %>% 
-  #     group_by(repo_name) %>% 
-  #     summarize(total_code_chunks = n())
-  #   
-  #   repeated_code_chunks <- code_chunk_freq %>% 
-  #     filter(num_occurrences > 1) %>%
-  #     group_by(repo_name) %>% 
-  #     summarize(repeated_code_chunks = n())
-  #   
-  #   max_code_chunk_occurrence <- code_chunk_freq %>%
-  #     group_by(repo_name) %>%
-  #     summarise(max_code_chunk_occurrence = max(num_occurrences))
-  #   
-  #   mean_code_chunk_occurrence <- code_chunk_freq %>%
-  #     group_by(repo_name) %>%
-  #     summarise(mean_code_chunk_occurrence = mean(num_occurrences))
-  #   
-  #   join_data <- total_code_chunks %>%
-  #     full_join(repeated_code_chunks, by = "repo_name") %>%
-  #     full_join(max_code_chunk_occurrence, by = "repo_name") %>%
-  #     full_join(mean_code_chunk_occurrence, by = "repo_name")
-  #   
-  #   colnames(join_data) <- sapply(colnames(join_data), function(x) {
-  #     if(x == "repo_name") x
-  #     else paste(x, "_", col_suffix, sep="")
-  #   })
-  #   
-  #   # Join tables
-  #   repo_data <- join_tbl(repo_data, join_data)
-  #   
-  # }
-  # 
-  # # Do the work
-  # process_code_chunk_freq(table_code_chunk_freq_10_50, "10_50")
-  # process_code_chunk_freq(table_code_chunk_freq_5_80, "5_80")
-  
-  ## Bytes of code in each top language
-  
+  # Do the work
+  f_10_50 <- process_code_chunk_freq(table_code_chunk_freq_10_50, "10_50")
+  f_5_80 <- process_code_chunk_freq(table_code_chunk_freq_5_80, "5_80")
+  rtrn <- join_tbl(repo_data, f_10_50)
+  rtrn <- join_tbl(rtrn, f_5_80)
+  rtrn
+}
+
+# Amount of code by language
+add_amt_code_by_lang <- function(proj, repo_data) {
   message("Adding amount of code by language")
   # Import table of language bytes by repo
   lang_bytes_by_repo <- get_table(proj, ds_analysis, table_lang_bytes_by_repo) 
@@ -689,6 +770,7 @@ ORDER BY
     group_by(repo_name) %>%
     summarise(total_bytes_no_data = sum(total_bytes))
   
+  rtrn <- repo_data
   # Add analysis for each top language
   for (lang in top_langs) {
     
@@ -701,11 +783,11 @@ ORDER BY
     bytes_this_lang <- lang_bytes_by_repo %>% group_by(repo_name) %>% filter(language == lang)
     
     # Whether the repo includes the language or not
-    repo_data[[colname_exists]] <- sapply(repo_data$repo_name, function(x) x %in% bytes_this_lang$repo_name)
+    rtrn[[colname_exists]] <- sapply(rtrn$repo_name, function(x) x %in% bytes_this_lang$repo_name)
     
     # Number of bytes of the language
-    repo_data[[colname_bytes]] <- 
-      sapply(repo_data$repo_name, 
+    rtrn[[colname_bytes]] <- 
+      sapply(rtrn$repo_name, 
              function(x) {
                a <- unlist(bytes_this_lang[which(bytes_this_lang$repo_name == x), "total_bytes"])
                if(length(a) > 0) a 
@@ -713,8 +795,8 @@ ORDER BY
              })
     
     # Percentage of bytes in this language not including data file types
-    repo_data[[colname_pct]] <- 
-      sapply(repo_data$repo_name, 
+    rtrn[[colname_pct]] <- 
+      sapply(rtrn$repo_name, 
              function(x) {
                a <- unlist(bytes_this_lang[which(bytes_this_lang$repo_name == x), "total_bytes"])
                if(length(a) > 0) {
@@ -725,81 +807,71 @@ ORDER BY
              })
   }
   
+  rtrn
+}
+
+# Lines of code by file
+add_loc_by_file <- function(proj, repo_data) {
+  message("Adding lines of code by file")
+  file_info <- get_file_info(proj)
+  file_info_no_data <- file_info %>% filter(!language %in% non_lang_file_types)
+  loc_data_file_info <- loc_data(file_info, "", FALSE)
+  rtrn <- join_tbl(repo_data, loc_data_file_info)
+  rtrn <- columns_na_to_zero(rtrn, colnames(loc_data_file_info))
   
-  ## Lines of code by file
-  
-  loc_data_file_info <- loc_data(file_info, "")
-  repo_data <- join_tbl(repo_data, loc_data_file_info)
-  repo_data <- columns_na_to_zero(repo_data, colnames(loc_data_file_info))
-  
-  loc_data_file_info_no_data <- loc_data(file_info_no_data, "_no_data")
-  repo_data <- join_tbl(repo_data, loc_data_file_info_no_data)
-  repo_data <- columns_na_to_zero(repo_data, colnames(loc_data_file_info_no_data))
+  loc_data_file_info_no_data <- loc_data(file_info_no_data, "_no_data", FALSE)
+  rtrn <- join_tbl(rtrn, loc_data_file_info_no_data)
+  rtrn <- columns_na_to_zero(rtrn, colnames(loc_data_file_info_no_data))
   
   for (lang in top_langs) {
     data <- loc_data(
       file_info %>% filter(language == lang), 
       paste("_", lang, sep = ""))
-    repo_data <- join_tbl(repo_data, data)
-    repo_data <- columns_na_to_zero(repo_data, colnames(data))
+    rtrn <- join_tbl(rtrn, data)
+    rtrn <- columns_na_to_zero(rtrn, colnames(data))
   }
   
-  
-  ## Test cases
-  
-  message("Adding test cases")
-  # Query to join file size to test case table
-  query <- paste("SELECT
-  test_cases.repo_name AS repo_name,
-  test_cases.path AS path,
-  test_cases.language AS language,
-  test_cases.lines AS lines,
-  file_info.size AS size
-FROM (
-  SELECT
-    *
-  FROM ", table_str(proj, ds_analysis, table_test_cases), ") AS test_cases
-INNER JOIN (
-  SELECT
-    sha,
-    size
-  FROM
-    ", table_str(proj, ds_gh, table_file_info),
-                 "GROUP BY
-    sha,
-    size ) AS file_info
-ON
-  test_cases.sha = file_info.sha", sep="")
-  
-  # Get test cases
-  test_cases_no_data <- fetch_query_res(query, proj) %>% filter(!language %in% non_lang_file_types)
+  rtrn
+}
 
+
+# Test cases
+add_test_cases <- function(proj, repo_data) {
+  message("Adding test cases")
+  test_cases_no_data <- get_test_cases_no_data(proj)
+  
   # Add basic summary of test cases
-  repo_data <- join_tbl(repo_data, test_cases_no_data %>% 
-             group_by(repo_name) %>% 
-             summarise(
-               num_test_cases_no_data = n(),
-               total_lines_test_cases_no_data = sum(lines),
-               total_size_test_cases_no_data = sum(size),
-               num_langs_test_cases_no_data = length(unique(language))))
-  repo_data$total_lines_test_cases_no_data <- sapply(repo_data$total_lines_test_cases_no_data, na_to_zero)
-  repo_data$total_size_test_cases_no_data <- sapply(repo_data$total_size_test_cases_no_data, na_to_zero)
-  repo_data$num_langs_test_cases_no_data <- sapply(repo_data$num_langs_test_cases_no_data, na_to_zero)
+  rtrn <- join_tbl(repo_data, test_cases_no_data %>% 
+                     group_by(repo_name) %>% 
+                     summarise(
+                       num_test_cases_no_data = n(),
+                       total_lines_test_cases_no_data = sum(lines),
+                       total_size_test_cases_no_data = sum(size),
+                       num_langs_test_cases_no_data = length(unique(language))))
+  rtrn$total_lines_test_cases_no_data <- sapply(rtrn$total_lines_test_cases_no_data, na_to_zero)
+  rtrn$total_size_test_cases_no_data <- sapply(rtrn$total_size_test_cases_no_data, na_to_zero)
+  rtrn$num_langs_test_cases_no_data <- sapply(rtrn$num_langs_test_cases_no_data, na_to_zero)
   
   # Add percentages with respect to whole repo
-  repo_data$pct_files_test_cases_no_data <- 
-    repo_data$num_test_cases_no_data / repo_data$num_files_no_data
-  repo_data$pct_lang_with_test_cases_no_data <- 
-    repo_data$num_langs_test_cases_no_data / repo_data$num_langs_no_data
-  repo_data$pct_lines_in_test_cases_no_data <-
-    repo_data$total_lines_test_cases_no_data / repo_data$total_lines_of_code_no_data
-  repo_data$pct_bytes_in_test_cases_no_data <-
-    repo_data$total_size_test_cases_no_data / repo_data$total_file_size_no_data
+  rtrn$pct_files_test_cases_no_data <- 
+    rtrn$num_test_cases_no_data / rtrn$num_files_no_data
+  rtrn$pct_lang_with_test_cases_no_data <- 
+    rtrn$num_langs_test_cases_no_data / rtrn$num_langs_no_data
+  rtrn$pct_lines_in_test_cases_no_data <-
+    rtrn$total_lines_test_cases_no_data / rtrn$total_lines_of_code_no_data
+  rtrn$pct_bytes_in_test_cases_no_data <-
+    rtrn$total_size_test_cases_no_data / rtrn$total_file_size_no_data
   
-  
-  ## Language features
-  
+  rtrn
+}
+
+# Language features
+add_lang_features <- function(proj, repo_data) {
   message("Adding language features")
+  file_info <- get_file_info(proj)
+  file_info_no_data <- file_info %>% filter(!language %in% non_lang_file_types)
+  test_cases_no_data <- get_test_cases_no_data(proj)
+  rtrn <- repo_data
   # Join language properties to file info
   file_info_with_lang_no_data <- as.tbl(file_info_no_data) %>% 
     mutate(language = tolower(language)) %>% 
@@ -816,7 +888,7 @@ ON
     mutate(compatibility_duck = compatibility == "duck")
   
   for(feat in lang_features) {
-    repo_data <- add_file_counts_bool(repo_data, file_info_with_lang_no_data, feat)
+    rtrn <- add_file_counts_bool(rtrn, file_info_with_lang_no_data, feat)
   }
   
   # Amount of code in test cases for various language properties
@@ -827,40 +899,18 @@ ON
     left_join(lang_type_system_bool, by = "language")
   
   for(feat in lang_features) {
-    repo_data <- add_test_case_code_amt_bool(repo_data, test_cases_by_lang_property, feat)
+    rtrn <- add_test_case_code_amt_bool(rtrn, test_cases_by_lang_property, feat)
   }
   
+  rtrn
+}
 
-  ## Contributions from non-committers
-  
-  message("Adding outside contributions")
-  commits <- fetch_query_res(paste("
-SELECT
-  repo_name,
-  committer_id,
-  author_id
-FROM
-  ", table_str(proj, ds_gh, table_commits), "
-GROUP BY
-  repo_name,
-  committer_id,
-  author_id"), proj)
-  
-  # Number of commit authors who are never committers
-  repo_data <- join_tbl(repo_data, 
-    as.tbl(commits) %>% 
-      select(repo_name, author_id) %>% 
-      anti_join(commits %>% select(repo_name, committer_id), by = c("repo_name", "author_id" = "committer_id")) %>% 
-      group_by(repo_name) %>% 
-      summarise(num_non_committing_authors = n())
-  )
-  
-  repo_data$num_non_committing_authors <- sapply(repo_data$num_non_committing_authors, na_to_zero)
 
-  ## Topic modeling of paper abstracts
-  
+# Topic modeling of paper abstracts
+add_topic_modeling <- function(proj, repo_data) {
   # Run topic modeling of article abstracts
   # Only run for main dataset
+  rtrn <- repo_data
   if(proj == proj_main) {
     message("Adding topic modeling")
     source("../src/R/document_classification/topics.R", local = TRUE)
@@ -869,13 +919,15 @@ GROUP BY
       colname <- paste("topic_", t, sep = "")
       df <- abstract_top_topics %>% filter(topic == t) %>% select(repo_name)
       df[[colname]] <- TRUE
-      repo_data <- join_tbl(repo_data, df)
-      repo_data[[colname]] <- sapply(repo_data[[colname]], na_to_false)
+      rtrn <- join_tbl(rtrn, df)
+      rtrn[[colname]] <- sapply(rtrn[[colname]], na_to_false)
     }
   }
-  
-  ## Save table to a file
-  
+  rtrn
+}
+
+# Save table to a file
+save_table <- function(proj, repo_data) {
   message("Saving local table")
   if(proj == proj_main) {
     saved_repo_features <- saved_repo_features_main
@@ -888,16 +940,38 @@ GROUP BY
   }
   
   # Convert column names to valid headers
-  colnames(repo_data) <- gsub("C\\+\\+", "Cpp", gsub("[ /]+", "_", colnames(repo_data)))
-  write.table(repo_data, file = saved_repo_features, quote = F, sep = "\t", row.names = F)
-  
-  # Return repo_data
-  repo_data
+  rtrn <- repo_data
+  colnames(rtrn) <- gsub("C\\+\\+", "Cpp", gsub("[ /]+", "_", colnames(rtrn)))
+  write.table(rtrn, file = saved_repo_features, quote = F, sep = "\t", row.names = F)
+  rtrn
 }
 
 
-## Do the work
+##### Pull in all data for a project and write to table on disk #####
+
+compile_and_save_proj_data <- function(proj) {
+  message(paste("\nGathering repo metrics for project:", proj, "\n"))
+  repo_data <- data.frame(repo_name = character(0))
+  repo_data <- add_license(proj, repo_data)
+  repo_data <- add_proj_duration(proj, repo_data)
+  repo_data <- add_gender(proj, repo_data)
+  repo_data <- add_repo_metrics(proj, repo_data)
+  repo_data <- add_article_info(proj, repo_data)
+  repo_data <- add_file_info(proj, repo_data)
+  repo_data <- add_init_commit(proj, repo_data)
+  repo_data <- add_commit_message(proj, repo_data)
+  repo_data <- add_commit_timing(proj, repo_data)
+  #repo_data <- add_code_chunk_freq(proj, repo_data)
+  repo_data <- add_amt_code_by_lang(proj, repo_data)
+  repo_data <- add_loc_by_file(proj, repo_data)
+  repo_data <- add_test_cases(proj, repo_data)
+  repo_data <- add_lang_features(proj, repo_data)
+  repo_data <- add_outside_commits(proj, repo_data)
+  repo_data <- add_topic_modeling(proj, repo_data)
+  repo_data <- save_table(proj, repo_data)
+  repo_data
+}
+
+# Do the work
 repo_data_high_prof <- compile_and_save_proj_data(proj_high_profile)
 repo_data_main <- compile_and_save_proj_data(proj_main)
-
-
