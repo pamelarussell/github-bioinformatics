@@ -17,10 +17,8 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(parsedate))
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
-```
-
-```{r load_data_table}
-repo_data <- load_repo_features()
+proj <- proj_main
+repo_data <- load_repo_features(saved_repo_features_main)
 ```
 
 ```{r associations}
@@ -29,7 +27,9 @@ n_comparisons <- k * (k - 1)
 pval_cutoff <- 0.0001 / n_comparisons
 
 assoc.numeric <- data.frame(var1 = character(), var2 = character(), corr = numeric(), pval = numeric())
-assoc.mannwhitney <- data.frame(var1 = character(), var2 = character(), pval = numeric())
+assoc.mannwhitney <- data.frame(var1 = character(), var2 = character(), 
+                                median_yes = numeric(), median_no = numeric(), 
+                                direction_up = logical(), pval = numeric())
 assoc.sets <- data.frame(var1 = character(), var2 = character(), similarity = numeric())
 
 add_mw <- function(data_numeric, data_logical, name_numeric, name_logical) {
@@ -38,7 +38,9 @@ add_mw <- function(data_numeric, data_logical, name_numeric, name_logical) {
     data_no <- data_numeric[which(!data_logical)]
     res <- wilcox.test(data_yes, data_no, alternative = "two.sided", paired = F)
     if(res$p.value < pval_cutoff) {
-      record <- data.frame(var1 = name_numeric, var2 = name_logical, pval = res$p.value)
+      record <- data.frame(var1 = name_numeric, var2 = name_logical, 
+                           median_yes = median(data_yes, na.rm = T), median_no = median(data_no, na.rm = T), 
+                           pval = res$p.value) %>% mutate(direction_up = median_yes > median_no)
       assoc.mannwhitney <<- rbind(assoc.mannwhitney, record)
     }
   }, error = function(e) {
@@ -89,11 +91,5 @@ for (i in 1:k) {
 }
 rm(data1, data2, i, j, k, n_comparisons, name1, name2, res, x, record,
    pval_cutoff, jaccard, repos1, repos2)
-```
-
-```{r save_data}
-# Save repo_data to a file
-repo_data_cached <- repo_data
-save(repo_data_cached, file = repo_data_file)
 ```
 

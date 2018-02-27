@@ -4,13 +4,16 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+rm(list=ls())
 knitr::opts_chunk$set(echo = T, warning = F, message = F)
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+proj <- proj_main
+repo_level_data <- load_repo_features(saved_repo_features_main)
 ```
 
 
 ```{r echo = F}
-source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/languages.R")
-repo_level_data <- load_repo_features()
+source("~/Dropbox/Documents/Github_mining/src/R/exploratory_analysis/languages.R", local = TRUE)
 ```
 
 
