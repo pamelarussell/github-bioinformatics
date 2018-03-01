@@ -1,0 +1,189 @@
+---
+title: "PCA"
+output: html_document
+---
+
+## Setup
+
+```{r setup}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggbiplot))
+suppressPackageStartupMessages(library(factoextra))
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+repo_data_main <- load_repo_features(saved_repo_features_main)
+repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
+```
+
+
+## Interpretation
+
+[Intuition for eigenvalues and eigenvectors](https://georgemdallas.wordpress.com/2013/10/30/principal-component-analysis-4-dummies-eigenvectors-eigenvalues-and-dimension-reduction/)
+
+From [here](http://www.sthda.com/english/wiki/print.php?id=207) and [here](https://www.scss.tcd.ie/~houldinb/ST3011_files/ST3011slides4.pdf):
+
+The proportion of the variation in the data variables that is explained by a PC is equal to that component’s associated eigenvalue divided by the sum of all eigenvalues.
+
+An eigenvalue > 1 indicates that PCs account for more variance than accounted by one of the original variables in standardized data. This is commonly used as a cutoff point for which PCs are retained.
+
+You can also limit the number of component to that number that accounts for a certain fraction of the total variance. For example, if you are satisfied with 80% of the total variance explained then use the number of components to achieve that.
+
+Note that, a good dimension reduction is achieved when the the first few PCs account for a large proportion of the variability (80-90%).
+
+The column labeled PC1 is the eigenvector of the data covariance matrix associated with the largest eigenvalue. Its elements are the coefficients or loadings of each original variable on the first PC. It matters if the loadings have opposite signs, but not which is positive and which is negative. The magnitudes of the loadings are also important.
+
+From [here](ftp://statgen.ncsu.edu/pub/thorne/molevoclass/AtchleyOct19.pdf):
+
+PC scores: Also called component scores in PCA, these scores are the scores of each case (row) on each factor (column). To compute the factor score for a given case for a given factor, one takes the case's standardized score on each variable, multiplies by the corresponding factor loading of the variable for the given factor, and sums these products. 
+
+
+## Preprocess the data
+
+```{r preprocess}
+# Combine repo data from both datasets
+repo_data_all <- rbind(repo_data_high_prof %>% mutate(is_high_profile = TRUE), 
+                       repo_data_main %>% select(-contains("topic")) %>% mutate(is_high_profile = FALSE))
+# Get numeric columns
+repo_data_numeric <- repo_data_all[,sapply(repo_data_all, is.numeric)]
+# Replace NA's by the column median
+for(j in 1:ncol(repo_data_numeric)) {
+  if(is.numeric(repo_data_numeric[,j])){
+    med <- median(repo_data_numeric[,j], na.rm = TRUE)
+    for(i in 1:nrow(repo_data_numeric)) {
+      if(is.na(repo_data_numeric[i,j])) {
+        repo_data_numeric[i,j] <- med
+      }
+    }
+  }
+}
+# Apply transformations
+repo_data_numeric <- data.frame(scale(repo_data_numeric, center = TRUE, scale = TRUE))
+```
+
+
+## Run PCA
+
+```{r pca}
+pca_res <- princomp(repo_data_numeric, cor = TRUE, scores = TRUE)
+```
+
+
+## How many PC's explain most of the variance?
+
+```{r variance}
+# Proportion of variance explained by each PC
+prop_var <- (pca_res$sdev)^2 / sum(pca_res$sdev^2)
+cumulative_prop_var <- cumsum(prop_var)
+ncomp_min_prop_var <- function(cumulative_prop_var, p) {
+  for(i in 1:length(cumulative_prop_var)) {
+    if(cumulative_prop_var[i] > p) return(i)
+  }}
+# Keep PCs that explain most of the variance
+ncomp_keep <- ncomp_min_prop_var(cumulative_prop_var, 0.8)
+
+# Number of components to keep
+ncomp_keep
+```
+
+
+## Make scree plots
+
+```{r scree}
+# Proportion of variance explained
+fviz_screeplot(pca_res, ncp = ncomp_keep)
+# Eigenvalues
+# Horizontal line for eigenvalue = 1
+fviz_screeplot(pca_res, ncp = ncomp_keep, choice = "eigenvalue") + geom_hline(yintercept = 1, col = "red")
+```
+
+
+## Look at coefficients
+
+```{r coefs}
+# Display the top n variables for each PC
+for(j in 1:ncomp_keep) {
+  message(paste("PC", j))
+  coefs <- loadings(pca_res)[,j]
+  ord <- order(abs(coefs), decreasing = TRUE)
+  pr <- coefs[ord[1:20]]
+  print(data.frame(coef = pr))
+}
+```
+
+
+## Look at score association with repo groupings
+
+```{r scores}
+# Function to find PCs associated with a column/vector of repo measurements
+associated_pcs <- function(repo_obs) {
+  scores <- pca_res$scores
+  # Initialize return df
+  if(is.logical(repo_obs)) {
+    df <- data.frame(PC = integer(), pval = numeric(), median_true = numeric(), median_false = numeric())
+  } else {
+    if(is.numeric(repo_obs)) {
+      df <- data.frame(PC = integer(), pval = numeric(), estimate = numeric())
+    }
+  }
+  # Look at scores for each PC
+  for(j in 1:ncomp_keep) {
+    data <- data.frame(repo_obs = repo_obs, scores = scores[,j])
+    # Binary repo feature
+    if(is.logical(repo_obs)) {
+      res <- wilcox.test(scores ~ repo_obs, data = data)
+      p <- res$p.value
+      if(p < 0.0001) {
+        df <- rbind(df, data.frame(PC = j, pval = p, median_true = median(data[which(data$repo_obs), "scores"]), 
+                                   median_false =  median(data[which(!data$repo_obs), "scores"])))
+      }
+    } else {
+      # Numeric repo feature
+      if(is.numeric(repo_obs)) {
+        res <- lm(scores ~ repo_obs, data = data)
+        p <- summary(res)$coefficients["repo_obs",4]
+        estimate <- summary(res)$coefficients["repo_obs",1]
+        if(p < 0.0001) {
+          df <- rbind(df, data.frame(PC = j, pval = p, estimate = estimate))
+        }
+      } else {
+        stop("Data type not supported")
+      } 
+    }
+  }
+  df %>% arrange(pval)
+}
+
+# Display some associations
+associated_pcs(repo_data_all$is_high_profile)
+associated_pcs(repo_data_all$total_file_size)
+associated_pcs(repo_data_all$num_citations_pmc)
+associated_pcs(repo_data_all$stargazers_count)
+associated_pcs(repo_data_all$watchers_count)
+associated_pcs(repo_data_all$first_author_gender == "female")
+associated_pcs(repo_data_all$last_author_gender == "female")
+associated_pcs(repo_data_all$shannon_commit_author_gender)
+```
+
+
+## Make biplots
+
+```{r biplots}
+# Make biplots
+for(cp in 1:ncomp_keep) {
+  plt <- ggbiplot(pca_res, obs.scale = 1, var.scale = 1, choices = c(cp, cp+1),
+                  groups = repo_data_all$is_high_profile, ellipse = TRUE, 
+                  var.axes = FALSE, alpha = 0.2) + 
+    scale_color_discrete(name = '') + 
+    theme(legend.direction = 'horizontal', legend.position = 'top')
+  print(plt)
+}
+```
+
+## Session info
+
+```{r session_info_end}
+sessionInfo()
+```
+

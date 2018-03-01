@@ -17,79 +17,103 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(parsedate))
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
-proj <- proj_main
-repo_data <- load_repo_features(saved_repo_features_main)
+repo_data_main <- load_repo_features(saved_repo_features_main)
+repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
+repo_data_all <- load_repo_features_all()
 ```
 
 ```{r associations}
-k <- ncol(repo_data)
-n_comparisons <- k * (k - 1)
-pval_cutoff <- 0.0001 / n_comparisons
-
-assoc.numeric <- data.frame(var1 = character(), var2 = character(), corr = numeric(), pval = numeric())
-assoc.mannwhitney <- data.frame(var1 = character(), var2 = character(), 
-                                median_yes = numeric(), median_no = numeric(), 
-                                direction_up = logical(), pval = numeric())
-assoc.sets <- data.frame(var1 = character(), var2 = character(), similarity = numeric())
-
-add_mw <- function(data_numeric, data_logical, name_numeric, name_logical) {
-  x <- tryCatch({
-    data_yes <- data_numeric[which(data_logical)]
-    data_no <- data_numeric[which(!data_logical)]
-    res <- wilcox.test(data_yes, data_no, alternative = "two.sided", paired = F)
-    if(res$p.value < pval_cutoff) {
-      record <- data.frame(var1 = name_numeric, var2 = name_logical, 
-                           median_yes = median(data_yes, na.rm = T), median_no = median(data_no, na.rm = T), 
-                           pval = res$p.value) %>% mutate(direction_up = median_yes > median_no)
-      assoc.mannwhitney <<- rbind(assoc.mannwhitney, record)
-    }
-  }, error = function(e) {
-    message(paste("CAUGHT ERROR on", name_numeric, "and", name_logical))
-  })
-}
-
-for (i in 1:k) {
-  data1 <- repo_data[[i]]
-  name1 <- names(repo_data)[i]
-  if(!is.numeric(data1) && !is.logical(data1)) {
-    message(paste("Skipping", name1))
+get_assoc <- function(repo_data) {
+  k <- ncol(repo_data)
+  n_comparisons <- k * (k - 1)
+  pval_cutoff <- 0.0001 / n_comparisons
+  
+  assoc.numeric <- data.frame(var1 = character(), var2 = character(), corr = numeric(), pval = numeric())
+  assoc.mannwhitney <- data.frame(var1 = character(), var2 = character(), 
+                                  median_yes = numeric(), median_no = numeric(), 
+                                  direction_up = logical(), pval = numeric())
+  assoc.sets <- data.frame(var1 = character(), var2 = character(), similarity = numeric())
+  
+  add_mw <- function(data_numeric, data_logical, name_numeric, name_logical) {
+    x <- tryCatch({
+      data_yes <- data_numeric[which(data_logical)]
+      data_no <- data_numeric[which(!data_logical)]
+      suppressWarnings(res <- wilcox.test(data_yes, data_no, alternative = "two.sided", paired = F))
+      if(res$p.value < pval_cutoff) {
+        record <- data.frame(var1 = name_numeric, var2 = name_logical, 
+                             median_yes = median(data_yes, na.rm = T), median_no = median(data_no, na.rm = T), 
+                             pval = res$p.value) %>% mutate(direction_up = median_yes > median_no)
+        assoc.mannwhitney <<- rbind(assoc.mannwhitney, record)
+      }
+    }, error = function(e) {})
   }
-  for (j in 1:k) {
-    data2 <- repo_data[[j]]
-    name2 <- names(repo_data)[j]
-    
-    # Only compare each pair of columns once
-    if (i < j) {
+  
+  for (i in 1:k) {
+    data1 <- repo_data[[i]]
+    name1 <- names(repo_data)[i]
+    for (j in 1:k) {
+      data2 <- repo_data[[j]]
+      name2 <- names(repo_data)[j]
       
-      if (is.numeric(data1) && is.numeric(data2)) {
-        # Both numeric
-        x <- tryCatch({
-          res <- cor.test(data1, data2)
-          if (abs(res$estimate) > 0.5 && res$p.value < pval_cutoff) {
-            record <- data.frame(var1 = name1, var2 = name2, corr = res$estimate, pval = res$p.value)
-            assoc.numeric <- rbind(assoc.numeric, record)
-          }
-        }, error = function(e) {
-          message(paste("CAUGHT ERROR on", name1, "and", name2))
-        })
-      } else if (is.numeric(data1) && is.logical(data2)) {
-        # data1 numeric, data2 logical
-        add_mw(data1, data2, name1, name2)
-      } else if (is.logical(data1) && is.numeric(data2)) {
-        # data1 logical, data2 numeric
-        add_mw(data2, data1, name2, name1)
-      } else if (is.logical(data1) && is.logical(data2)) {
-        # both logical
-        repos1 <- repo_data[which(data1), "repo_name"]
-        repos2 <- repo_data[which(data2), "repo_name"]
-        jaccard <- length(intersect(repos1, repos2)) / length(union(repos1, repos2))
-        record <- data.frame(var1 = name1, var2 = name2, similarity = jaccard)
-        assoc.sets <- rbind(assoc.sets, record)
+      # Only compare each pair of columns once
+      if (i < j) {
+        
+        if (is.numeric(data1) && is.numeric(data2)) {
+          # Both numeric
+          x <- tryCatch({
+            suppressWarnings(res <- cor.test(data1, data2))
+            if (abs(res$estimate) > 0.5 && res$p.value < pval_cutoff) {
+              record <- data.frame(var1 = name1, var2 = name2, corr = res$estimate, pval = res$p.value)
+              assoc.numeric <- rbind(assoc.numeric, record)
+            }
+          }, error = function(e) {})
+        } else if (is.numeric(data1) && is.logical(data2)) {
+          # data1 numeric, data2 logical
+          add_mw(data1, data2, name1, name2)
+        } else if (is.logical(data1) && is.numeric(data2)) {
+          # data1 logical, data2 numeric
+          add_mw(data2, data1, name2, name1)
+        } else if (is.logical(data1) && is.logical(data2)) {
+          # both logical
+          repos1 <- repo_data[which(data1), "repo_name"]
+          repos2 <- repo_data[which(data2), "repo_name"]
+          jaccard <- length(intersect(repos1, repos2)) / length(union(repos1, repos2))
+          record <- data.frame(var1 = name1, var2 = name2, similarity = jaccard)
+          assoc.sets <- rbind(assoc.sets, record)
+        }
       }
     }
   }
+  list(numeric = assoc.numeric, mw = assoc.mannwhitney, sets = assoc.sets)
 }
-rm(data1, data2, i, j, k, n_comparisons, name1, name2, res, x, record,
-   pval_cutoff, jaccard, repos1, repos2)
+```
+
+```{r do_assoc}
+assoc_main <- get_assoc(repo_data_main)
+assoc_high_prof <- get_assoc(repo_data_high_prof)
+assoc_all <- get_assoc(repo_data_all)
+```
+
+```{r functions}
+get_matches <- function(assoc, pattern) {
+  assoc %>% filter(grepl(pattern, var1) | grepl(pattern, var2))
+}
+
+get_matches_xor <- function(assoc, pattern1, pattern2) {
+  assoc %>% filter((grepl(pattern1, var1) & !grepl(pattern2, var2)) |
+                     (grepl(pattern1, var2) & !grepl(pattern2, var1)))
+}
+
+print_matches <- function(assoc_list, pattern) {
+  print(get_matches(assoc_list$mw, pattern) %>% arrange(pval))
+  print(get_matches(assoc_list$numeric, pattern) %>% arrange(pval))
+  print(get_matches(assoc_list$sets, pattern) %>% arrange(-similarity))
+}
+
+print_matches_xor <- function(assoc_list, pattern1, pattern2) {
+  print(get_matches_xor(assoc_list$mw, pattern1, pattern2) %>% arrange(pval))
+  print(get_matches_xor(assoc_list$numeric, pattern1, pattern2) %>% arrange(pval))
+  print(get_matches_xor(assoc_list$sets, pattern1, pattern2) %>% arrange(-similarity))
+}
 ```
 

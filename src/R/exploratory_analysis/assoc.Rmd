@@ -1,0 +1,141 @@
+---
+title: "Associations"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+repo_data_main <- load_repo_features(saved_repo_features_main)
+repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
+repo_data_all <- load_repo_features_all()
+```
+
+### Amount of code and type system
+
+High profile repos contain more code and a higher percentage of it is statically typed.
+
+```{r type_system}
+ggplot(repo_data_all %>% 
+         filter(total_bytes_no_data_type_system_static > 0 & total_bytes_no_data_type_system_static > 0), 
+       aes(y = log10(total_bytes_no_data_type_system_static), 
+           x = log10(total_file_size_no_data),
+           col = is_high_profile)) +
+  geom_point(size = 1) +
+  ylab("Total bytes of statically typed code (log10)") +
+  xlab("Total bytes of code (log10)") +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_color_manual(values=c(color_main, color_high_prof), labels = c("Main repos", "High profile repos")) +
+  theme_bw() +
+  guides(color = guide_legend(title = "Dataset")) +
+  theme(legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12)) +
+  xlim(0, 8) +
+  ylim(0, 8)
+```
+
+### Team size and outside committers
+
+High profile repos have more developers and more outside developers.
+
+```{r committers}
+ggplot(repo_data_all %>% 
+         select(num_non_committing_authors, commit_authors, is_high_profile) %>%
+         group_by(num_non_committing_authors, commit_authors, is_high_profile) %>%
+         dplyr::summarize(Num_repos = n()), 
+       aes(y = num_non_committing_authors, 
+           x = commit_authors,
+           col = is_high_profile)) +
+  geom_point(aes(size = Num_repos)) +
+  ylab("Number of non-committing commit authors") +
+  xlab("Number of commit authors") +
+  scale_color_manual(values=c(color_main, color_high_prof), labels = c("Main repos", "High profile repos")) +
+  theme_bw() +
+  guides(color = guide_legend(title = "Dataset")) +
+  theme(legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12)) +
+  #xlim(0, max(log10(repo_data_all$commit_authors), na.rm = T)) +
+  ylim(0, max(repo_data_all$num_non_committing_authors, na.rm = T)) +
+  scale_x_log10() +
+  stat_function(fun = function(x) {x}, geom="line", color = "black")
+```
+
+### Number of files and file size
+
+High profile repos have more source files but similar file sizes
+
+```{r num_files_file_size}
+breaks <- c(1, 10, 100, 1000, 10000)
+ggplot(repo_data_all %>% filter(num_files_no_data > 0 & mean_lines_code_no_data > 0), 
+       aes(x = num_files_no_data, 
+           y = mean_lines_code_no_data,
+           col = is_high_profile)) +
+  geom_point(size = 1) +
+  xlab("Total source files") +
+  ylab("Mean lines of code per source file") +
+  scale_color_manual(values=c(color_main, color_high_prof), labels = c("Main repos", "High profile repos")) +
+  theme_bw() +
+  guides(color = guide_legend(title = "Dataset")) +
+  theme(legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12)) +
+  scale_x_log10(breaks = breaks) +
+  scale_y_log10(breaks = breaks)
+```
+
+### Topics
+
+Some paper topics are associated with higher community engagement, repo size, and commit activity
+
+```{r topics}
+as.tbl(repo_data_main) %>% 
+  select(commits, commit_authors, forks_count, subscribers_count, 
+         watchers_count, num_citations_per_week_pmc_minus_2_years, 
+         total_file_size_no_data, num_files_no_data, contains("topic")) %>% 
+  melt(id.vars = c("commits", "commit_authors", "forks_count", 
+                   "subscribers_count", "watchers_count", "num_citations_per_week_pmc_minus_2_years",
+                   "total_file_size_no_data", "num_files_no_data")) %>% 
+  filter(value) %>% 
+  as.tbl() %>% 
+  select(-value) %>% 
+  dplyr::rename(Topic = variable) %>% 
+  group_by(Topic) %>% 
+  dplyr::summarize(
+    `Mean commits` = mean(commits, na.rm = T),
+    `Mean commit authors` = mean(commit_authors, na.rm = T), 
+    `Mean forks` = mean(forks_count, na.rm = T), 
+    `Mean subscribers` = mean(subscribers_count, na.rm = T), 
+    `Mean watchers` = mean(watchers_count, na.rm = T),
+    `Mean PMC citations / week` = mean(num_citations_per_week_pmc_minus_2_years, na.rm = T),
+    `Mean megabytes of code` = mean(total_file_size_no_data, na.rm = T) / 1000000,
+    `Mean number of files` = mean(num_files_no_data, na.rm = T)
+  ) %>% 
+  melt(id.vars = "Topic") %>%
+  mutate(Topic = gsub("topic_", "", Topic)) %>%
+  mutate(Topic = gsub("_", " ", Topic)) %>%
+  mutate(Topic = gsub("RNA.seq", "RNA-seq", Topic)) %>%
+  ggplot(aes(x = variable, y = value, fill = factor(Topic))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_bw() +
+  guides(fill = guide_legend(title="Abstract includes topic")) +
+  theme(legend.text = element_text(size=10),
+        legend.title = element_text(size = 11),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = 10)) +
+  scale_fill_brewer(palette="Dark2") +
+  facet_wrap(~variable, scales = "free", ncol = 2)
+```
+
+### Session info
+
+```{r session_info}
+sessionInfo()
+```
