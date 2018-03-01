@@ -96,7 +96,7 @@ max_consecutive_months <- function(data, repo, month_col, count_true = T) {
 }
 
 # Column names of repo_data matching pattern
-cols <- function(p) {
+cols <- function(repo_data, p) {
   names(repo_data)[grepl(p, names(repo_data))] 
 }
 
@@ -346,14 +346,16 @@ add_gender <- function(proj, repo_data) {
                             commit_authors_male = male,
                             commit_authors_no_gender = no_gender,
                             team_type_gender = team_type,
-                            shannon_commit_author_gender = shannon))
+                            shannon_commit_author_gender = shannon) %>%
+                     mutate(commit_authors = commit_authors_male + commit_authors_female + commit_authors_no_gender))
   
   rtrn <- join_tbl(rtrn, 
                    get_table(proj, ds_analysis, table_gender_commits) %>% 
                      rename(commits_female = female,
                             commits_male = male,
                             commits_no_gender = no_gender,
-                            shannon_commits_gender = shannon))
+                            shannon_commits_gender = shannon) %>%
+                     mutate(commits = commits_female + commits_male + commits_no_gender))
   
   rtrn <- join_tbl(rtrn, 
                    get_table(proj, ds_analysis, table_gender_paper_authors) %>% 
@@ -363,7 +365,8 @@ add_gender <- function(proj, repo_data) {
                             team_type_paper_authors = team_type,
                             first_author_gender = first_author,
                             last_author_gender = last_author,
-                            shannon_paper_authors = shannon))
+                            shannon_paper_authors = shannon) %>%
+                     mutate(paper_authors = paper_authors_female + paper_authors_male + paper_authors_no_gender))
   rtrn
 }
 

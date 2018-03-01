@@ -3,16 +3,10 @@ title: "Topic modeling of article abstracts"
 output: html_document
 ---
 
-## Session info
-
-```{r session_info}
-rm(list=ls())
-sessionInfo()
-```
-
 ## Envirnoment setup
 
 ```{r setup}
+rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 proj <- proj_main
@@ -110,3 +104,10 @@ ggplot(topics_by_journal, aes(topic, journal)) +
   geom_point(aes(size = num_repos)) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
+## Session info
+
+```{r session_info}
+sessionInfo()
+```
+

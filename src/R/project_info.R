@@ -11,12 +11,24 @@ params_high_profile <- fromJSON(json_params_high_profile, flatten = T)
 proj_main <- params_main[["bq_proj"]]
 proj_high_profile <- params_high_profile[["bq_proj"]]
 
+# Colors for plots
+color_high_prof <- "#ff6666"
+color_main <- "#ffdb4d"
+
 # Local structure
 paper_dir <- params_main[["paper_dir"]]
 paper_scripts_dir <- paste(paper_dir, "scripts", sep = "/")
 saved_repo_features_main <- paste(paper_dir, "data/repo_features_main.txt", sep = "/")
 saved_repo_features_high_prof <- paste(paper_dir, "data/repo_features_high_prof.txt", sep = "/")
+# Function to load repo features from table
 load_repo_features <- function(file) {read.table(file, header = T, sep = "\t", quote = "")}
+# Load repo features for both projects
+load_repo_features_all <- function() {
+  repo_data_main <- load_repo_features(saved_repo_features_main)
+  repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
+  rbind(repo_data_main %>% select(-contains("topic")) %>% mutate(is_high_profile = FALSE), 
+                         repo_data_high_prof %>% mutate(is_high_profile = TRUE))
+}
 
 # Data from GitHub API
 ds_gh <- "repos"

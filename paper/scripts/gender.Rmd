@@ -3,16 +3,10 @@ title: "Gender analysis of developers and paper authors"
 output: html_document
 ---
 
-## Session info
-
-```{r session_info}
-rm(list=ls())
-sessionInfo()
-```
-
 ## Environment setup
 
 ```{r setup}
+rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(dplyr))
@@ -494,7 +488,7 @@ ggplot(gender_summary_tidy %>% filter(Gender == "female"),
         legend.title = element_text(size = 12)) +
   ggtitle("Developers, commits, and paper authorships by gender") +
   ylab("Proportion of female contributors") +
-  scale_fill_manual(values = c("#ff6666", "#ffdb4d")) +
+  scale_fill_manual(values = c(color_high_prof, color_main)) +
   expand_limits(x = 5.7)
 ```
 
@@ -652,5 +646,10 @@ push_to_bq(proj_main, commit_author_summary_main, commit_summary_main, paper_aut
 push_to_bq(proj_high_prof, commit_author_summary_high_prof, commit_summary_high_prof, paper_authors_summary_high_prof)
 ```
 
+## Session info
+
+```{r session_info}
+sessionInfo()
+```
 
 
