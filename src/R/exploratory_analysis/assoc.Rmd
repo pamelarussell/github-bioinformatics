@@ -134,6 +134,72 @@ as.tbl(repo_data_main) %>%
   facet_wrap(~variable, scales = "free", ncol = 2)
 ```
 
+### Commits after publication
+
+Committing to the repo after publication is associated with more community engagement, more development activity, and more citations.
+
+```{r commits_after_publication}
+plt_data <- as.tbl(repo_data_main) %>% 
+  select(commits, commit_authors, forks_count, subscribers_count, 
+         watchers_count, num_citations_per_week_pmc_minus_2_years, 
+         mean_commit_message_len, pct_commits_diff_author_committer, 
+         num_non_committing_authors, commits_after_article_in_pubmed) %>% 
+  filter(!is.na(commits_after_article_in_pubmed)) %>%
+  dplyr::rename(
+    `Total commits` = commits,
+    `Commit authors` = commit_authors, 
+    `Total forks` = forks_count, 
+    `Total subscribers` = subscribers_count, 
+    `Total watchers` = watchers_count,
+    `PMC citations / week` = num_citations_per_week_pmc_minus_2_years,
+    `Commit message len` = mean_commit_message_len,
+    `Pct outside commits` = pct_commits_diff_author_committer,
+    `Outside cmt authors` = num_non_committing_authors,
+    `Commits after\npublication` = commits_after_article_in_pubmed
+  ) %>% 
+  melt(id.vars = "Commits after\npublication")
+
+# Get smallest positive value of each variable so we can take logs
+min_pos <- plt_data %>% 
+    filter(value > 0) %>%
+    group_by(variable) %>%
+    summarize(min_pos = min(value))
+
+# Remove top outliers for plot
+p_outlier <- 1 # 1 means no filtering for outliers
+outlier_cutoff <- plt_data %>%
+  group_by(variable) %>%
+  summarize(outlier_cutoff = quantile(value, probs = p_outlier, na.rm = T))
+
+plt_data <- plt_data %>% 
+  left_join(min_pos, by = "variable") %>%
+  left_join(outlier_cutoff, by = "variable")
+
+# Replace 0's and NA's by minimum positive value
+plt_data$value_pos <- apply(plt_data, 1, function(row) {
+  val <- as.numeric(row["value"])
+  mp <- as.numeric(row["min_pos"])
+  if(is.na(val)) mp
+  else max(val, mp)
+})
+
+plt_data <- plt_data %>%
+  filter(value_pos <= outlier_cutoff) %>%
+  select(`Commits after\npublication`, variable, value_pos)
+
+ggplot(plt_data, aes(variable, value_pos)) +
+  geom_boxplot(aes(fill = `Commits after\npublication`)) +
+  facet_wrap(~variable, scales = "free", ncol = 3) +
+  scale_y_log10() +
+  theme_bw() +
+  theme(legend.text = element_text(size=10),
+        legend.title = element_text(size = 11),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = 10))
+```
+
 ### Session info
 
 ```{r session_info}
