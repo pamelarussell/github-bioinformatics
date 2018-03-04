@@ -105,17 +105,17 @@ as.tbl(repo_data_main) %>%
   as.tbl() %>% 
   select(-value) %>% 
   dplyr::rename(Topic = variable) %>% 
-  group_by(Topic) %>% 
+  group_by(Topic) %>%
   dplyr::summarize(
     `Mean commits` = mean(commits, na.rm = T),
-    `Mean commit authors` = mean(commit_authors, na.rm = T), 
-    `Mean forks` = mean(forks_count, na.rm = T), 
-    `Mean subscribers` = mean(subscribers_count, na.rm = T), 
+    `Mean commit authors` = mean(commit_authors, na.rm = T),
+    `Mean forks` = mean(forks_count, na.rm = T),
+    `Mean subscribers` = mean(subscribers_count, na.rm = T),
     `Mean watchers` = mean(watchers_count, na.rm = T),
     `Mean PMC citations / week` = mean(num_citations_per_week_pmc_minus_2_years, na.rm = T),
     `Mean megabytes of code` = mean(total_file_size_no_data, na.rm = T) / 1000000,
     `Mean number of files` = mean(num_files_no_data, na.rm = T)
-  ) %>% 
+  ) %>%
   melt(id.vars = "Topic") %>%
   mutate(Topic = gsub("topic_", "", Topic)) %>%
   mutate(Topic = gsub("_", " ", Topic)) %>%
@@ -139,7 +139,7 @@ as.tbl(repo_data_main) %>%
 Committing to the repo after publication is associated with more community engagement, more development activity, and more citations.
 
 ```{r commits_after_publication}
-plt_data <- as.tbl(repo_data_main) %>% 
+plt_data_commits_after_pub <- as.tbl(repo_data_main) %>% 
   select(commits, commit_authors, forks_count, subscribers_count, 
          watchers_count, num_citations_per_week_pmc_minus_2_years, 
          mean_commit_message_len, pct_commits_diff_author_committer, 
@@ -160,34 +160,34 @@ plt_data <- as.tbl(repo_data_main) %>%
   melt(id.vars = "Commits after\npublication")
 
 # Get smallest positive value of each variable so we can take logs
-min_pos <- plt_data %>% 
+min_pos <- plt_data_commits_after_pub %>% 
     filter(value > 0) %>%
     group_by(variable) %>%
     summarize(min_pos = min(value))
 
 # Remove top outliers for plot
 p_outlier <- 1 # 1 means no filtering for outliers
-outlier_cutoff <- plt_data %>%
+outlier_cutoff <- plt_data_commits_after_pub %>%
   group_by(variable) %>%
   summarize(outlier_cutoff = quantile(value, probs = p_outlier, na.rm = T))
 
-plt_data <- plt_data %>% 
+plt_data_commits_after_pub <- plt_data_commits_after_pub %>% 
   left_join(min_pos, by = "variable") %>%
   left_join(outlier_cutoff, by = "variable")
 
 # Replace 0's and NA's by minimum positive value
-plt_data$value_pos <- apply(plt_data, 1, function(row) {
+plt_data_commits_after_pub$value_pos <- apply(plt_data_commits_after_pub, 1, function(row) {
   val <- as.numeric(row["value"])
   mp <- as.numeric(row["min_pos"])
   if(is.na(val)) mp
   else max(val, mp)
 })
 
-plt_data <- plt_data %>%
+plt_data_commits_after_pub <- plt_data_commits_after_pub %>%
   filter(value_pos <= outlier_cutoff) %>%
   select(`Commits after\npublication`, variable, value_pos)
 
-ggplot(plt_data, aes(variable, value_pos)) +
+ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
   geom_boxplot(aes(fill = `Commits after\npublication`)) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10() +
@@ -198,6 +198,59 @@ ggplot(plt_data, aes(variable, value_pos)) +
         axis.text.x = element_blank(),
         axis.title = element_blank(),
         strip.text = element_text(size = 10))
+```
+
+### Outside contributors
+
+```{r outside_contributors}
+plt_data_outside_contrib <- as.tbl(repo_data_all) %>% 
+  select(forks_count, subscribers_count, watchers_count, num_non_committing_authors) %>% 
+  dplyr::rename(
+    `Total forks` = forks_count, 
+    `Total subscribers` = subscribers_count, 
+    `Total watchers` = watchers_count,
+    `Outside commit authors` = num_non_committing_authors
+  ) %>%
+  melt(id.vars = "Outside commit authors") %>%
+  group_by(`Outside commit authors`, variable, value) %>%
+  summarize(`Num repos` = n())
+
+ggplot(plt_data_outside_contrib) +
+  geom_point(aes(size = `Num repos`, x = `Outside commit authors`, y = value)) +
+  theme_bw() +
+  theme(legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12)) +
+  facet_wrap(~variable, scales = "free", ncol = 3) +
+  scale_y_log10() +
+  scale_x_log10()
+
+```
+
+### Commit authors and community
+
+```{r commit_authors}
+plt_data_commit_authors <- as.tbl(repo_data_all) %>% 
+  select(forks_count, subscribers_count, watchers_count, commit_authors) %>% 
+  dplyr::rename(
+    `Total forks` = forks_count, 
+    `Total subscribers` = subscribers_count, 
+    `Total watchers` = watchers_count,
+    `Commit authors` = commit_authors
+  ) %>%
+  melt(id.vars = "Commit authors")
+
+ggplot(plt_data_commit_authors) +
+  geom_point(aes(x = `Commit authors`, 
+                 y = value)) +
+  theme_bw() +
+  theme(legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12)) +
+  facet_wrap(~variable, scales = "free", ncol = 3) +
+  scale_y_log10() +
+  scale_x_log10()
+
 ```
 
 ### Session info
