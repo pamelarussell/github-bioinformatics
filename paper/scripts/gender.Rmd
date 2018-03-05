@@ -512,31 +512,39 @@ rm(bucket_plot_data_dev_team)
 
 ```{r bubble_plot_team_composition, fig.width = 8}
 # Make bubble plot of team types for developers and paper authors
-team_comp_bubble_plot_data <- left_join(commit_author_summary_main %>% 
-                                          select(repo_name, team_type) %>% 
-                                          rename(team_type_dev = team_type), 
-                                        paper_authors_summary_main %>% 
-                                          select(repo_name, team_type) %>% 
-                                          rename(team_type_aut = team_type), by = "repo_name") %>% 
-  filter(!is.na(team_type_dev) & !is.na(team_type_aut)) %>% 
-  select(team_type_dev, team_type_aut) %>% 
-  group_by(team_type_dev, team_type_aut) %>% 
-  summarize(num_repos = n()) %>% 
-  arrange(-num_repos)
-team_type_levels <- c("Solo male", "Majority male", "All male", "Solo female", "Majority female", "All female", "Equal")
-for(t1 in team_type_levels) {
-  for(t2 in team_type_levels) {
-    if(nrow(team_comp_bubble_plot_data %>% filter(team_type_dev == t1 & team_type_aut == t2)) == 0) {
-      team_comp_bubble_plot_data <- rbind(data.frame(team_comp_bubble_plot_data), data.frame(team_type_dev = t1, team_type_aut = t2, num_repos = NA))
+make_team_comp_bubble_plot_data <- function(commit_author_summary, paper_authors_summary, dataset) {
+  data <- left_join(commit_author_summary %>% 
+                      select(repo_name, team_type) %>% 
+                      rename(team_type_dev = team_type), 
+                    paper_authors_summary %>% 
+                      select(repo_name, team_type) %>% 
+                      rename(team_type_aut = team_type), by = "repo_name") %>% 
+    filter(!is.na(team_type_dev) & !is.na(team_type_aut)) %>% 
+    select(team_type_dev, team_type_aut) %>% 
+    group_by(team_type_dev, team_type_aut) %>% 
+    summarize(num_repos = n()) %>% 
+    arrange(-num_repos)
+  team_type_levels <- c("Solo male", "Majority male", "All male", "Solo female", "Majority female", "All female", "Equal")
+  for(t1 in team_type_levels) {
+    for(t2 in team_type_levels) {
+      if(nrow(data %>% filter(team_type_dev == t1 & team_type_aut == t2)) == 0) {
+        data <- rbind(data.frame(data), data.frame(team_type_dev = t1, team_type_aut = t2, num_repos = NA))
+      }
     }
   }
+  data <- within(data, team_type_dev <- factor(team_type_dev, levels = team_type_levels))
+  data <- within(data, team_type_aut <- factor(team_type_aut, levels = team_type_levels))
+  data %>% mutate(dataset = dataset)
 }
-team_comp_bubble_plot_data <- within(team_comp_bubble_plot_data, team_type_dev <- factor(team_type_dev, levels = team_type_levels))
-team_comp_bubble_plot_data <- within(team_comp_bubble_plot_data, team_type_aut <- factor(team_type_aut, levels = team_type_levels))
+
+team_comp_bubble_plot_data <- rbind(make_team_comp_bubble_plot_data(commit_author_summary_main, paper_authors_summary_main, "Main repos"),
+                                    make_team_comp_bubble_plot_data(commit_author_summary_high_prof, paper_authors_summary_high_prof, "High profile repos")) %>%
+  filter(!is.na(num_repos))
 
 most_repos <- max(team_comp_bubble_plot_data$num_repos, na.rm = T)
-ggplot(team_comp_bubble_plot_data, aes(x = team_type_dev, y = team_type_aut, size = num_repos)) + 
-  geom_point(color = "red3") +
+ggplot(team_comp_bubble_plot_data, aes(x = team_type_dev, y = team_type_aut, col = dataset)) + 
+  geom_point(aes(size = num_repos)) +
+  geom_point(data = subset(team_comp_bubble_plot_data, dataset == "High profile repos"), aes(size = num_repos)) +
   xlab("Commit authors") +
   ylab("Paper authors") +
   ggtitle(paste("Team composition of developers and paper authors (", sum(team_comp_bubble_plot_data$num_repos, na.rm = T), " teams)", sep = "")) +
@@ -549,6 +557,7 @@ ggplot(team_comp_bubble_plot_data, aes(x = team_type_dev, y = team_type_aut, siz
         legend.title = element_text(size = 14),
         legend.background = element_rect(color = "black", size = 0.3)) +
   labs(size = "Number of repos") +
+  scale_color_manual(values=c(color_high_prof, color_main), labels = c("High profile repos", "Main repos")) +
   scale_size(breaks = c(1, seq(20, most_repos - most_repos %% 20, by = 20)))
 rm(team_comp_bubble_plot_data, most_repos)
 
@@ -588,16 +597,23 @@ rm(shannon_plt_data_devs_commits)
 
 ```{r diversity_plot_dev_team_size}
 # Plot Shannon index of diversity and developer team size
-dev_team_size_plt_data <- commit_author_summary_main %>% 
-  mutate(team_size = male + female) %>% 
-  select(team_size, shannon) %>% 
-  filter(!is.na(shannon)) %>% 
-  group_by(team_size, shannon) %>% 
-  summarize(num_repos = n()) %>% 
-  arrange(-num_repos)
+make_dev_team_size_plt_data <- function(commit_author_summary, dataset) {
+  commit_author_summary %>% 
+    mutate(team_size = male + female) %>% 
+    select(team_size, shannon) %>% 
+    filter(!is.na(shannon)) %>% 
+    group_by(team_size, shannon) %>% 
+    summarize(num_repos = n()) %>% 
+    arrange(-num_repos) %>%
+    mutate(Dataset = dataset)
+}
+
+dev_team_size_plt_data <- rbind(make_dev_team_size_plt_data(commit_author_summary_main, "Main repos"),
+                                make_dev_team_size_plt_data(commit_summary_high_prof, "High profile repos"))
 most_repos <- unname(unlist(dev_team_size_plt_data[1,3]))
-ggplot(dev_team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos)) + 
-  geom_point(color = "red3") +
+ggplot(dev_team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos, col = Dataset)) + 
+  geom_point(aes(size = num_repos)) +
+  geom_point(data = subset(dev_team_size_plt_data, Dataset == "High profile repos"), aes(size = num_repos)) +
   xlab("Developer team size (female + male)") +
   ylab("Shannon diversity index: unique commit authors") +
   ggtitle(paste("Gender diversity and developer team size (", sum(dev_team_size_plt_data$num_repos), " teams)", sep = "")) +
@@ -609,7 +625,8 @@ ggplot(dev_team_size_plt_data, aes(x = team_size, y = shannon, size = num_repos)
         legend.title = element_text(size = 14),
         legend.background = element_rect(color = "black", size = 0.3)) +
   labs(size = "Number of repos") +
-  scale_size(breaks = c(1, seq(40, most_repos - most_repos %% 40, by = 40)))
+  scale_size(breaks = c(1, seq(40, most_repos - most_repos %% 40, by = 40))) +
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000))
 rm(dev_team_size_plt_data, most_repos)
 ```
 
