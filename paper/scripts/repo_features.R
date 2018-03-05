@@ -263,39 +263,6 @@ get_test_cases_no_data <- function(proj) {
 
 ##### Languages #####
 
-# Top languages to include as covariates
-# Languages included in at least 50 repos
-top_langs <- c("Python",
-               "Bourne Shell",
-               "R",
-               "C/C++ Header",
-               "Perl",
-               "C++",
-               "JavaScript",
-               "C",
-               "Java",
-               "Bourne Again Shell",
-               "MATLAB",
-               "m4",
-               "SQL",
-               "Ruby",
-               "PHP")
-
-# "Languages" that are actually data file types or web pages
-non_lang_file_types <- c("HTML",
-                         "JSON",
-                         "XML",
-                         "CSS",
-                         "YAML",
-                         "Markdown",
-                         "XSD",
-                         "DTD",
-                         "XSLT",
-                         "XMI",
-                         "Haml",
-                         "XHTML",
-                         "XAML")
-
 # Import language properties
 # Language properties are in the main dataset; are independent of actual data for the project
 lang_exec_method <- get_table(proj_main, ds_lang, table_exec_method)
@@ -944,7 +911,7 @@ save_table <- function(proj, repo_data) {
   
   # Convert column names to valid headers
   rtrn <- repo_data
-  colnames(rtrn) <- gsub("C\\+\\+", "Cpp", gsub("[ /]+", "_", colnames(rtrn)))
+  colnames(rtrn) <- sapply(colnames(rtrn), format_lang_as_header)
   write.table(rtrn, file = saved_repo_features, quote = F, sep = "\t", row.names = F)
   rtrn
 }

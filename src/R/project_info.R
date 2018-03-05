@@ -13,7 +13,7 @@ proj_high_profile <- params_high_profile[["bq_proj"]]
 
 # Colors for plots
 color_high_prof <- "#ff6666"
-color_main <- "#ffdb4d"
+color_main <- "#80d4ff"
 
 # Local structure
 paper_dir <- params_main[["paper_dir"]]
@@ -64,6 +64,43 @@ ds_lang <- "languages"
 table_exec_method <- "execution_method"
 table_paradigm <- "paradigm"
 table_type_system <- "type_system"
+
+# Top languages - included in at least 50 repos
+top_langs <- c("Python",
+               "Bourne Shell",
+               "R",
+               "C/C++ Header",
+               "Perl",
+               "C++",
+               "JavaScript",
+               "C",
+               "Java",
+               "Bourne Again Shell",
+               "MATLAB",
+               "m4",
+               "SQL",
+               "Ruby",
+               "PHP")
+
+# "Languages" that are actually data file types or web pages
+non_lang_file_types <- c("HTML",
+                         "JSON",
+                         "XML",
+                         "CSS",
+                         "YAML",
+                         "Markdown",
+                         "XSD",
+                         "DTD",
+                         "XSLT",
+                         "XMI",
+                         "Haml",
+                         "XHTML",
+                         "XAML")
+
+# Function to convert language name to valid column header
+format_lang_as_header <- function(lang) {
+  gsub("C\\+\\+", "Cpp", gsub("[ /]+", "_", lang))
+}
 
 # Lit search
 ds_lit_search <- "lit_search"
