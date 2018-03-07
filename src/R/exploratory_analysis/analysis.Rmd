@@ -9,6 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 suppressPackageStartupMessages(library(reshape2))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(lubridate))
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 repo_data_main <- load_repo_features(saved_repo_features_main)
 repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
@@ -209,26 +210,38 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
 
 ```{r outside_contributors, fig.width = 9, fig.height = 3}
 plt_data_outside_contrib <- as.tbl(repo_data_all) %>% 
-  select(forks_count, subscribers_count, watchers_count, num_non_committing_authors) %>% 
+  select(forks_count, subscribers_count, watchers_count, num_non_committing_authors, is_high_profile) %>% 
+  mutate(forks_count = forks_count + 1,
+         subscribers_count = subscribers_count + 1,
+         watchers_count = watchers_count + 1,
+         num_non_committing_authors = num_non_committing_authors + 1) %>%
   dplyr::rename(
-    `Total forks` = forks_count, 
-    `Total subscribers` = subscribers_count, 
-    `Total watchers` = watchers_count,
-    `Outside commit authors` = num_non_committing_authors
+    `Total forks + 1` = forks_count, 
+    `Total subscribers + 1` = subscribers_count, 
+    `Total watchers + 1` = watchers_count,
+    `Outside commit authors + 1` = num_non_committing_authors
   ) %>%
-  melt(id.vars = "Outside commit authors") %>%
-  group_by(`Outside commit authors`, variable, value) %>%
+  melt(id.vars = c("Outside commit authors + 1", "is_high_profile")) %>%
+  group_by(`Outside commit authors + 1`, is_high_profile, variable, value) %>%
   summarize(`Num repos` = n())
 
 ggplot(plt_data_outside_contrib) +
-  geom_point(aes(size = `Num repos`, x = `Outside commit authors`, y = value)) +
+  geom_point(aes(size = `Num repos`, 
+                 x = `Outside commit authors + 1`, 
+                 y = value, col = is_high_profile)) +
+  geom_point(data = subset(plt_data_outside_contrib, is_high_profile),
+             aes(size = `Num repos`, 
+                 x = `Outside commit authors + 1`, 
+                 y = value, col = is_high_profile)) +
+  scale_color_manual(values=c(color_main, color_high_prof), labels = c("Main repos", "High profile repos")) +
   theme_bw() +
+  guides(color = guide_legend(title = "Dataset")) +
   theme(legend.text = element_text(size=12),
         legend.title = element_text(size = 14),
         axis.text = element_text(size = 12),
         strip.text = element_text(size = 11)) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
-  scale_y_log10() +
+  scale_y_log10(breaks = c(1, 10, 100, 1000, 10000)) +
   scale_x_log10()
 
 ```
@@ -238,14 +251,17 @@ ggplot(plt_data_outside_contrib) +
 ```{r commit_authors, fig.width = 9, fig.height = 3}
 plt_data_commit_authors <- as.tbl(repo_data_all) %>% 
   select(forks_count, subscribers_count, watchers_count, commit_authors, is_high_profile) %>% 
+  mutate(forks_count = forks_count + 1,
+         subscribers_count = subscribers_count + 1,
+         watchers_count = watchers_count + 1) %>%
   dplyr::rename(
-    `Total forks` = forks_count, 
-    `Total subscribers` = subscribers_count, 
-    `Total watchers` = watchers_count,
+    `Total forks + 1` = forks_count, 
+    `Total subscribers + 1` = subscribers_count, 
+    `Total watchers + 1` = watchers_count,
     `Commit authors` = commit_authors,
     `High profile` = is_high_profile
   ) %>%
-  group_by(`Total forks`, `Total subscribers`, `Total watchers`, `Commit authors`, `High profile`) %>%
+  group_by(`Total forks + 1`, `Total subscribers + 1`, `Total watchers + 1`, `Commit authors`, `High profile`) %>%
   summarize(`Num repos` = n()) %>%
   melt(id.vars = c("Commit authors", "High profile", "Num repos"))
 
@@ -274,16 +290,25 @@ ggplot(plt_data_commit_authors) +
 
 ### Commits
 
-```{r commits, fig.width = 7, fig.height = 3}
+```{r commits, fig.width = 10, fig.height = 6}
 plt_data_commit_authors <- as.tbl(repo_data_all) %>% 
-  select(commits, mean_commits_per_month, consecutive_months_with_commits, is_high_profile) %>% 
+  select(commits, mean_commits_per_month, consecutive_months_with_commits, 
+         commit_span_days, mean_files_added_per_month, num_days_new_files_added,
+         consecutive_months_no_commits, is_high_profile) %>% 
+  mutate(consecutive_months_no_commits = consecutive_months_no_commits + 1) %>%
   dplyr::rename(
     `Total commits` = commits,
     `Mean commits/month` = mean_commits_per_month,
     `Max cons. months with commits` = consecutive_months_with_commits,
+    `Project duration (days)` = commit_span_days,
+    `Mean new files per month` = mean_files_added_per_month,
+    `Days with new files added` = num_days_new_files_added,
+    `1 + max cons. months no commits` = consecutive_months_no_commits,
     `High profile` = is_high_profile
   ) %>%
-  group_by(`Total commits`, `Mean commits/month`, `Max cons. months with commits`, `High profile`) %>%
+  group_by(`Total commits`, `Mean commits/month`, `Max cons. months with commits`, 
+           `Project duration (days)`, `Mean new files per month`, 
+           `Days with new files added`, `1 + max cons. months no commits`, `High profile`) %>%
   summarize(`Num repos` = n()) %>%
   melt(id.vars = c("Total commits", "High profile", "Num repos"))
 
@@ -307,7 +332,7 @@ ggplot(plt_data_commit_authors) +
         strip.text = element_text(size = 10)) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10(breaks = c(1, 10, 100, 1000)) +
-  scale_x_log10(breaks = c(1, 10, 100, 1000))
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000))
 ```
 
 ### Languages: file sizes and lines of code
@@ -349,6 +374,42 @@ ggplot(plt_data_langs) +
   facet_wrap(~lang, scales = "free", ncol = 5) +
   scale_y_log10(breaks = c(1, 10, 100, 1000, 10000)) +
   scale_x_log10(breaks = c(1, 10, 100, 1000, 10000))
+```
+
+### Years by topic
+
+```{r years_by_topic, fig.height = 11, fig.width = 8}
+plt_data_years_by_topic <- repo_data_main %>%
+  select(first_commit, date_pubmed, contains("topic")) %>%
+  mutate(year_first_commit = year(first_commit),
+         year_pubmed = year(date_pubmed)) %>%
+  select(-first_commit, -date_pubmed) %>%
+  melt(id.vars = c("year_first_commit", "year_pubmed")) %>%
+  filter(value) %>%
+  group_by(year_first_commit, year_pubmed, variable) %>%
+  summarize(num_repos = n()) %>%
+  filter(!is.na(year_first_commit) & !is.na(year_pubmed)) %>%
+  rename(Topic = variable)
+
+plt_data_years_by_topic$Topic <- sapply(plt_data_years_by_topic$Topic, function(x) {
+  gsub("_", " ", gsub("topic_", "", gsub("RNA.seq", "RNA-seq", x)))
+})
+
+min_year <- min(c(plt_data_years_by_topic$year_first_commit, plt_data_years_by_topic$year_pubmed))
+max_year <- max(c(plt_data_years_by_topic$year_first_commit, plt_data_years_by_topic$year_pubmed))
+ggplot(plt_data_years_by_topic) +
+  geom_point(aes(x = year_first_commit, 
+                 y = year_pubmed,
+                 size = num_repos)) +
+  theme_bw() +
+  theme(legend.text = element_text(size=12),
+        legend.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        strip.text = element_text(size = 10)) +
+  facet_wrap(~Topic, scales = "fixed", ncol = 2) +
+  xlim(min_year, max_year) +
+  ylim(min_year, max_year)
+
 ```
 
 ### Session info
