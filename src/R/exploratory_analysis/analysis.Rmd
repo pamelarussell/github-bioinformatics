@@ -339,7 +339,8 @@ ggplot(plt_data_commit_authors) +
 
 ```{r langs, fig.height = 6, fig.width = 12}
 top_langs <- sapply(top_langs, format_lang_as_header)
-lang_cols <- unname(c(sapply(top_langs, function(x) paste("num_files_", x, sep = "")), sapply(top_langs, function(x) paste("mean_lines_code_", x, sep = ""))))
+lang_cols <- unname(c(sapply(top_langs, function(x) paste("num_files_", x, sep = "")), 
+                      sapply(top_langs, function(x) paste("mean_lines_code_", x, sep = ""))))
 plt_data_langs <- data.frame(`Number of files` = integer(), 
                              `Mean lines of code per file` = numeric(), 
                              is_high_profile = logical(), 
@@ -376,6 +377,42 @@ ggplot(plt_data_langs) +
   scale_x_log10(breaks = c(1, 10, 100, 1000, 10000))
 ```
 
+### Bytes of code by language
+
+```{r lang_pct_bytes, fig.height = 6, fig.width = 12}
+lang_cols <- unname(c(sapply(top_langs, function(x) paste("bytes_", x, sep = ""))))
+plt_data_lang_bytes <- data.frame(bytes = integer(), 
+                                  is_high_profile = logical(), 
+                                  lang = character())
+for(lang in top_langs) {
+  col_b <- paste("bytes_", lang, sep = "")
+  plt_data_lang_bytes <- rbind(plt_data_lang_bytes,
+                               repo_data_all %>% 
+                                 select(!!as.name(col_b), is_high_profile) %>% 
+                                 mutate(lang = lang) %>% 
+                                 rename(bytes = !!as.name(col_b)))
+}
+
+plt_data_lang_bytes$Dataset <- sapply(plt_data_lang_bytes$is_high_profile,
+                                      function(x) {
+                                        if(x) "High profile repos"
+                                        else "Main repos"
+                                      })
+
+ggplot(plt_data_lang_bytes, 
+       aes(x = lang, y = bytes / 1000000, fill = Dataset)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values=c(color_high_prof, color_main)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 12),
+        strip.text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") +
+  xlab("Language") +
+  ylab("Total megabytes of code") +
+  facet_wrap(~Dataset, scales = "free")
+```
+
 ### Years by topic
 
 ```{r years_by_topic, fig.height = 11, fig.width = 8}
@@ -410,6 +447,23 @@ ggplot(plt_data_years_by_topic) +
   xlim(min_year, max_year) +
   ylim(min_year, max_year)
 
+```
+
+### Licenses
+
+```{r licenses, fig.width = 8, fig.height = 4}
+plt_data_licenses <- repo_data_all %>%
+  select(license, is_high_profile)
+plt_data_licenses$is_high_profile <- as.factor(plt_data_licenses$is_high_profile)
+levels(plt_data_licenses$is_high_profile) <- c("Main repos", "High profile repos")
+ggplot(plt_data_licenses, aes(x = license)) + geom_histogram(stat = "count") +
+  facet_wrap(~is_high_profile, scales = "free") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 10)) +
+  ylab("Number of repos") +
+  xlab("License")
 ```
 
 ### Session info
