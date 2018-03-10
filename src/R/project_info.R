@@ -59,7 +59,7 @@ table_gender_commits <- "gender_commits"
 table_gender_paper_authors <- "gender_paper_authors"
 table_comments <- "comments"
 
-# Programming languages
+# Language features
 ds_lang <- "languages"
 table_exec_method <- "execution_method"
 table_paradigm <- "paradigm"

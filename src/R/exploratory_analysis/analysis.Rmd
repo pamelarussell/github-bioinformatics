@@ -10,6 +10,8 @@ suppressPackageStartupMessages(library(reshape2))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(Hmisc))
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 repo_data_main <- load_repo_features(saved_repo_features_main)
 repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
@@ -169,13 +171,13 @@ plt_data_commits_after_pub <- as.tbl(repo_data_main) %>%
 min_pos <- plt_data_commits_after_pub %>% 
   filter(value > 0) %>%
   group_by(variable) %>%
-  summarize(min_pos = min(value))
+  dplyr::summarize(min_pos = min(value))
 
 # Remove top outliers for plot
 p_outlier <- 1 # 1 means no filtering for outliers
 outlier_cutoff <- plt_data_commits_after_pub %>%
   group_by(variable) %>%
-  summarize(outlier_cutoff = quantile(value, probs = p_outlier, na.rm = T))
+  dplyr::summarize(outlier_cutoff = quantile(value, probs = p_outlier, na.rm = T))
 
 plt_data_commits_after_pub <- plt_data_commits_after_pub %>% 
   left_join(min_pos, by = "variable") %>%
@@ -223,7 +225,7 @@ plt_data_outside_contrib <- as.tbl(repo_data_all) %>%
   ) %>%
   melt(id.vars = c("Outside commit authors + 1", "is_high_profile")) %>%
   group_by(`Outside commit authors + 1`, is_high_profile, variable, value) %>%
-  summarize(`Num repos` = n())
+  dplyr::summarize(`Num repos` = n())
 
 ggplot(plt_data_outside_contrib) +
   geom_point(aes(size = `Num repos`, 
@@ -262,7 +264,7 @@ plt_data_commit_authors <- as.tbl(repo_data_all) %>%
     `High profile` = is_high_profile
   ) %>%
   group_by(`Total forks + 1`, `Total subscribers + 1`, `Total watchers + 1`, `Commit authors`, `High profile`) %>%
-  summarize(`Num repos` = n()) %>%
+  dplyr::summarize(`Num repos` = n()) %>%
   melt(id.vars = c("Commit authors", "High profile", "Num repos"))
 
 ggplot(plt_data_commit_authors) +
@@ -309,7 +311,7 @@ plt_data_commit_authors <- as.tbl(repo_data_all) %>%
   group_by(`Total commits`, `Mean commits/month`, `Max cons. months with commits`, 
            `Project duration (days)`, `Mean new files per month`, 
            `Days with new files added`, `1 + max cons. months no commits`, `High profile`) %>%
-  summarize(`Num repos` = n()) %>%
+  dplyr::summarize(`Num repos` = n()) %>%
   melt(id.vars = c("Total commits", "High profile", "Num repos"))
 
 ggplot(plt_data_commit_authors) +
@@ -338,14 +340,14 @@ ggplot(plt_data_commit_authors) +
 ### Languages: file sizes and lines of code
 
 ```{r langs, fig.height = 6, fig.width = 12}
-top_langs <- sapply(top_langs, format_lang_as_header)
-lang_cols <- unname(c(sapply(top_langs, function(x) paste("num_files_", x, sep = "")), 
-                      sapply(top_langs, function(x) paste("mean_lines_code_", x, sep = ""))))
+top_langs_as_header <- sapply(top_langs, format_lang_as_header)
+lang_cols <- unname(c(sapply(top_langs_as_header, function(x) paste("num_files_", x, sep = "")), 
+                      sapply(top_langs_as_header, function(x) paste("mean_lines_code_", x, sep = ""))))
 plt_data_langs <- data.frame(`Number of files` = integer(), 
                              `Mean lines of code per file` = numeric(), 
                              is_high_profile = logical(), 
                              lang = character())
-for(lang in top_langs) {
+for(lang in top_langs_as_header) {
   col_nf <- paste("num_files_", lang, sep = "")
   col_loc <- paste("mean_lines_code_", lang, sep = "")
   plt_data_langs <- rbind(plt_data_langs,
@@ -380,11 +382,11 @@ ggplot(plt_data_langs) +
 ### Bytes of code by language
 
 ```{r lang_pct_bytes, fig.height = 6, fig.width = 12}
-lang_cols <- unname(c(sapply(top_langs, function(x) paste("bytes_", x, sep = ""))))
+lang_cols <- unname(c(sapply(top_langs_as_header, function(x) paste("bytes_", x, sep = ""))))
 plt_data_lang_bytes <- data.frame(bytes = integer(), 
                                   is_high_profile = logical(), 
                                   lang = character())
-for(lang in top_langs) {
+for(lang in top_langs_as_header) {
   col_b <- paste("bytes_", lang, sep = "")
   plt_data_lang_bytes <- rbind(plt_data_lang_bytes,
                                repo_data_all %>% 
@@ -424,7 +426,7 @@ plt_data_years_by_topic <- repo_data_main %>%
   melt(id.vars = c("year_first_commit", "year_pubmed")) %>%
   filter(value) %>%
   group_by(year_first_commit, year_pubmed, variable) %>%
-  summarize(num_repos = n()) %>%
+  dplyr::summarize(num_repos = n()) %>%
   filter(!is.na(year_first_commit) & !is.na(year_pubmed)) %>%
   rename(Topic = variable)
 
@@ -464,6 +466,97 @@ ggplot(plt_data_licenses, aes(x = license)) + geom_histogram(stat = "count") +
         strip.text = element_text(size = 10)) +
   ylab("Number of repos") +
   xlab("License")
+```
+
+### Language features
+
+```{r language_features, fig.width = 8, fig.height = 6}
+exec_method <- list_tabledata(project = proj_main, 
+                              dataset = ds_lang, 
+                              table = table_exec_method) %>%
+  mutate(language = tolower(language))
+
+type_system <- list_tabledata(project = proj_main, 
+                              dataset = ds_lang, 
+                              table = table_type_system) %>%
+  mutate(language = tolower(language))
+
+lang_features <- data.frame(language = tolower(top_langs),
+                            lang_header = top_langs_as_header) %>%
+  left_join(exec_method, by = "language") %>%
+  left_join(type_system, by = "language")
+
+sum_lang <- function(prefix, keep_rows) {
+  sapply(lang_features$lang_header, 
+         function(x) {
+           sum(repo_data_all[which(keep_rows), 
+                             paste(prefix, x, sep="")])
+         })}
+
+lang_features$bytes_high_profile <- sum_lang("bytes_", repo_data_all$is_high_profile)
+lang_features$bytes_main <- sum_lang("bytes_", !repo_data_all$is_high_profile)
+lang_features$files_high_profile <- sum_lang("num_files_", repo_data_all$is_high_profile)
+lang_features$files_main <- sum_lang("num_files_", !repo_data_all$is_high_profile)
+
+lang_features$exec <- ""
+lang_features$type <- ""
+for(i in 1:nrow(lang_features)) {
+  
+  # Execution method
+  interpreted <- isTRUE(lang_features[i, "interpreted"])
+  compiled <- isTRUE(lang_features[i, "compiled"])
+  if(interpreted && compiled) lang_features[i, "exec"] <- "Both"
+  else if(interpreted) lang_features[i, "exec"] <- "Interpreted"
+  else if(compiled) lang_features[i, "exec"] <- "Compiled"
+  else lang_features[i, "exec"] <- NA
+  
+  # Type system
+  type <- NA
+  strength <- lang_features[i, "strength"]
+  system <- lang_features[i, "system"]
+  safety <- lang_features[i, "safety"]
+  if(!is.na(strength)) type <- capitalize(strength)
+  if(!is.na(system)) type <- paste(type, system)
+  if(!is.na(safety)) type <- paste(type, safety)
+  lang_features[i, "type"] <- type
+}
+
+plt_data_lang_features <- lang_features %>% select(exec, type, bytes_high_profile,
+                                                   bytes_main, files_high_profile, files_main) %>%
+  filter(!is.na(exec) & !is.na(type)) %>% 
+  melt(id.vars = c("exec", "type")) %>% 
+  mutate(is_high_profile = grepl("high_profile", variable)) %>% 
+  mutate(variable = gsub("_main", "", gsub("_high_profile", "", variable)))
+plt_data_lang_features$var <- ""
+for(i in 1:nrow(plt_data_lang_features)) {
+  variable <- plt_data_lang_features[i, "variable"]
+  high_prof <- plt_data_lang_features[i, "is_high_profile"]
+  var <- capitalize(variable)
+  if(high_prof) var <- paste(var, "- high profile repos")
+  else var <- paste(var, "- main repos")
+  plt_data_lang_features[i, "var"] <- var
+}
+plt_data_lang_features <- plt_data_lang_features %>% 
+  select(exec, type, var, value) %>%
+  group_by(var) %>% 
+  mutate(sum_var = sum(value)) %>% 
+  ungroup() %>% 
+  mutate(val_normalized = value / sum_var)
+
+ggplot(plt_data_lang_features) +
+  geom_point(aes(x = exec, 
+                 y = type,
+                 size = val_normalized)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 11),
+        strip.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") +
+  facet_wrap(~var, scales = "free", ncol = 2) +
+  xlab("Execution mode") +
+  ylab("Type system")
+
 ```
 
 ### Session info
