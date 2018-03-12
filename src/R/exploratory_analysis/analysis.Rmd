@@ -241,7 +241,8 @@ ggplot(plt_data_outside_contrib) +
   theme(legend.text = element_text(size=12),
         legend.title = element_text(size = 14),
         axis.text = element_text(size = 12),
-        strip.text = element_text(size = 11)) +
+        strip.text = element_text(size = 11),
+        axis.title.y = element_blank()) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10(breaks = c(1, 10, 100, 1000, 10000)) +
   scale_x_log10()
@@ -528,16 +529,23 @@ plt_data_lang_features <- lang_features %>% select(exec, type, bytes_high_profil
   mutate(is_high_profile = grepl("high_profile", variable)) %>% 
   mutate(variable = gsub("_main", "", gsub("_high_profile", "", variable)))
 plt_data_lang_features$var <- ""
+plt_data_lang_features$color <- ""
 for(i in 1:nrow(plt_data_lang_features)) {
   variable <- plt_data_lang_features[i, "variable"]
   high_prof <- plt_data_lang_features[i, "is_high_profile"]
   var <- capitalize(variable)
-  if(high_prof) var <- paste(var, "- high profile repos")
-  else var <- paste(var, "- main repos")
+  if(high_prof) {
+    var <- paste(var, "- high profile repos")
+    color <- "h"
+  } else {
+    var <- paste(var, "- main repos")
+    color <- "m"
+  }
   plt_data_lang_features[i, "var"] <- var
+  plt_data_lang_features[i, "color"] <- color
 }
 plt_data_lang_features <- plt_data_lang_features %>% 
-  select(exec, type, var, value) %>%
+  select(exec, type, var, value, color) %>%
   group_by(var) %>% 
   mutate(sum_var = sum(value)) %>% 
   ungroup() %>% 
@@ -546,7 +554,9 @@ plt_data_lang_features <- plt_data_lang_features %>%
 ggplot(plt_data_lang_features) +
   geom_point(aes(x = exec, 
                  y = type,
-                 size = val_normalized)) +
+                 size = val_normalized,
+                 col = color)) +
+  scale_color_manual(values=c(color_high_prof, color_main)) +
   theme_bw() +
   theme(axis.text = element_text(size = 11),
         strip.text = element_text(size = 11),
