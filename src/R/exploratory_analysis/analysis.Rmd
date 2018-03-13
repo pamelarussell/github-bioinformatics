@@ -195,6 +195,16 @@ plt_data_commits_after_pub <- plt_data_commits_after_pub %>%
   filter(value_pos <= outlier_cutoff) %>%
   select(`Commits after\npublication`, variable, value_pos)
 
+# Wilcoxon test for each variable
+wilcox_test_commits_after_pub <- 
+  plt_data_commits_after_pub %>% 
+  group_by(variable) %>% 
+  dplyr::summarize(
+    p = wilcox.test(value_pos ~ `Commits after\npublication`, paired = FALSE, alternative = "two.sided")$p.value, 
+    x = 0.5, 
+    y = max(value_pos)
+  )
+
 ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
   geom_boxplot(aes(fill = `Commits after\npublication`)) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
@@ -205,7 +215,14 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
         axis.text.y = element_text(size = 10),
         axis.text.x = element_blank(),
         axis.title = element_blank(),
-        strip.text = element_text(size = 10))
+        strip.text = element_text(size = 10)) +
+  geom_label(data = wilcox_test_commits_after_pub,
+            aes(x = x, y = y, label = paste("p =", formatC(p, format = "e", digits = 1))),
+            fill = "white",
+            label.size = 0,
+            color = "steelblue",
+            hjust = 0) +
+  scale_fill_brewer(palette = "Set2")
 ```
 
 ### Outside contributors
@@ -223,10 +240,26 @@ plt_data_outside_contrib <- as.tbl(repo_data_all) %>%
     `Total watchers + 1` = watchers_count,
     `Outside commit authors + 1` = num_non_committing_authors
   ) %>%
-  melt(id.vars = c("Outside commit authors + 1", "is_high_profile")) %>%
+  melt(id.vars = c("Outside commit authors + 1", "is_high_profile"))
+
+# Correlation
+corr_outside_contrib <- 
+  plt_data_outside_contrib %>% 
+  group_by(variable) %>% 
+  dplyr::summarize(
+    corr_pearson = cor.test(value, `Outside commit authors + 1`, method = "pearson")$estimate, 
+    pval_pearson = cor.test(value, `Outside commit authors + 1`, method = "pearson")$p.value, 
+    x = 1, 
+    y = 10^(0.93 * log10(max(value)))
+  )
+
+# Collapse identical records
+plt_data_outside_contrib <- 
+  plt_data_outside_contrib %>%
   group_by(`Outside commit authors + 1`, is_high_profile, variable, value) %>%
   dplyr::summarize(`Num repos` = n())
 
+# Make the plot
 ggplot(plt_data_outside_contrib) +
   geom_point(aes(size = `Num repos`, 
                  x = `Outside commit authors + 1`, 
@@ -245,14 +278,20 @@ ggplot(plt_data_outside_contrib) +
         axis.title.y = element_blank()) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10(breaks = c(1, 10, 100, 1000, 10000)) +
-  scale_x_log10()
+  scale_x_log10() +
+  geom_label(data = corr_outside_contrib,
+            aes(x = x, y = y, label = paste("r = ", signif(corr_pearson, digits = 2), "\np = ", formatC(pval_pearson, format = "e", digits = 1), sep = "")),
+            fill = "white",
+            label.size = 0,
+            color = "mediumpurple4",
+            hjust = 0)
 
 ```
 
 ### Commit authors and community
 
 ```{r commit_authors, fig.width = 9, fig.height = 3}
-plt_data_commit_authors <- as.tbl(repo_data_all) %>% 
+plt_data_devs_community <- as.tbl(repo_data_all) %>% 
   select(forks_count, subscribers_count, watchers_count, commit_authors, is_high_profile) %>% 
   mutate(forks_count = forks_count + 1,
          subscribers_count = subscribers_count + 1,
@@ -264,16 +303,31 @@ plt_data_commit_authors <- as.tbl(repo_data_all) %>%
     `Commit authors` = commit_authors,
     `High profile` = is_high_profile
   ) %>%
-  group_by(`Total forks + 1`, `Total subscribers + 1`, `Total watchers + 1`, `Commit authors`, `High profile`) %>%
-  dplyr::summarize(`Num repos` = n()) %>%
-  melt(id.vars = c("Commit authors", "High profile", "Num repos"))
+  melt(id.vars = c("Commit authors", "High profile"))
 
-ggplot(plt_data_commit_authors) +
+# Correlation
+corr_devs_community <- 
+  plt_data_devs_community %>% 
+  group_by(variable) %>% 
+  dplyr::summarize(
+    corr_pearson = cor.test(value, `Commit authors`, method = "pearson")$estimate, 
+    pval_pearson = cor.test(value, `Commit authors`, method = "pearson")$p.value, 
+    x = 1, 
+    y = 10^(0.93 * log10(max(value)))
+  )
+
+# Collapse identical records
+plt_data_devs_community <- 
+  plt_data_devs_community %>%
+  group_by(variable, `Commit authors`, `High profile`, value) %>%
+  dplyr::summarize(`Num repos` = n())
+
+ggplot(plt_data_devs_community) +
   geom_point(aes(x = `Commit authors`, 
                  y = value,
                  col = `High profile`,
                  size = `Num repos`)) +
-  geom_point(data = subset(plt_data_commit_authors, `High profile`),
+  geom_point(data = subset(plt_data_devs_community, `High profile`),
              aes(x = `Commit authors`, 
                  y = value,
                  col = `High profile`,
@@ -288,13 +342,19 @@ ggplot(plt_data_commit_authors) +
         strip.text = element_text(size = 11)) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10(breaks = c(1, 10, 100, 1000)) +
-  scale_x_log10()
+  scale_x_log10() +
+  geom_label(data = corr_devs_community,
+            aes(x = x, y = y, label = paste("r = ", signif(corr_pearson, digits = 2), "\np = ", formatC(pval_pearson, format = "e", digits = 1), sep = "")),
+            fill = "white",
+            label.size = 0,
+            color = "mediumpurple4",
+            hjust = 0)
 ```
 
 ### Commits
 
 ```{r commits, fig.width = 10, fig.height = 6}
-plt_data_commit_authors <- as.tbl(repo_data_all) %>% 
+plt_data_commits <- as.tbl(repo_data_all) %>% 
   select(commits, mean_commits_per_month, consecutive_months_with_commits, 
          commit_span_days, mean_files_added_per_month, num_days_new_files_added,
          consecutive_months_no_commits, is_high_profile) %>% 
@@ -309,18 +369,32 @@ plt_data_commit_authors <- as.tbl(repo_data_all) %>%
     `1 + max cons. months no commits` = consecutive_months_no_commits,
     `High profile` = is_high_profile
   ) %>%
-  group_by(`Total commits`, `Mean commits/month`, `Max cons. months with commits`, 
-           `Project duration (days)`, `Mean new files per month`, 
-           `Days with new files added`, `1 + max cons. months no commits`, `High profile`) %>%
-  dplyr::summarize(`Num repos` = n()) %>%
-  melt(id.vars = c("Total commits", "High profile", "Num repos"))
+  melt(id.vars = c("Total commits", "High profile"))
 
-ggplot(plt_data_commit_authors) +
+# Correlation
+corr_commits <- 
+  plt_data_commits %>% 
+  group_by(variable) %>% 
+  dplyr::summarize(
+    corr_pearson = cor.test(value, `Total commits`, method = "pearson")$estimate, 
+    pval_pearson = cor.test(value, `Total commits`, method = "pearson")$p.value, 
+    x = 1, 
+    y = 10^(0.93 * log10(max(value, na.rm = T)))
+  )
+
+# Collapse identical records
+plt_data_commits <-
+  plt_data_commits %>%
+  group_by(`Total commits`, variable, value, `High profile`) %>%
+  dplyr::summarize(`Num repos` = n())
+  
+
+ggplot(plt_data_commits) +
   geom_point(aes(x = `Total commits`, 
                  y = value,
                  col = `High profile`,
                  size = `Num repos`)) +
-  geom_point(data = subset(plt_data_commit_authors, `High profile`), 
+  geom_point(data = subset(plt_data_commits, `High profile`), 
              aes(x = `Total commits`, 
                  y = value,
                  col = `High profile`,
@@ -335,7 +409,13 @@ ggplot(plt_data_commit_authors) +
         strip.text = element_text(size = 10)) +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10(breaks = c(1, 10, 100, 1000)) +
-  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000))
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000)) +
+  geom_label(data = corr_commits,
+            aes(x = x, y = y, label = paste("r = ", signif(corr_pearson, digits = 2), "\np = ", formatC(pval_pearson, format = "e", digits = 1), sep = "")),
+            fill = "white",
+            label.size = 0,
+            color = "mediumpurple4",
+            hjust = 0)
 ```
 
 ### Languages: file sizes and lines of code
