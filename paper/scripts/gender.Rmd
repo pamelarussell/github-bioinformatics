@@ -486,7 +486,6 @@ ggplot(gender_summary_tidy %>% filter(Gender == "female"),
         axis.title.y = element_text(size = 12),
         legend.text = element_text(size = 11),
         legend.title = element_text(size = 12)) +
-  ggtitle("Developers, commits, and paper authorships by gender") +
   ylab("Proportion of female contributors") +
   scale_fill_manual(values = c(color_high_prof, color_main)) +
   expand_limits(x = 5.7)

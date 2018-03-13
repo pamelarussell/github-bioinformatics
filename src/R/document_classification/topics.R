@@ -111,7 +111,7 @@ topics_specialized <- rename_topic(topics_specialized)
 # Count number of repos associated with each topic
 num_repos_per_topic <- abstract_top_topics %>% 
   group_by(topic) %>% 
-  summarize(total = n()) %>%
+  dplyr::summarize(total = n()) %>%
   arrange(-total) %>%
   ungroup()
 

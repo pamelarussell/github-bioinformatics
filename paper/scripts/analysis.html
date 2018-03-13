@@ -122,6 +122,18 @@ $(document).ready(function () {
 </div>
 
 
+<pre class="r"><code>rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(Hmisc))
+source(&quot;~/Dropbox/Documents/Github_mining/src/R/project_info.R&quot;)
+repo_data_main &lt;- load_repo_features(saved_repo_features_main)
+repo_data_high_prof &lt;- load_repo_features(saved_repo_features_high_prof)
+repo_data_all &lt;- load_repo_features_all()</code></pre>
 <div id="topic-modeling" class="section level3">
 <h3>Topic modeling</h3>
 <pre class="r"><code>plt_data_topics &lt;- as.tbl(repo_data_main) %&gt;% 

@@ -62,7 +62,7 @@ bytes_per_topic <- abstract_top_topics %>%
   select(repo_name, topic) %>% 
   left_join(bytes_per_lang, by = "repo_name") %>% 
   group_by(topic) %>% 
-  summarise_at(vars(starts_with("bytes")), mean) %>%
+  dplyr::summarise_at(vars(starts_with("bytes")), mean) %>%
   ungroup()
 colnames(bytes_per_topic) <- gsub("bytes_", "", colnames(bytes_per_topic))
 bytes_per_topic <- bytes_per_topic %>% 
@@ -84,7 +84,7 @@ ggplot(bytes_per_topic, aes(Topic, Language)) +
 articles_per_journal <- article_data %>% 
   filter(!is.na(iso_abbrev)) %>%
   group_by(iso_abbrev) %>% 
-  summarise(num_articles = n()) %>% 
+  dplyr::summarise(num_articles = n()) %>% 
   arrange(-num_articles) %>%
   ungroup()
 
@@ -96,13 +96,16 @@ topics_by_journal <- abstract_top_topics %>%
   rename(journal = iso_abbrev) %>%
   filter(journal %in% top_journals) %>%
   group_by(topic, journal) %>%
-  summarise(num_repos = n()) %>%
-  ungroup()
+  dplyr::summarise(num_repos = n()) %>%
+  ungroup() %>%
+  rename(`Num repos` = num_repos)
 
 # Bubble plot of topics vs journals
 ggplot(topics_by_journal, aes(topic, journal)) + 
-  geom_point(aes(size = num_repos)) + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  geom_point(aes(size = `Num repos`)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Topic") +
+  ylab("Journal")
 ```
 
 ## Session info
