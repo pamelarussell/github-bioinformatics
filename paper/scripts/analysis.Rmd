@@ -12,6 +12,7 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(Hmisc))
+suppressPackageStartupMessages(library(purrr))
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 repo_data_main <- load_repo_features(saved_repo_features_main)
 repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
@@ -24,18 +25,18 @@ repo_data_all <- load_repo_features_all()
 ```{r topics, fig.width = 10, fig.height = 8}
 plt_data_topics <- as.tbl(repo_data_main) %>% 
   select(commits, commit_authors, forks_count, subscribers_count, 
-         watchers_count, num_citations_per_week_pmc_minus_2_years, 
+         stargazers_count, num_citations_per_week_pmc_minus_2_years, 
          total_file_size_no_data, num_files_no_data, contains("topic")) %>% 
   dplyr::rename(
     Commits = commits,
     `Commit authors` = commit_authors,
     Forks = forks_count,
     Subscribers = subscribers_count,
-    Watchers = watchers_count,
+    Stargazers = stargazers_count,
     `Mean PMC citations / week` = num_citations_per_week_pmc_minus_2_years,
     `Total files` = num_files_no_data
   )
-  
+
 # Change NA's
 change_na <- function(x, c) {
   if(is.na(x)) c
@@ -53,17 +54,29 @@ plt_data_topics <-
   dplyr::mutate(`Megabytes of code` = total_file_size_no_data / 1000000,
                 `Forks + 1` = Forks + 1,
                 `Subscribers + 1` = Subscribers + 1,
-                `Watchers + 1` = Watchers + 1,
+                `Stargazers + 1` = Stargazers + 1,
                 `1 + mean PMC citations / week` = `Mean PMC citations / week` + 1) %>%
-  select(-total_file_size_no_data, -Forks, -Subscribers, -Watchers, -`Mean PMC citations / week`) %>%
+  select(-total_file_size_no_data, -Forks, -Subscribers, -Stargazers, -`Mean PMC citations / week`) %>%
   melt(id.vars = c("Commits", "Commit authors", "Forks + 1", 
-                   "Subscribers + 1", "Watchers + 1", "1 + mean PMC citations / week",
+                   "Subscribers + 1", "Stargazers + 1", "1 + mean PMC citations / week",
                    "Megabytes of code", "Total files")) %>% 
   filter(value) %>% 
   as.tbl() %>% 
   select(-value) %>% 
   dplyr::rename(Topic = variable) %>% 
-  melt(id.vars = "Topic") %>%
+  melt(id.vars = "Topic") 
+
+# Add number of repos per topic
+topic_cols <- as.character(unique(plt_data_topics$Topic))
+topic_ct <- unlist(map(topic_cols, function(x) sum(repo_data_main[[x]])))
+names(topic_ct) <- topic_cols
+topic_with_ct <- unlist(map(plt_data_topics$Topic, function(x) {
+  paste(x, " (N=", topic_ct[[x]], ")", sep = "")
+}))
+plt_data_topics$Topic <- topic_with_ct
+
+plt_data_topics <-
+  plt_data_topics %>%
   mutate(Topic = gsub("topic_", "", Topic)) %>%
   mutate(Topic = gsub("_", " ", Topic)) %>%
   mutate(Topic = gsub("RNA.seq", "RNA-seq", Topic))
@@ -71,7 +84,7 @@ plt_data_topics <-
 # Make the plot
 ggplot(plt_data_topics, 
        aes(x = variable, y = value, fill = factor(Topic))) +
-  geom_boxplot() +
+  geom_boxplot(notch = T) +
   theme_bw() +
   guides(fill = guide_legend(title="Abstract includes topic")) +
   theme(legend.text = element_text(size=10),
@@ -91,7 +104,7 @@ ggplot(plt_data_topics,
 ```{r commits_after_publication, fig.width = 9, fig.height = 7}
 plt_data_commits_after_pub <- as.tbl(repo_data_main) %>% 
   select(commits, commit_authors, forks_count, subscribers_count, 
-         watchers_count, num_citations_per_week_pmc_minus_2_years, 
+         stargazers_count, num_citations_per_week_pmc_minus_2_years, 
          mean_commit_message_len, pct_commits_diff_author_committer, 
          num_non_committing_authors, commits_after_article_in_pubmed) %>% 
   filter(!is.na(commits_after_article_in_pubmed)) %>%
@@ -100,11 +113,11 @@ plt_data_commits_after_pub <- as.tbl(repo_data_main) %>%
     `Commit authors` = commit_authors, 
     `Total forks` = forks_count, 
     `Total subscribers` = subscribers_count, 
-    `Total watchers` = watchers_count,
+    `Total stargazers` = stargazers_count,
     `PMC citations / week` = num_citations_per_week_pmc_minus_2_years,
-    `Commit message len` = mean_commit_message_len,
+    `Commit message length` = mean_commit_message_len,
     `Pct outside commits` = pct_commits_diff_author_committer,
-    `Outside cmt authors` = num_non_committing_authors,
+    `Outside commit authors` = num_non_committing_authors,
     `Commits after\npublication` = commits_after_article_in_pubmed
   ) %>% 
   melt(id.vars = "Commits after\npublication")
@@ -132,6 +145,16 @@ plt_data_commits_after_pub$value_pos <- apply(plt_data_commits_after_pub, 1, fun
   if(is.na(val)) mp
   else max(val, mp)
 })
+
+# Change true/false to yes/no
+label_yes <- paste("Yes (N=", nrow(repo_data_main %>% filter(commits_after_article_in_pubmed)), ")", sep = "")
+label_no <- paste("No (N=", nrow(repo_data_main %>% filter(!commits_after_article_in_pubmed)), ")", sep = "")
+plt_data_commits_after_pub[["Commits after\npublication"]] <- 
+  unlist(map(plt_data_commits_after_pub[["Commits after\npublication"]], 
+             function(x) {
+               if(x) label_yes
+               else label_no
+             }))
 
 plt_data_commits_after_pub <- plt_data_commits_after_pub %>%
   filter(value_pos <= outlier_cutoff) %>%
@@ -165,21 +188,26 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
              color = "steelblue",
              hjust = 0) +
   scale_fill_brewer(palette = "Set2")
+
+# Check if relationship between commit message length and commits after publication can be explained by team size
+cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$estimate
+cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$p.value
+
 ```
 
 ### Outside contributors
 
 ```{r outside_contributors, fig.width = 9, fig.height = 3}
 plt_data_outside_contrib <- as.tbl(repo_data_all) %>% 
-  select(forks_count, subscribers_count, watchers_count, num_non_committing_authors, is_high_profile) %>% 
+  select(forks_count, subscribers_count, stargazers_count, num_non_committing_authors, is_high_profile) %>% 
   mutate(forks_count = forks_count + 1,
          subscribers_count = subscribers_count + 1,
-         watchers_count = watchers_count + 1,
+         stargazers_count = stargazers_count + 1,
          num_non_committing_authors = num_non_committing_authors + 1) %>%
   dplyr::rename(
     `Total forks + 1` = forks_count, 
     `Total subscribers + 1` = subscribers_count, 
-    `Total watchers + 1` = watchers_count,
+    `Total stargazers + 1` = stargazers_count,
     `Outside commit authors + 1` = num_non_committing_authors
   ) %>%
   melt(id.vars = c("Outside commit authors + 1", "is_high_profile"))
@@ -228,20 +256,23 @@ ggplot(plt_data_outside_contrib) +
              color = "mediumpurple4",
              hjust = 0)
 
+# How many repos have outside contributors?
+nrow(repo_data_main %>% filter(num_non_committing_authors > 0)) / nrow(repo_data_main)
+nrow(repo_data_high_prof %>% filter(num_non_committing_authors > 0)) / nrow(repo_data_high_prof)
 ```
 
 ### Commit authors and community
 
 ```{r commit_authors, fig.width = 9, fig.height = 3}
 plt_data_devs_community <- as.tbl(repo_data_all) %>% 
-  select(forks_count, subscribers_count, watchers_count, commit_authors, is_high_profile) %>% 
+  select(forks_count, subscribers_count, stargazers_count, commit_authors, is_high_profile) %>% 
   mutate(forks_count = forks_count + 1,
          subscribers_count = subscribers_count + 1,
-         watchers_count = watchers_count + 1) %>%
+         stargazers_count = stargazers_count + 1) %>%
   dplyr::rename(
     `Total forks + 1` = forks_count, 
     `Total subscribers + 1` = subscribers_count, 
-    `Total watchers + 1` = watchers_count,
+    `Total stargazers + 1` = stargazers_count,
     `Commit authors` = commit_authors,
     `High profile` = is_high_profile
   ) %>%
@@ -362,7 +393,7 @@ ggplot(plt_data_commits) +
 
 ### Languages: file sizes and lines of code
 
-```{r langs, fig.height = 6, fig.width = 12}
+```{r langs, fig.height = 6, fig.width = 11}
 top_langs_as_header <- sapply(top_langs, format_lang_as_header)
 lang_cols <- unname(c(sapply(top_langs_as_header, function(x) paste("num_files_", x, sep = "")), 
                       sapply(top_langs_as_header, function(x) paste("mean_lines_code_", x, sep = ""))))
@@ -397,9 +428,9 @@ ggplot(plt_data_langs) +
         legend.title = element_text(size = 14),
         axis.text = element_text(size = 10),
         strip.text = element_text(size = 10)) +
-  facet_wrap(~lang, scales = "free", ncol = 5) +
-  scale_y_log10(breaks = c(1, 10, 100, 1000, 10000)) +
-  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000))
+  facet_wrap(~lang, scales = "fixed", ncol = 5) +
+  scale_y_log10(breaks = c(1, 10, 100, 1000, 10000), labels = c("1", "10", "100", "1K", "10K")) +
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000), labels = c("1", "10", "100", "1K", "10K"))
 ```
 
 ### Bytes of code by language

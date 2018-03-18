@@ -45,7 +45,6 @@ plt_data %>% ggplot(aes(Term, Beta)) +
     vjust = -1.4,
     inherit.aes = FALSE,
     size = 5)
-rm(facet_text, plt_data)
 ```
 
 
