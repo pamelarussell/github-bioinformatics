@@ -193,6 +193,49 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
 cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$estimate
 cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$p.value
 
+# Make another version of the figure that is wide without outside commit authors
+ggplot(plt_data_commits_after_pub %>% filter(variable != "Outside commit authors"), aes(variable, value_pos)) +
+  geom_boxplot(aes(fill = `Commits after\npublication`)) +
+  facet_wrap(~variable, scales = "free", ncol = 4) +
+  scale_y_log10() +
+  theme_bw() +
+  theme(legend.text = element_text(size=10),
+        legend.title = element_text(size = 11),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = 10)) +
+  geom_label(data = wilcox_test_commits_after_pub %>% filter(variable != "Outside commit authors"),
+             aes(x = x, y = y, label = paste("p =", formatC(p, format = "e", digits = 1))),
+             fill = "white",
+             label.size = 0,
+             color = "steelblue",
+             hjust = 0) +
+  scale_fill_brewer(palette = "Set2")
+```
+
+```{r commits_after_publication_extra_fig, fig.width = 10, fig.height = 4}
+# Make another version of the figure that is wide without outside commit authors
+plt <- ggplot(plt_data_commits_after_pub %>% filter(variable != "Outside commit authors"), aes(variable, value_pos)) +
+  geom_boxplot(aes(fill = `Commits after\npublication`)) +
+  facet_wrap(~variable, scales = "free", ncol = 4) +
+  scale_y_log10() +
+  theme_bw() +
+  theme(legend.text = element_text(size=10),
+        legend.title = element_text(size = 11),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size = 10)) +
+  geom_label(data = wilcox_test_commits_after_pub %>% filter(variable != "Outside commit authors"),
+             aes(x = x, y = y, label = paste("p =", formatC(p, format = "e", digits = 1))),
+             fill = "white",
+             label.size = 0,
+             color = "steelblue",
+             hjust = 0) +
+  scale_fill_brewer(palette = "Set2")
+
+ggsave(file="~/Desktop/file.png", plot = plt, width = 10, height = 4)
 ```
 
 ### Outside contributors
