@@ -33,18 +33,8 @@ This repository contains the code used for "A large-scale analysis of bioinforma
 
 ## Required software
 
-#### Language versions
-
-
-
-#### R packages
-
-- See session info at the end of the R markdown reports for list of packages and versions
-
-#### Python packages
-
-
-
-#### Other tools
+- Python version >= 3.6.4
+- R version >= 3.4.3
+- [cloc version 1.72](https://github.com/AlDanial/cloc/releases/tag/v1.72)
 
 
