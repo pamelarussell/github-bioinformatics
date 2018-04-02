@@ -8,8 +8,8 @@ This repository contains the code used for "A large-scale analysis of bioinforma
 
 #### `paper/`
 
-- R markdown documents that generate the figures in the paper
-- R markdown HTML reports
+- R markdown documents that generated the figures in the paper
+- Knitted HTML reports including the figures in the paper
 
 #### `src/`
 
@@ -29,12 +29,16 @@ This repository contains the code used for "A large-scale analysis of bioinforma
     - Gender analysis
     - Paper metadata
 - You need to specify the config file paths in project_info.R
-- Exploratory analysis, including HTML reports
+- Exploratory analysis, including knitted reports
 
 ## Required software
 
 - Python version >= 3.6.4
 - R version >= 3.4.3
 - [cloc version 1.72](https://github.com/AlDanial/cloc/releases/tag/v1.72)
+
+## Contact
+
+pamela.russell@ucdenver.edu
 
 
