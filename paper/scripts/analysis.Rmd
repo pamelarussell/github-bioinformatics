@@ -146,6 +146,14 @@ plt_data_commits_after_pub$value_pos <- apply(plt_data_commits_after_pub, 1, fun
   else max(val, mp)
 })
 
+# Replace NA's by minimum positive value
+plt_data_commits_after_pub$value_non_na <- apply(plt_data_commits_after_pub, 1, function(row) {
+  val <- as.numeric(row["value"])
+  mp <- as.numeric(row["min_pos"])
+  if(is.na(val)) mp
+  else val
+})
+
 # Change true/false to yes/no
 label_yes <- paste("Yes (N=", nrow(repo_data_main %>% filter(commits_after_article_in_pubmed)), ")", sep = "")
 label_no <- paste("No (N=", nrow(repo_data_main %>% filter(!commits_after_article_in_pubmed)), ")", sep = "")
@@ -157,17 +165,17 @@ plt_data_commits_after_pub[["Commits after\npublication"]] <-
              }))
 
 plt_data_commits_after_pub <- plt_data_commits_after_pub %>%
-  filter(value_pos <= outlier_cutoff) %>%
-  select(`Commits after\npublication`, variable, value_pos)
+  filter(value_non_na <= outlier_cutoff) %>%
+  select(`Commits after\npublication`, variable, value_non_na, value_pos)
 
-# Wilcoxon test for each variable
-wilcox_test_commits_after_pub <- 
+# T test for each variable
+t_test_commits_after_pub <- 
   plt_data_commits_after_pub %>% 
   group_by(variable) %>% 
   dplyr::summarize(
-    p = wilcox.test(value_pos ~ `Commits after\npublication`, paired = FALSE, alternative = "two.sided")$p.value, 
+    p = t.test(value_non_na ~ `Commits after\npublication`, paired = FALSE, alternative = "two.sided")$p.value, 
     x = 0.5, 
-    y = max(value_pos)
+    y = max(value_non_na)
   )
 
 ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
@@ -181,7 +189,7 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
         axis.text.x = element_blank(),
         axis.title = element_blank(),
         strip.text = element_text(size = 10)) +
-  geom_label(data = wilcox_test_commits_after_pub,
+  geom_label(data = t_test_commits_after_pub,
              aes(x = x, y = y, label = paste("p =", formatC(p, format = "e", digits = 1))),
              fill = "white",
              label.size = 0,
@@ -193,25 +201,6 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
 cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$estimate
 cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$p.value
 
-# Make another version of the figure that is wide without outside commit authors
-ggplot(plt_data_commits_after_pub %>% filter(variable != "Outside commit authors"), aes(variable, value_pos)) +
-  geom_boxplot(aes(fill = `Commits after\npublication`)) +
-  facet_wrap(~variable, scales = "free", ncol = 4) +
-  scale_y_log10() +
-  theme_bw() +
-  theme(legend.text = element_text(size=10),
-        legend.title = element_text(size = 11),
-        axis.text.y = element_text(size = 10),
-        axis.text.x = element_blank(),
-        axis.title = element_blank(),
-        strip.text = element_text(size = 10)) +
-  geom_label(data = wilcox_test_commits_after_pub %>% filter(variable != "Outside commit authors"),
-             aes(x = x, y = y, label = paste("p =", formatC(p, format = "e", digits = 1))),
-             fill = "white",
-             label.size = 0,
-             color = "steelblue",
-             hjust = 0) +
-  scale_fill_brewer(palette = "Set2")
 ```
 
 ```{r commits_after_publication_extra_fig, fig.width = 10, fig.height = 4}
@@ -227,7 +216,7 @@ plt <- ggplot(plt_data_commits_after_pub %>% filter(variable != "Outside commit 
         axis.text.x = element_blank(),
         axis.title = element_blank(),
         strip.text = element_text(size = 10)) +
-  geom_label(data = wilcox_test_commits_after_pub %>% filter(variable != "Outside commit authors"),
+  geom_label(data = t_test_commits_after_pub %>% filter(variable != "Outside commit authors"),
              aes(x = x, y = y, label = paste("p =", formatC(p, format = "e", digits = 1))),
              fill = "white",
              label.size = 0,
@@ -235,6 +224,7 @@ plt <- ggplot(plt_data_commits_after_pub %>% filter(variable != "Outside commit 
              hjust = 0) +
   scale_fill_brewer(palette = "Set2")
 
+plt
 ggsave(file="~/Desktop/file.png", plot = plt, width = 10, height = 4)
 ```
 
