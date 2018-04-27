@@ -92,7 +92,9 @@ ggplot() +
   theme(axis.title.x = element_text(size = 16),
         axis.title.y = element_text(size = 16),
         legend.title = element_text(size = 16),
-        legend.text = element_text(size = 14)) +
+        legend.text = element_text(size = 14),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14)) +
   scale_fill_manual(values=c("gray", "#4DAF4A", "#377EB8", "#E41A1C"))
 
 ggsave("abs_bioinf_repo.png")
