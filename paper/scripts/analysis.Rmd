@@ -13,12 +13,92 @@ suppressPackageStartupMessages(library(lubridate))
 suppressPackageStartupMessages(library(bigrquery))
 suppressPackageStartupMessages(library(Hmisc))
 suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(RISmed))
+suppressPackageStartupMessages(library(RColorBrewer))
 source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
 repo_data_main <- load_repo_features(saved_repo_features_main)
 repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
 repo_data_all <- load_repo_features_all()
 ```
 
+### GitHub in OUP "Bioinformatics"
+
+```{r gh_oup_bioinf, fig.width = 10, fig.height = 8}
+# Build query with public repo to include and list to exclude
+ti_ab <- '[Title/Abstract]'
+build_query <- function(incl_repo, excl_repos) {
+  rtrn <- paste(incl_repo, ti_ab, sep = "")
+  for(repo in excl_repos) {
+    rtrn <- paste(rtrn, " NOT ", repo, ti_ab, sep = "")
+  }
+  rtrn <- paste(rtrn, 'AND "Bioinformatics (Oxford, England)"[Journal]')
+  rtrn
+}
+
+# Get count of results for query and year
+get_res_count <- function(query, year) {
+  tryCatch({
+    res <- EUtilsSummary(query = query, 
+                         db = "pubmed", 
+                         mindate = paste(year, "/01/01", sep = ""), 
+                         maxdate = paste(year, "/12/31", sep = ""), 
+                         retmax = 5000,
+                         datetype = "ppdt")
+    QueryCount(res)
+  }, error = function(e) 0)
+}
+
+# Specific queries
+num_abs_year <- function(incl_repo, excl_repos, year) get_res_count(build_query(incl_repo, excl_repos), year)
+total_bioinf_year <- function(year) get_res_count('"Bioinformatics (Oxford, England)"[Journal]', year)
+
+make_count_table <- function(years, repos) {
+  rtrn <- data.frame(repo = character(), year = integer(), num_abstracts = integer(), total_articles = integer())
+  for(year in years) {
+    total_articles <- total_bioinf_year(year)
+    for(repo in repos) {
+      num_abstracts <- num_abs_year(repo, setdiff(repos, repo), year)
+      rtrn <- rbind(rtrn, data.frame(repo = repo, year = year, num_abstracts = num_abstracts, total_articles = total_articles))
+    }
+  }
+  rtrn
+}
+
+count_table <- make_count_table(2009:2017, c("GitHub", "Bitbucket", "SourceForge"))
+count_table <- rbind(count_table, 
+                     data.frame(count_table %>% 
+                                  group_by(year) %>% 
+                                  mutate(other = total_articles - sum(num_abstracts)) %>% 
+                                  select(year, other) %>% 
+                                  unique() %>% 
+                                  mutate(repo = "Other") %>% 
+                                  rename(num_abstracts = other) %>% 
+                                  select(repo, year, num_abstracts) %>% 
+                                  left_join(count_table %>% 
+                                              select(year, total_articles) %>% 
+                                              unique(), 
+                                            by = "year")))
+count_table$repo <- factor(count_table$repo, levels = c("Other", "Bitbucket", "SourceForge", "GitHub"))
+
+ggplot() + 
+  geom_bar(data = count_table %>% 
+             mutate(year = as.character(year)), 
+           aes(y = num_abstracts, x = year, fill = repo), 
+           stat = "identity") +
+  xlab("Year of publication in Bioinformatics (Oxford University Press)") +
+  ylab("Number of abstracts containing repository name") +
+  guides(fill = guide_legend(title = "Repository")) +
+  theme_bw() +
+  theme(axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 14)) +
+  scale_fill_manual(values=c("gray", "#4DAF4A", "#377EB8", "#E41A1C"))
+
+ggsave("abs_bioinf_repo.png")
+ggsave("abs_bioinf_repo.pdf")
+
+```
 
 ### Topic modeling
 
@@ -97,6 +177,9 @@ ggplot(plt_data_topics,
   scale_fill_brewer(palette="Dark2") +
   facet_wrap(~variable, scales = "free", ncol = 3) +
   scale_y_log10(breaks = c(0.1, 1, 10, 100, 1000, 10000))
+
+ggsave("topics.png")
+ggsave("topics.pdf")
 ```
 
 ### Commits after publication
@@ -197,6 +280,9 @@ ggplot(plt_data_commits_after_pub, aes(variable, value_pos)) +
              hjust = 0) +
   scale_fill_brewer(palette = "Set2")
 
+ggsave("commits_after_pub.png")
+ggsave("commits_after_pub.pdf")
+
 # Check if relationship between commit message length and commits after publication can be explained by team size
 cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$estimate
 cor.test(repo_data_main$commit_authors, repo_data_main$mean_commit_message_len, method = "pearson")$p.value
@@ -225,7 +311,6 @@ plt <- ggplot(plt_data_commits_after_pub %>% filter(variable != "Outside commit 
   scale_fill_brewer(palette = "Set2")
 
 plt
-ggsave(file="~/Desktop/file.png", plot = plt, width = 10, height = 4)
 ```
 
 ### Outside contributors
@@ -288,6 +373,9 @@ ggplot(plt_data_outside_contrib) +
              label.size = 0,
              color = "mediumpurple4",
              hjust = 0)
+
+ggsave("outside_contrib.png")
+ggsave("outside_contrib.pdf")
 
 # How many repos have outside contributors?
 nrow(repo_data_main %>% filter(num_non_committing_authors > 0)) / nrow(repo_data_main)
@@ -355,6 +443,10 @@ ggplot(plt_data_devs_community) +
              label.size = 0,
              color = "mediumpurple4",
              hjust = 0)
+
+ggsave("commit_authors.png")
+ggsave("commit_authors.pdf")
+
 ```
 
 ### Commits
@@ -422,6 +514,10 @@ ggplot(plt_data_commits) +
              label.size = 0,
              color = "mediumpurple4",
              hjust = 0)
+
+ggsave("commits.png")
+ggsave("commits.pdf")
+
 ```
 
 ### Languages: file sizes and lines of code
@@ -464,6 +560,10 @@ ggplot(plt_data_langs) +
   facet_wrap(~lang, scales = "fixed", ncol = 5) +
   scale_y_log10(breaks = c(1, 10, 100, 1000, 10000), labels = c("1", "10", "100", "1K", "10K")) +
   scale_x_log10(breaks = c(1, 10, 100, 1000, 10000), labels = c("1", "10", "100", "1K", "10K"))
+
+ggsave("languages.png")
+ggsave("languages.pdf")
+
 ```
 
 ### Bytes of code by language
