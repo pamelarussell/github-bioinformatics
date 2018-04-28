@@ -37,8 +37,19 @@ This repository contains the code used for "A large-scale analysis of bioinforma
 - R version >= 3.4.3
 - [cloc version 1.72](https://github.com/AlDanial/cloc/releases/tag/v1.72)
 
+## Data
+
+Data extracted from the GitHub API and analyzed in the paper are available at [https://doi.org/10.17605/OSF.IO/UWHX8](https://doi.org/10.17605/OSF.IO/UWHX8). The following tables are included.
+
+- Repository licenses for the main and high-profile projects
+- Repository metrics for the main and high-profile projects
+- Commit records for the main and high-profile projects. Personal identifying data such as names and email addresses have been removed. The full records can be reconstructed from the provided API reference for each record.
+- File metadata for the main and high-profile projects
+- File initial commit timestamps for the main and high-profile projects
+
+File contents are not included due to the absence of explicit licenses for the majority of repositories. File contents can be reconstructed from the file metadata as explained in the paper.
+
 ## Contact
 
 pamela.russell@ucdenver.edu
-
 
