@@ -71,14 +71,14 @@ count_table <- rbind(count_table,
                                   mutate(other = total_articles - sum(num_abstracts)) %>% 
                                   select(year, other) %>% 
                                   unique() %>% 
-                                  mutate(repo = "None of these") %>% 
+                                  mutate(repo = "Abstracts with none of these") %>% 
                                   rename(num_abstracts = other) %>% 
                                   select(repo, year, num_abstracts) %>% 
                                   left_join(count_table %>% 
                                               select(year, total_articles) %>% 
                                               unique(), 
                                             by = "year")))
-count_table$repo <- factor(count_table$repo, levels = c("None of these", "Bitbucket", "SourceForge", "GitHub"))
+count_table$repo <- factor(count_table$repo, levels = c("Abstracts with none of these", "Bitbucket", "SourceForge", "GitHub"))
 
 ggplot() + 
   geom_bar(data = count_table %>% 
