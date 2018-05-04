@@ -22,7 +22,7 @@ source("~/Dropbox/Documents/Github_mining/src/R/document_classification/topics.R
 
 ## Plot top terms
 
-```{r plot_topics, fig.width = 7, fig.height = 8}
+```{r plot_topics, fig.width = 10, fig.height = 10}
 # Plot top terms
 facet_text <- num_repos_per_topic %>% mutate(label = paste(total, "repos"))
 facet_text$facet <- factor(facet_text$topic, levels = num_repos_per_topic$topic)
@@ -35,9 +35,9 @@ plt_data %>% ggplot(aes(Term, Beta)) +
   geom_col(show.legend = FALSE, fill = "red3") +
   facet_wrap(~ facet, scales = "free_y", nrow = 4) +
   theme_bw() +
-  theme(axis.title = element_text(size = 12.5),
-        axis.text = element_text(size = 10.5),
-        strip.text = element_text(size = 10.5)) +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 14),
+        strip.text = element_text(size = 14)) +
   coord_flip() + 
   geom_text(data = facet_text,
     mapping = aes(x = -Inf, y = -Inf, label = label),
@@ -45,12 +45,14 @@ plt_data %>% ggplot(aes(Term, Beta)) +
     vjust = -1.4,
     inherit.aes = FALSE,
     size = 5)
+ggsave("topic_terms.pdf")
+ggsave("topic_terms.png")
 ```
 
 
 ## Amount of code per language and topic
 
-```{r languages}
+```{r languages, fig.width = 10, fig.height = 9}
 # Get bytes per language
 bytes_per_lang <- repo_data %>% 
   select(repo_name, starts_with("bytes")) %>%
@@ -72,14 +74,20 @@ bytes_per_topic <- bytes_per_topic %>%
 require(scales)
 ggplot(bytes_per_topic, aes(Topic, Language)) + 
   geom_point(aes(size = Bytes)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 14)) +
   scale_size(labels = comma)
+ggsave("langs_by_topic.png")
+ggsave("langs_by_topic.pdf")
 ```
 
 
 ## Topics vs journals
 
-```{r journals}
+```{r journals, fig.width = 10, fig.height = 9}
 articles_per_journal <- article_data %>% 
   filter(!is.na(iso_abbrev)) %>%
   group_by(iso_abbrev) %>% 
@@ -102,9 +110,15 @@ topics_by_journal <- abstract_top_topics %>%
 # Bubble plot of topics vs journals
 ggplot(topics_by_journal, aes(topic, journal)) + 
   geom_point(aes(size = `Num repos`)) + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 14)) +
   xlab("Topic") +
   ylab("Journal")
+ggsave("journals_by_topic.png")
+ggsave("journals_by_topic.pdf")
 ```
 
 ## Session info
