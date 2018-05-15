@@ -2,7 +2,7 @@
 
 ## Summary
 
-This repository contains the code used for "A large-scale analysis of bioinformatics code on GitHub" by Russell et al. (bioRxiv [preprint](https://www.biorxiv.org/content/early/2018/05/14/321919)). If you want to reproduce the results or use parts of the code, see the paper supplement for complete instructions on environment and tool setup.
+This repository contains the code used for "A large-scale analysis of bioinformatics code on GitHub" by Russell et al. (bioRxiv [preprint](https://www.biorxiv.org/content/early/2018/05/15/321919)). If you want to reproduce the results or use parts of the code, see the paper supplement for complete instructions on environment and tool setup.
 
 ## Repository contents
 
