@@ -2,7 +2,7 @@
 
 ## Summary
 
-This repository contains the code used for "A large-scale analysis of bioinformatics code on GitHub" by Russell et al. (bioRxiv [preprint](https://www.biorxiv.org/content/early/2018/05/15/321919)). If you want to reproduce the results or use parts of the code, see the paper supplement for complete instructions on environment and tool setup.
+This repository contains the code used for "A large-scale analysis of bioinformatics code on GitHub" by Russell et al. ([bioRxiv preprint](https://www.biorxiv.org/content/early/2018/05/15/321919)). If you want to reproduce the results or use parts of the code, see the paper supplement for complete instructions on environment and tool setup.
 
 ## Repository contents
 
@@ -35,11 +35,12 @@ This repository contains the code used for "A large-scale analysis of bioinforma
 
 - Python version >= 3.6.4
 - R version >= 3.4.3
+- Perl version >= 5.18.2
 - [cloc version 1.72](https://github.com/AlDanial/cloc/releases/tag/v1.72)
 
 ## Data
 
-Data extracted from the GitHub API and analyzed in the paper are available at [https://doi.org/10.17605/OSF.IO/UWHX8](https://doi.org/10.17605/OSF.IO/UWHX8). The following tables are included.
+Data extracted from the GitHub API and analyzed in the paper are available at [https://doi.org/10.17605/OSF.IO/UWHX8](https://doi.org/10.17605/OSF.IO/UWHX8). The following tables are included:
 
 - Repository licenses for the main and high-profile projects
 - Repository metrics for the main and high-profile projects
