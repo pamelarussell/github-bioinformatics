@@ -1,0 +1,83 @@
+---
+title: "Developer organizations"
+output: html_document
+---
+
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(httr))
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+repo_data_main <- load_repo_features(saved_repo_features_main)
+repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
+repo_data_all <- load_repo_features_all()
+# Token from https://github.com/settings/tokens, put it in a file
+oauth_token_file <- "~/Dropbox/Documents/Github_mining/key/pamelarussell-github-oauth-token.txt"
+oauth_token <- readLines(file(oauth_token_file, "r"))
+```
+
+
+
+```{r load_commit_data}
+
+committers <- function(proj) {
+  list_tabledata(project = proj, 
+                 dataset = ds_gh, 
+                 table = table_commits,
+                 max_pages = Inf) %>%
+    select(repo_name, committer_login) %>%
+    unique() %>%
+    filter(!is.na(committer_login)) %>%
+    filter(committer_login != "web-flow")
+}
+
+committers_main <- committers(proj_main)
+committers_high_prof <- committers(proj_high_profile)
+
+```
+
+
+```{r orgs}
+num_orgs <- function(login) {
+  url <- paste("https://api.github.com/users/", login, "/orgs?access_token=", oauth_token, sep = "")
+  r <- GET(url, add_headers(add_headers = oauth_token))
+  tryCatch({
+    stop_for_status(r)
+    length(content(r, "parsed"))
+  },
+  error = function(e) 0)
+}
+
+all_committers <- unique(c(committers_main$committer_login, committers_high_prof$committer_login))
+all_committers_num_orgs <- data.frame(committer = all_committers)
+all_committers_num_orgs$num_orgs <- sapply(all_committers_num_orgs$committer, num_orgs)
+```
+
+
+```{r analysis}
+committers_main <- committers_main %>%
+  left_join(all_committers_num_orgs, by = c("committer_login" = "committer")) %>%
+  mutate(category = "main")
+
+committers_high_prof <- committers_high_prof %>%
+  left_join(all_committers_num_orgs, by = c("committer_login" = "committer")) %>%
+  mutate(category = "high_profile")
+
+n_org <- rbind(committers_main %>% select(repo_name, category, num_orgs),
+               committers_high_prof %>% select(repo_name, category, num_orgs))
+
+```
+
+```{r plot}
+ggplot(n_org, aes(category, num_orgs)) + geom_boxplot()
+```
+
+```{r t_test}
+t.test(n_org %>% filter(category == "main") %>% select(num_orgs), 
+       n_org %>% filter(category == "high_profile") %>% select(num_orgs), 
+       alternative = "two.sided")
+```
