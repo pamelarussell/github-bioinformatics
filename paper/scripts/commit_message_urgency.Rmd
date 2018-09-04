@@ -1,0 +1,74 @@
+---
+title: "Commit message urgency"
+output: html_document
+---
+
+Let's check if commit messages are more likely to contain "bug fix" terms as the publication date approaches.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+rm(list=ls())
+suppressPackageStartupMessages(library(bigrquery))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(parsedate))
+source("~/Dropbox/Documents/Github_mining/src/R/project_info.R")
+repo_data_main <- load_repo_features(saved_repo_features_main)
+repo_data_high_prof <- load_repo_features(saved_repo_features_high_prof)
+repo_data_all <- load_repo_features_all()
+```
+
+Bug fix terms from "A Large Scale Study of Programming Languages and Code Quality in Github" by Ray et al.:
+
+- error
+- bug
+- fix
+- issue
+- mistake
+- incorrect
+- fault
+- defect
+- flaw
+
+```{r load_data}
+
+commits_main <- list_tabledata(project = proj_main, 
+                              dataset = ds_gh, 
+                              table = table_commits,
+                              max_pages = Inf) %>%
+  select(repo_name, author_commit_date, commit_message) %>% 
+  left_join(repo_data_main %>% select(repo_name, date_pubmed), by = "repo_name") %>%
+  select(date_pubmed, author_commit_date, commit_message) %>% 
+  mutate(time_to_pub = as.numeric(as.Date(author_commit_date) - as.Date(date_pubmed), units = "days")) %>%
+  select(time_to_pub, commit_message) %>%
+  mutate(contains_fix_term = 
+           grepl("error|bug|fix|issue|mistake|incorrect|fault|defect|flaw", commit_message, ignore.case = T))
+```
+
+Summarize and make plot
+
+```{r summary}
+summary <- commits_main %>% 
+  mutate(time_to_pub_rounded = time_to_pub - time_to_pub %% 10) %>%
+  select(time_to_pub_rounded, contains_fix_term) %>%
+  group_by(time_to_pub_rounded, contains_fix_term) %>% 
+  summarize(num_commits = n()) %>% 
+  arrange(-time_to_pub_rounded) %>%
+  filter(!is.na(time_to_pub_rounded)) %>%
+  rename(`Contains bug fix term` = contains_fix_term)
+
+ggplot(data = summary, 
+       aes(x = time_to_pub_rounded, y = num_commits), 
+       group = `Contains bug fix term`) + 
+  geom_point(aes(color = `Contains bug fix term`)) +
+  xlab("Days with respect to PubMed publication date") +
+  ylab("Total commits in main dataset") +
+  ggtitle("Commit message content and publication date")
+
+ggsave("commit_message_urgency.pdf")
+ggsave("commit_message_urgency.png")
+
+```
+
+
