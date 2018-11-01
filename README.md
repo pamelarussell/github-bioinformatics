@@ -2,7 +2,7 @@
 
 ## Summary
 
-This repository contains the code used for "A large-scale analysis of bioinformatics code on GitHub" by Russell et al. ([bioRxiv preprint](https://www.biorxiv.org/content/early/2018/05/15/321919)). If you want to reproduce the results or use parts of the code, see the paper supplement for complete instructions on environment and tool setup.
+This repository contains the code used for "A large-scale analysis of bioinformatics code on GitHub" by Russell et al. ([article](https://doi.org/10.1371/journal.pone.0205898)). If you want to reproduce the results or use parts of the code, see the paper supplement for complete instructions on environment and tool setup.
 
 ## Repository contents
 
@@ -49,6 +49,10 @@ Data extracted from the GitHub API and analyzed in the paper are available at [h
 - File initial commit timestamps for the main and high-profile projects
 
 File contents are not included due to the absence of explicit licenses for the majority of repositories. File contents can be reconstructed from the file metadata as explained in the paper.
+
+## Citation
+
+Russell PH, Johnson RL, Ananthan S, Harnke B, Carlson NE (2018) A large-scale analysis of bioinformatics code on GitHub. PLoS ONE 13(10): e0205898. [https://doi.org/10.1371/journal.pone.0205898](https://doi.org/10.1371/journal.pone.0205898)
 
 ## Contact
 
