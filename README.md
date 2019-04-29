@@ -56,5 +56,5 @@ Russell PH, Johnson RL, Ananthan S, Harnke B, Carlson NE (2018) A large-scale an
 
 ## Contact
 
-pamela.russell@ucdenver.edu
+pamela.russell@gmail.com
 
